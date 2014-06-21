@@ -1,5 +1,11 @@
 module Wavelets
 
-# package code goes here
+include("util.jl")
+include("POfilters.jl")
+include("POtransforms.jl")
 
-end # module
+using Reexport
+@reexport using .Util, .POfilters, .POtransforms
+
+end
+
