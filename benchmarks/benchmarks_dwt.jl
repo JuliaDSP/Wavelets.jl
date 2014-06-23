@@ -17,14 +17,14 @@ else
     scfilter = convert(Vector{ft},wf.qmf)  #qmf
     dcfilter = reverse(mirror(convert(Vector{ft},wf.qmf)))  #mrqmf
 end
-
+snew = Array(ft, length(x0)>>1)
 
 
 y=x0*0.0
 
 println("dwt! (N=",N,"), ", L, " levels")
 #f(x0, L, wf) = for i = 1:tn; fwt(x0, L, wf); end
-f(x0, L, wf) = for i = 1:tn; dwt!(y, x0, L, wf, fw, dcfilter, scfilter, si); end
+f(x0, L, wf) = for i = 1:tn; dwt!(y, x0, L, wf, fw, dcfilter, scfilter, si, snew); end
 f(x0, L, wf);
 @time f(x0, L, wf);
 

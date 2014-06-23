@@ -78,7 +78,7 @@ By using the low-level function `dwt!` and pre-allocating temporary arrays, sign
 ```julia
 # 1000 iterations
 dwt! (N=32768), 13 levels
-elapsed time: 5.100670485 seconds (132013512 bytes allocated, 0.62% gc time)
+elapsed time: 5.081105993 seconds (701512 bytes allocated)
 fwt (N=32768), 13 levels
 elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
 ```

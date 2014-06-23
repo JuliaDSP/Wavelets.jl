@@ -77,7 +77,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si)
     return nothing
 end
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Union(Vector{T},Nothing) = nothing)
     n = length(x)
     J = nscales(n)
     n != 2^J && error("length not a power of 2")
@@ -85,7 +85,8 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
     !(0 <= L <= J) && error("L out of bounds, use 0 <= L <= J")
     
     L == 0 && return copy!(y,x)     # do nothing
-    L > 1 && (snew = Array(T,n>>1)) # tmp storage of scaling coefs (not used for L<=1)
+    L > 1 && snew == nothing && (snew = Array(T,n>>1)) # tmp storage of scaling coefs (not used for L<=1)
+    L > 1 && length(snew) != n>>1 && error("length of snew incorrect")
     s = x                           # s is currect scaling coefs location
     
     if fw
