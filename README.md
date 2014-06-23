@@ -64,7 +64,7 @@ elapsed time: 1.457472828 seconds (306860616 bytes allocated, 6.14% gc time)
 ```
 
 For 2D transforms:
-```
+```julia
 # 10 iterations
 fwt (N=1024x1024), 8 levels
 elapsed time: 2.422658432 seconds (98389208 bytes allocated, 0.79% gc time)
@@ -87,7 +87,7 @@ TODO
 * Wavelet packets
 * Continuous wavelets
 * Visualization functions
-* Spectrogram
+* Wavelet scalogram
 
 
 
