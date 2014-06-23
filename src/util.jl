@@ -1,5 +1,5 @@
 module Util
-export detailindex, detailrange, detailn, nscales, mirror
+export detailindex, detailrange, detailn, nscales, mirror, split!
 
 # detail coef at level j location i (i starting at 1) -> vector index
 detailindex(j::Integer,i::Integer) = 2^j+i
@@ -31,7 +31,35 @@ function circshift!(a::AbstractVector, shift::Integer)
         end
         a[1:shift] = tmp
     end
-    a::atype
+    return a::atype
 end
+# put odd elements into first half, even into second half
+function split!{T<:Number}(a::AbstractVector{T})
+    n = length(a)
+    nt = n>>2 + (n>>1)%2
+	tmp = Array(T,nt)
+	split!(a,tmp)
+	return a
+end
+function split!{T<:Number}(a::AbstractVector{T}, tmp::Vector{T}, n::Integer=length(a))
+    n > length(a) && error("n too big")
+    n == 2 && return nothing
+    n%2 == 1 && error("must be even length")
+    nt = n>>2 + (n>>1)%2
+    nt > length(tmp) && error("tmp vector to small")
+
+	for i=1:nt # store evens
+		tmp[i] = a[i<<1]
+	end
+	for i=1:n>>1  # odds to first part
+		a[i] = a[(i-1)<<1 + 1]
+	end
+	for i=0:nt - 1  # evens to end
+		a[n-i] = a[n - 2*i]
+	end
+	copy!(a,n>>1+1,tmp,1,nt)
+	return a
+end
+
 end
 

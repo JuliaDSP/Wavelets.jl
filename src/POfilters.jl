@@ -1,10 +1,10 @@
 module POfilters
-export Waveletfilter, POfilter, scale
+export WaveletFilter, POfilter, scale
 
-abstract Waveletfilter
+abstract WaveletFilter
 
 # Periodic, Orthogonal
-immutable POfilter <: Waveletfilter
+immutable POfilter <: WaveletFilter
     qmf::Vector{Float64}    # the quadrature mirror filter
     name::String            # filter short name
     n::Integer              # filter length

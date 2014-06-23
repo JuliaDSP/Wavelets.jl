@@ -1,4 +1,4 @@
-module POtransforms
+module FilterTransforms
 using ..Util
 using ..POfilters
 export fwt, iwt, dwt!
@@ -58,7 +58,34 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
 end
 end
 
+# !!!!!hard coded work in progress!!!!!!
+function dwtd4!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, fw::Bool)
+    #si = Array(T, filter.n-1)       # tmp filter vector
 
+    h = [1+sqrt(3),3+sqrt(3),3-sqrt(3),1-sqrt(3)]./4/sqrt(2)
+    h=h./norm(h)
+    g = mirror(reverse(h))
+    g=-g  # equal to the filtdown sign
+    n = length(x)
+    nd = n>>1
+    fill!(y,0.0)
+    j = 0
+    @inbounds begin
+    for i = 0:2:n-3
+    	for k=1:length(h)
+   			y[j+1] += h[k]*x[i+k]
+    		y[j+1+nd] += g[k]*x[i+k]
+    	end
+    	#y[j+1] = h[1]*x[i+1] + h[2]*x[i+2] + h[3]*x[i+3] + h[4]*x[i+4]
+    	#y[j+1+nd] = g[1]*x[i+1] + g[2]*x[i+2] + g[3]*x[i+3] + g[4]*x[i+4]
+    	j += 1
+    end
+    y[j+1] = h[1]*x[n-1] + h[2]*x[n] + h[3]*x[1] + h[4]*x[2]
+    y[j+1+nd] = g[1]*x[n-1] + g[2]*x[n] + g[3]*x[1] + g[4]*x[2]
+    end
+    
+    return nothing
+end
 
 # ==== low level methods =====
 
@@ -83,6 +110,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
     n != 2^J && error("length not a power of 2")
     n != length(y) && error("length of output does not match input")
     !(0 <= L <= J) && error("L out of bounds, use 0 <= L <= J")
+    is(y,x) && error("input vector is output vector")
     
     L == 0 && return copy!(y,x)     # do nothing
     L > 1 && snew == nothing && (snew = Array(T,n>>1)) # tmp storage of scaling coefs (not used for L<=1)
@@ -139,6 +167,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::I
     size(x) != size(y) && error("input and output size mismatch")
     n != 2^J && error("length not a power of 2")
     !(0 <= L <= J) && error("L out of bounds, use 0 <= L <= J")
+    is(y,x) && error("input matrix is output matrix")
     
     L == 0 && return copy!(y,x)        # do nothing
     #s = x
@@ -209,7 +238,7 @@ end
 
 
 
-# periodic inplace filter and downsampling (by 2)
+# periodic filter and downsampling (by 2)
 # b : filter
 # si: tmp array of length 1 less than b
 # out : result gets written to out[iout:nout-1], where nout==nx/2
@@ -231,7 +260,6 @@ function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
     fill!(si,0.0)
     istart = bs + sw
     dsshift = (bs%2 + sw)%2  # is bs odd, and shift downsampling
-    istart=istart
     @inbounds begin
         for i = 1:(nx-1+istart)
             # periodic in the range [ix:ix+nx-1]
@@ -251,7 +279,7 @@ function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
     return nothing
 end
 
-# periodic inplace filter and upsampling (by 2)
+# periodic filter and upsampling (by 2)
 # b : filter
 # si: tmp array of length 1 less than b
 # out : result gets written to out[iout:nout-1], where nout==nx*2
@@ -271,9 +299,8 @@ function filtup!{T<:FloatingPoint}(add2out::Bool,b::Vector{T}, si::Vector{T},
     silen != bs-1 && error("si: incorrect length")
   
     fill!(si,0.0)
-    dsshift = (sw)%2  # shift upsampling
     istart = bs - shift%2
-
+    dsshift = (sw)%2  # shift upsampling
     @inbounds begin
         for i = 1:(nout-1+istart)
             # periodic in the range [ix:ix+nx-1]
