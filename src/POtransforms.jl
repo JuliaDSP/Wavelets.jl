@@ -32,7 +32,7 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
 end
 end
 
-# 2D
+# 2D MRA (multiresolution analysis)
 # Forward Wavelet Transform
 # and
 # Inverse Wavelet Transform
@@ -230,7 +230,7 @@ function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
     fill!(si,0.0)
     istart = bs + sw
     dsshift = (bs%2 + sw)%2  # is bs odd, and shift downsampling
-    istart=istart+1-1
+    istart=istart
     @inbounds begin
         for i = 1:(nx-1+istart)
             # periodic in the range [ix:ix+nx-1]

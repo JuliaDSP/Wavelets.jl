@@ -1,7 +1,7 @@
 
 using Wavelets
 
-wf = POfilter("db8")
+wf = POfilter("db4")
 N = 1024;
 x0 = rand(N,N);
 L = int(log2(N)-2)

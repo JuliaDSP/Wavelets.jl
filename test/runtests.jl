@@ -7,7 +7,7 @@ using Base.Test
 include("data_fwt.jl")
 
 # 1D
-wf = POfilter("db6")
+wf = POfilter("db3")
 L = nscales(n1)
 yw = fwt(x1, L, wf)
 xtt = iwt(yw,L,wf)
@@ -17,7 +17,7 @@ xtt = iwt(yw,L,wf)
 @test_approx_eq xtt x1
 
 # 2D
-wf = POfilter("db6")
+wf = POfilter("db3")
 L = nscales(n2)
 yw = fwt(x2, L, wf)
 xtt = iwt(yw,L,wf)
@@ -30,7 +30,7 @@ xtt = iwt(yw,L,wf)
 # ============= type tests ================
 
 n = 8
-wf = POfilter("db4")
+wf = POfilter("db2")
 L = 2
 ft = Float64; x = ft[1:n]; y=fwt(x,wf);
 @test Array{ft,1} == typeof(y) && length(y) == n
@@ -40,7 +40,7 @@ ft = Int64; x = ft[1:n]; y=fwt(x,wf);
 @test Array{typeof(1.0),1} == typeof(y) && length(y) == n
 
 n = 8
-wf = POfilter("db4")
+wf = POfilter("db2")
 L = 2
 ft = Float64; x = ft[1:n]; y=fwt(x*x',wf);
 @test Array{ft,2} == typeof(y) && length(y) == n*n

@@ -15,10 +15,10 @@ Usage
 A rough idea of the API:
 
 ```julia
-# set up filter (Periodic, Orthogonal)
-wf = POfilter("Coiflet", 12)
+# set up filter (Periodic, Orthogonal, 4 vanishing moments)
+wf = POfilter("Coiflet", 4)
 # or do it this way
-wf = POfilter("coif12")
+wf = POfilter("coif4")
 # xt is a 5 level transform of vector x
 xt = fwt(x, 5, wf)
 # x2 is approx. equal to x
@@ -35,7 +35,7 @@ dwt!(xt, x, L, wf, true)
 Benchmarks
 ---------
 
-Timing of `fwt`, `iwt` (using `db12`) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases.
+Timing of `fwt`, `iwt` (using `db6` filter of length 12) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases.
 
 ```
 # 100 iterations
