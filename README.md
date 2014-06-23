@@ -74,3 +74,20 @@ fft (N=1024x1024), (FFTW)
 elapsed time: 2.945895417 seconds (587236728 bytes allocated, 4.69% gc time)
 ```
 
+
+TODO
+---------
+
+* Boundary orthogonal wavelets
+* Biorthogonal wavelets
+* Lifting scheme wavelets
+* Interpolating wavelets
+* Thresholding/denoising functions
+* Best M-term approx. and sparsity utilities
+* Wavelet packets
+* Continuous wavelets
+* Visualization functions
+* Spectrogram
+
+
+
