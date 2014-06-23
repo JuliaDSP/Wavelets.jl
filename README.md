@@ -37,7 +37,7 @@ Benchmarks
 
 Timing of `fwt`, `iwt` (using `db6` filter of length 12) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases.
 
-```
+```julia
 # 100 iterations
 fwt (N=1048576), 18 levels
 elapsed time: 17.024847664 seconds (1258560248 bytes allocated, 1.34% gc time)
@@ -66,11 +66,11 @@ elapsed time: 1.457472828 seconds (306860616 bytes allocated, 6.14% gc time)
 For 2D transforms:
 ```julia
 # 10 iterations
-fwt (N=1024x1024), 8 levels
+fwt (N=1024 x 1024), 8 levels
 elapsed time: 2.422658432 seconds (98389208 bytes allocated, 0.79% gc time)
-iwt (N=1024x1024), 8 levels
+iwt (N=1024 x 1024), 8 levels
 elapsed time: 2.048636659 seconds (95275608 bytes allocated, 0.98% gc time)
-fft (N=1024x1024), (FFTW)
+fft (N=1024 x 1024), (FFTW)
 elapsed time: 2.945895417 seconds (587236728 bytes allocated, 4.69% gc time)
 ```
 
