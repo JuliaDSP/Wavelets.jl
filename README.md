@@ -5,7 +5,7 @@ Wavelets
 
 A [Julia](https://github.com/JuliaLang/julia) module for very fast wavelet transforms (orthogonal, periodic, 1D, 2D).
 
-Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab).
+Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See benchmarks and a todo list below.
 
 Written by Gudmundur Adalsteinsson. See license in LICENSE.md.
 
@@ -73,6 +73,16 @@ elapsed time: 2.048636659 seconds (95275608 bytes allocated, 0.98% gc time)
 fft (N=1024 x 1024), (FFTW)
 elapsed time: 2.945895417 seconds (587236728 bytes allocated, 4.69% gc time)
 ```
+
+By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and a little speedup). This is useful when transforming multiple signals.
+```julia
+# 1000 iterations
+dwt! (N=32768), 13 levels
+elapsed time: 5.100670485 seconds (132013512 bytes allocated, 0.62% gc time)
+fwt (N=32768), 13 levels
+elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
+```
+
 
 
 TODO
