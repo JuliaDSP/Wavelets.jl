@@ -60,6 +60,9 @@ function split!{T<:Number}(a::AbstractVector{T}, tmp::Vector{T}, n::Integer=leng
 	copy!(a,n>>1+1,tmp,1,nt)
 	return a
 end
+# inverse the operation of split!
+
+
 
 end
 

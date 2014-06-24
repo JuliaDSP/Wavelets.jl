@@ -9,7 +9,7 @@ include("liftingschemes.jl")
 include("liftingtransforms.jl")
 
 using Reexport
-@reexport using .FilterTransforms, .LiftingTransforms, .Util, .POfilters, LiftingSchemes
+@reexport using .FilterTransforms, .LiftingTransforms, .Util, .POfilters, .LiftingSchemes
 
 end
 

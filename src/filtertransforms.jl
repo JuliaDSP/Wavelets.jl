@@ -1,7 +1,7 @@
 module FilterTransforms
 using ..Util
 using ..POfilters
-export fwt, iwt, dwt!
+export fwt, iwt, dwt!, dwtd4!
 
 
 # FWT, Forward Wavelet Transform

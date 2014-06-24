@@ -1,5 +1,5 @@
 module LiftingSchemes
-export WaveletLS, LSstep, GLS
+export WaveletLS, LSstep, GPLS
 
 abstract WaveletLS
 
@@ -9,8 +9,8 @@ immutable LSstep
     shift::Integer          # + left shift, - right shift
 end
 
-# general lifting scheme
-immutable GLS <: WaveletLS
+# general periodic lifting scheme
+immutable GPLS <: WaveletLS
     step::Vector{LSstep}    # steps to be taken
     norm1::Real             # normalization of scaling coefs.
     norm2::Real             # normalization of detail coefs.
