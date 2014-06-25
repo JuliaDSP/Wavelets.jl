@@ -11,7 +11,7 @@ fi
 julia benchmarks_fwt.jl > /dev/null
 
 julia benchmarks_fwt.jl
-julia benchmarks_iwt.jl
+julia benchmarks_lsfwt.jl
 julia benchmarks_fft.jl
 
 exit

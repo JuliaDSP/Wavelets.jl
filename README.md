@@ -3,7 +3,7 @@ Wavelets
 
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
 
-A [Julia](https://github.com/JuliaLang/julia) module for very fast wavelet transforms (orthogonal, periodic, 1D, 2D).
+A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (orthogonal, periodic, 1D, 2D, by filtering or lifting).
 
 Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See benchmarks and a todo list below.
 
@@ -16,54 +16,42 @@ A rough idea of the API:
 
 ```julia
 # set up filter (Periodic, Orthogonal, 4 vanishing moments)
-wf = POfilter("Coiflet", 4)
+wt = POfilter("Coiflet", 4)
 # or do it this way
-wf = POfilter("coif4")
+wt = POfilter("coif4")
+# the input object determines the transform type 
+# wt now contains instructions for a periodic lifting scheme
+wt = GPLS("coif4")
 # xt is a 5 level transform of vector x
-xt = fwt(x, 5, wf)
+xt = fwt(x, 5, wt)
 # x2 is approx. equal to x
-x2 = iwt(xt, 5, wf)
+x2 = iwt(xt, 5, wt)
 
 # scaling filters is easy
-wf1 = scale(POfilter("haar"), 1/sqrt(2))
+wt1 = scale(POfilter("haar"), 1/sqrt(2))
 # signals can be transformed inplace with a low-level command
 # requiring very little memory allocation (especially for L=1)
-dwt!(xt, x, L, wf, true)
+dwt!(x, L, wt, true)      # inplace by lifting
+dwt!(xt, x, L, wt, true)  # write to xt by filtering
 ```
 
 
 Benchmarks
 ---------
 
-Timing of `fwt`, `iwt` (using `db6` filter of length 12) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases.
+Timing of `fwt` (using `db2` filter of length 4) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases. `fwt` by lifting is currently an order of magnitude faster than by filtering.
 
 ```julia
-# 100 iterations
-fwt (N=1048576), 18 levels
-elapsed time: 17.024847664 seconds (1258560248 bytes allocated, 1.34% gc time)
-iwt (N=1048576), 18 levels
-elapsed time: 11.731993823 seconds (1258562648 bytes allocated, 1.93% gc time)
+# 10 iterations
+fwt by filtering (N=1048576), 18 levels
+elapsed time: 1.262672396 seconds (125866088 bytes allocated, 2.35% gc time)
+fwt by lifting (N=1048576), 18 levels
+elapsed time: 0.153162937 seconds (104927608 bytes allocated, 13.18% gc time)
 fft (N=1048576), (FFTW)
-elapsed time: 29.745145114 seconds (5872236248 bytes allocated, 4.44% gc time)
-
-# 1000 iterations
-fwt (N=32768), 13 levels
-elapsed time: 5.30228259 seconds (395317512 bytes allocated, 1.37% gc time)
-iwt (N=32768), 13 levels
-elapsed time: 3.581545857 seconds (395341512 bytes allocated, 2.01% gc time)
-fft (N=32768), (FFTW)
-elapsed time: 8.85191674 seconds (1837005496 bytes allocated, 5.72% gc time)
-
-# 10000 iterations
-fwt (N=512), 7 levels
-elapsed time: 0.932289745 seconds (77037512 bytes allocated, 1.15% gc time)
-iwt (N=512), 7 levels
-elapsed time: 0.642051702 seconds (77277512 bytes allocated, 1.69% gc time)
-fft (N=512), (FFTW)
-elapsed time: 1.457472828 seconds (306860616 bytes allocated, 6.14% gc time)
+elapsed time: 2.836224168 seconds (587236088 bytes allocated, 4.83% gc time)
 ```
 
-For 2D transforms:
+For 2D transforms by filtering (using `db6` of length 16):
 ```julia
 # 10 iterations
 fwt (N=1024 x 1024), 8 levels
@@ -90,8 +78,6 @@ TODO
 
 * Boundary orthogonal wavelets
 * Biorthogonal wavelets
-* Lifting scheme wavelets
-* Interpolating wavelets
 * Thresholding/denoising functions
 * Best M-term approx. and sparsity utilities
 * Wavelet packets
