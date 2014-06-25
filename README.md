@@ -3,11 +3,15 @@ Wavelets
 
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
 
-A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (orthogonal, periodic, 1D, 2D, by filtering or lifting).
+A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1D, 2D, by filtering or lifting).
 
 Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See benchmarks and a todo list below.
 
-Written by Gudmundur Adalsteinsson. See license in LICENSE.md.
+* 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
+
+* 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development).
+
+Written by Gudmundur Adalsteinsson (C) 2014. See license (MIT) in LICENSE.md.
 
 Usage
 ---------
@@ -51,7 +55,7 @@ fft (N=1048576), (FFTW)
 elapsed time: 2.836224168 seconds (587236088 bytes allocated, 4.83% gc time)
 ```
 
-For 2D transforms by filtering (using `db6` of length 16):
+For 2D transforms by filtering (using `db6` of length 12):
 ```julia
 # 10 iterations
 fwt (N=1024 x 1024), 8 levels
