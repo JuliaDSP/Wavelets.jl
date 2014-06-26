@@ -9,7 +9,7 @@ Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tom
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
-* 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development).
+* 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users.
 
 Written by Gudmundur Adalsteinsson (C) 2014. See license (MIT) in LICENSE.md.
 

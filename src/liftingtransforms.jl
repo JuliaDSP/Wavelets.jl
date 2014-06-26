@@ -35,7 +35,7 @@ end
 
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2)
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
     J = nscales(n)
