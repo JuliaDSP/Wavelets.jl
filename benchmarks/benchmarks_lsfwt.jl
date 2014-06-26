@@ -5,7 +5,7 @@ wf = GPLS("db2")
 N = 1024*1024;
 x0 = rand(N);
 L = int(log2(N)-2)
-tn = 10
+tn = 2
 
 y=x0*0.0
 
