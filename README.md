@@ -25,7 +25,7 @@ wt = POfilter("Coiflet", 4)
 wt = POfilter("coif4")
 # the input object determines the transform type 
 # wt now contains instructions for a periodic lifting scheme
-wt = GPLS("coif4")
+wt = GPLS("cdf9/7")
 # xt is a 5 level transform of vector x
 xt = fwt(x, 5, wt)
 # x2 is approx. equal to x
@@ -55,13 +55,11 @@ fft (N=1048576), (FFTW)
 elapsed time: 2.836224168 seconds (587236088 bytes allocated, 4.83% gc time)
 ```
 
-For 2D transforms by filtering (using `db6` of length 12):
+For 2D transforms (the `fwt` using a CDF 9/7 lifting scheme):
 ```julia
 # 10 iterations
-fwt (N=1024 x 1024), 8 levels
-elapsed time: 2.422658432 seconds (98389208 bytes allocated, 0.79% gc time)
-iwt (N=1024 x 1024), 8 levels
-elapsed time: 2.048636659 seconds (95275608 bytes allocated, 0.98% gc time)
+fwt by lifting (N=1024x1024), 10 levels
+elapsed time: 0.952415385 seconds (109075368 bytes allocated, 2.14% gc time)
 fft (N=1024 x 1024), (FFTW)
 elapsed time: 2.945895417 seconds (587236728 bytes allocated, 4.69% gc time)
 ```
@@ -81,7 +79,7 @@ TODO
 ---------
 
 * Boundary orthogonal wavelets
-* Biorthogonal wavelets
+* Define more lifting schemes
 * Thresholding/denoising functions
 * Best M-term approx. and sparsity utilities
 * Wavelet packets
