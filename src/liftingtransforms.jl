@@ -29,10 +29,37 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         return y
     end
     $Xwt{T<:Integer}(x::AbstractVector{T}, L::Integer, scheme::GPLS) = $Xwt(float(x),L,scheme)
-    $Xwt{T<:Integer}(x::AbstractVector{T}, scheme::GPLS) = $Xwt(float(x),nscales(length(x)),scheme)
+    $Xwt{T<:Integer}(x::AbstractVector{T}, scheme::GPLS) = $Xwt(float(x),scheme)
 end
 end
 
+# 2D MRA (multiresolution analysis)
+# Forward Wavelet Transform
+# and
+# Inverse Wavelet Transform
+for (Xwt, fw) in ((:fwt,true),(:iwt,false))
+@eval begin
+    function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, L::Integer, scheme::GPLS)
+        n = size(x,1)
+        n != size(x,2) && error("2D dwt: not a square matrix")   
+        y = copy(x)
+        dwt!(y,L,scheme,$fw)
+        return y
+    end
+    # assume full transform
+    function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, scheme::GPLS)
+        n = size(x,1)
+        n != size(x,2) && error("2D dwt: not a square matrix")   
+        y = copy(x)
+        dwt!(y,nscales(n),scheme,$fw)
+        return y
+    end
+    $Xwt{T<:Integer}(x::AbstractMatrix{T}, L::Integer, scheme::GPLS) = $Xwt(float(x),L,scheme)
+    $Xwt{T<:Integer}(x::AbstractMatrix{T}, scheme::GPLS) = $Xwt(float(x),scheme)
+end
+end
+
+# 1D
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
@@ -58,7 +85,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
 
     for j in jrange
         if fw
-            split!(s,tmp,ns)        # lazy transform
+            split!(s,tmp,ns)
         else
             normalize!(s, half, ns, scheme.norm1, scheme.norm2, fw)
         end
@@ -81,7 +108,84 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
             half = half<<1
         end
     end
-    return nothing
+    return y
+end
+
+# 2D
+# inplace transform of y, no vector allocation
+# tmp: size at least n>>2
+# tmpvec: size at least n
+function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
+
+    n = size(y,1)
+    J = nscales(n)
+    n != size(y,2) && error("2D dwt: not a square matrix")   
+    n != 2^J && error("length not a power of 2")
+    !(0 <= L <= J) && error("L out of bounds, use 0 <= L <= J")
+    L == 0 && return y          # do nothing
+    
+    
+    if fw
+        jrange = (J-1):-1:(J-L)
+        nsub = n
+    else
+        jrange = (J-L):(J-1)
+        nsub = int(2^(J-L+1))
+    end
+    tmpsub = sub(tmpvec,1:nsub)
+    for j in jrange
+        
+        if fw
+            # rows
+            xs = n
+            for i=1:nsub
+                xi = i
+                xm = n*(nsub-1)+i
+                ya = sub(y, xi:xs:xm)  # final dest and src
+                # move to a dense array for speed
+                copy!(tmpsub,1,ya,1,nsub)
+                dwt!(tmpsub, 1, scheme, fw, tmp)
+                copy!(ya,1,tmpsub,1,nsub)
+                #dwt!(ya, 1, scheme, fw, tmp)
+            end
+            # columns
+            for i=1:nsub
+                xi = 1+(i-1)*n
+                xm = xi+nsub-1
+                ya = sub(y, xi:xm)
+                dwt!(ya, 1, scheme, fw, tmp)
+            end       
+        else
+            # columns
+            for i=1:nsub
+                xi = 1+(i-1)*n
+                xm = xi+nsub-1
+                ya = sub(y, xi:xm)
+                dwt!(ya, 1, scheme, fw, tmp)
+            end   
+            # rows
+            xs = n
+            for i=1:nsub
+                xi = i
+                xm = n*(nsub-1)+i
+                ya = sub(y, xi:xs:xm)  # final dest and src
+                # move to a dense array for speed
+                copy!(tmpsub,1,ya,1,nsub)
+                dwt!(tmpsub, 1, scheme, fw, tmp)
+                copy!(ya,1,tmpsub,1,nsub)
+                #dwt!(ya, 1, scheme, fw, tmp)
+            end
+
+        end 
+
+        fw  && (nsub = nsub>>1)
+        !fw && (nsub = nsub<<1)
+        fw && (tmpsub = sub(tmpvec,1:nsub))
+        !fw && j != jrange[end] && (tmpsub = sub(tmpvec,1:nsub))
+        #s = y
+    end
+    
+    return y
 end
 
 function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real, fw::Bool)
@@ -95,7 +199,7 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::I
     for i = half+1:ns
         @inbounds x[i] *= n2
     end
-    return nothing
+    return x
 end
 
 # predict or update lifting step inplace on x
@@ -237,7 +341,7 @@ function predictupdate!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c
     end
 
 
-    return nothing
+    return x
 end
 
 

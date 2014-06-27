@@ -1,7 +1,7 @@
 module FilterTransforms
 using ..Util
 using ..POfilters
-export fwt, iwt, dwt!, dwtd4!
+export fwt, iwt, dwt!
 
 
 # FWT, Forward Wavelet Transform
@@ -28,7 +28,7 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         return y
     end
     $Xwt{T<:Integer}(x::AbstractVector{T}, L::Integer, filter::POfilter) = $Xwt(float(x),L,filter)
-    $Xwt{T<:Integer}(x::AbstractVector{T}, filter::POfilter) = $Xwt(float(x),nscales(length(x)),filter)
+    $Xwt{T<:Integer}(x::AbstractVector{T}, filter::POfilter) = $Xwt(float(x),filter)
 end
 end
 
@@ -54,11 +54,11 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         return y
     end
     $Xwt{T<:Integer}(x::AbstractMatrix{T}, L::Integer, filter::POfilter) = $Xwt(float(x),L,filter)
-    $Xwt{T<:Integer}(x::AbstractMatrix{T}, filter::POfilter) = $Xwt(float(x),nscales(size(x,1)),filter)
+    $Xwt{T<:Integer}(x::AbstractMatrix{T}, filter::POfilter) = $Xwt(float(x),filter)
 end
 end
 
-# !!!!!hard coded work in progress!!!!!!
+# !hard coded work in progress!
 function dwtd4!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, fw::Bool)
     #si = Array(T, filter.n-1)       # tmp filter vector
 
