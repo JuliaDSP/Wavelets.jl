@@ -86,23 +86,29 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
     for j in jrange
         if fw
             split!(s,tmp,ns)
-        else
-            normalize!(s, half, ns, scheme.norm1, scheme.norm2, fw)
-        end
-        for step in stepseq
-            if step.stept == 'p'
-                predictupdate!(s, half, step.coef, step.shift, fw, predict=true)
-            elseif step.stept == 'u'
-                predictupdate!(s, half, step.coef, step.shift, fw, predict=false)
-            else
-                error("step type ", step.stept," not supported")
+            for step in stepseq
+                if step.stept == 'p'
+                    predictfw!(s, half, step.coef, step.shift)
+                elseif step.stept == 'u'
+                    updatefw!(s, half, step.coef, step.shift)
+                else
+                    error("step type ", step.stept," not supported")
+                end
             end
-        end
-        if fw
-            normalize!(s, half, ns, scheme.norm1, scheme.norm2, fw)
+            normalize!(s, half, ns, scheme.norm1, scheme.norm2)
             ns = ns>>1 
             half = half>>1
         else
+            normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+            for step in stepseq
+                if step.stept == 'p'
+                    predictbw!(s, half, step.coef, step.shift)
+                elseif step.stept == 'u'
+                    updatebw!(s, half, step.coef, step.shift)
+                else
+                    error("step type ", step.stept," not supported")
+                end
+            end
             merge!(s,tmp,ns)        # inverse split
             ns = ns<<1 
             half = half<<1
@@ -188,11 +194,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, 
     return y
 end
 
-function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real, fw::Bool)
-    if !fw
-        n1 = 1/n1
-        n2 = 1/n2
-    end
+function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
     for i = 1:half
         @inbounds x[i] *= n1
     end
@@ -202,18 +204,18 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::I
     return x
 end
 
-# predict or update lifting step inplace on x
+# predict and update lifting step inplace on x, forward and backward
 # half: half of the length under consideration, shift: shift to left, c: coefs
-function predictupdate!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vector{T}, shift::Integer, fw::Bool; predict::Bool=true)
+for (fname,op,puxind,iss) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0)),
+                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0)),
+                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift; lhsis = half)),
+                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift; lhsis = hald))
+                            )
+@eval begin
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vector{T}, shift::Integer)
 
     nc = length(c)
-    if predict
-        rhsis = -shift+half  
-        lhsis = 0
-    else
-        rhsis = -shift      # right hand side index shift
-        lhsis = half        # left hand side index shift
-    end
+    $iss  # define index shifts rhsis and lhsis
     # range limits for 1<=irange<=half without going over boundaries
     irmin = min(max(1, shift+1),  half)
     irmax = max(min(half, half+1+shift-nc),  1)
@@ -224,128 +226,51 @@ function predictupdate!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c
     else
         rhsr = irmax+1:half
     end
-    # the only difference between fw and !fw is the += and -= symbols
-    # for predict=true, the modulus has to be shifted in the update case
-    if fw
-        # periodic boundary
-        if predict
-            for i in 1:irmin-1
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] -= c[k]*x[mod1(i+k-1+rhsis-half,half)+half] 
-                end
-            end
-        else
-            for i in 1:irmin-1
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] -= c[k]*x[mod1(i+k-1+rhsis,half)] 
-                end
-            end
+    # periodic boundary
+    for i in 1:irmin-1
+        for k = 1:nc  
+            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[$puxind] )
         end
-        # main loop
-        if nc == 1  # hard code the most common cases (1, 2, 3) for speed
-            c1 = c[1]
-            for i in irange
-                @inbounds x[i+lhsis] -= c1*x[i+rhsis] 
-            end
-        elseif nc == 2
-            c1,c2 = c[1],c[2]
-            rhsisp1 = rhsis+1
-            for i in irange
-                @inbounds x[i+lhsis] -= c1*x[i+rhsis] + c2*x[i+rhsisp1] 
-            end
-        elseif nc == 3
-            c1,c2,c3 = c[1],c[2],c[3]
-            rhsisp1 = rhsis+1
-            rhsisp2 = rhsis+2
-            for i = irange
-                @inbounds x[i+lhsis] -= c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] 
-            end
-        else
-            for i in irange
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] -= c[k]*x[i+k-1+rhsis] 
-                end
-            end
-        end
-        # periodic boundary
-        if predict
-            for i in rhsr
-                for k = 1:nc
-                    @inbounds x[i+lhsis] -= c[k]*x[mod1(i+k-1+rhsis-half,half)+half] 
-                end
-            end
-        else
-            for i in rhsr
-                for k = 1:nc
-                    @inbounds x[i+lhsis] -= c[k]*x[mod1(i+k-1+rhsis,half)] 
-                end
-            end
-        end
-        
-    else  # !fw
-        # periodic boundary
-        if predict
-            for i in 1:irmin-1
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] += c[k]*x[mod1(i+k-1+rhsis-half,half)+half] 
-                end
-            end
-        else
-            for i in 1:irmin-1
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] += c[k]*x[mod1(i+k-1+rhsis,half)] 
-                end
-            end
-        end
-        # main loop
-        if nc == 1  # hard code the most common cases (1, 2, 3) for speed
-            c1 = c[1]
-            for i in irange
-                @inbounds x[i+lhsis] += c1*x[i+rhsis] 
-            end
-        elseif nc == 2
-            c1,c2 = c[1],c[2]
-            rhsisp1 = rhsis+1
-            for i in irange
-                @inbounds x[i+lhsis] += c1*x[i+rhsis] + c2*x[i+rhsisp1] 
-            end
-        elseif nc == 3
-            c1,c2,c3 = c[1],c[2],c[3]
-            rhsisp1 = rhsis+1
-            rhsisp2 = rhsis+2
-            for i = irange
-                @inbounds x[i+lhsis] += c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] 
-            end
-        else
-            for i in irange
-                for k = 1:nc  
-                    @inbounds x[i+lhsis] += c[k]*x[i+k-1+rhsis] 
-                end
-            end
-        end
-        # periodic boundary
-        if predict
-            for i in rhsr
-                for k = 1:nc
-                    @inbounds x[i+lhsis] += c[k]*x[mod1(i+k-1+rhsis-half,half)+half] 
-                end
-            end
-        else
-            for i in rhsr
-                for k = 1:nc
-                    @inbounds x[i+lhsis] += c[k]*x[mod1(i+k-1+rhsis,half)] 
-                end
-            end
-        end
-        
     end
-
+    # main loop
+    if nc == 1  # hard code the most common cases (1, 2, 3) for speed
+        c1 = c[1]
+        for i in irange
+            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] )
+        end
+    elseif nc == 2
+        c1,c2 = c[1],c[2]
+        rhsisp1 = rhsis+1
+        for i in irange
+            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
+        end
+    elseif nc == 3
+        c1,c2,c3 = c[1],c[2],c[3]
+        rhsisp1 = rhsis+1
+        rhsisp2 = rhsis+2
+        for i = irange
+            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] )
+        end
+    else
+        for i in irange
+            for k = 1:nc  
+                @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[i+k-1+rhsis] )
+            end
+        end
+    end
+    # periodic boundary
+    for i in rhsr
+        for k = 1:nc
+            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[$puxind] )
+        end
+    end
 
     return x
 end
-
-
+end # eval begin
+end # for
 
 
 
 end
+

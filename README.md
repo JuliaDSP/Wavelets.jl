@@ -5,7 +5,7 @@ Wavelets
 
 A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1D, 2D, by filtering or lifting).
 
-Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See benchmarks and a todo list below.
+Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See Usage, Benchmarks and a To-do list below.
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
@@ -75,7 +75,7 @@ elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
 
 
 
-TODO
+To-do list
 ---------
 
 * Boundary orthogonal wavelets
