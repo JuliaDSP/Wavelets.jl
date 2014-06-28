@@ -206,62 +206,69 @@ end
 
 # predict and update lifting step inplace on x, forward and backward
 # half: half of the length under consideration, shift: shift to left, c: coefs
-for (fname,op,puxind,iss) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0)),
-                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0)),
-                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift; lhsis = half)),
-                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift; lhsis = hald))
+for (fname,op,puxind,iss,pred) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0),true),
+                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0),true),
+                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift-half;),false),
+                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift-half;),false)
                             )
 @eval begin
 function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vector{T}, shift::Integer)
 
     nc = length(c)
-    $iss  # define index shifts rhsis and lhsis
+    # define index shift rhsis
+    $iss
     # range limits for 1<=irange<=half without going over boundaries
     irmin = min(max(1, shift+1),  half)
     irmax = max(min(half, half+1+shift-nc),  1)
     irange = irmin:irmax
     # periodic boundary
+    lhsr = 1:irmin-1
     if length(irange)==0
         rhsr = irmin:half
     else
         rhsr = irmax+1:half
     end
+    if !($pred)  # shift ranges for update
+    	irange += half
+    	lhsr += half
+    	rhsr += half
+    end
     # periodic boundary
-    for i in 1:irmin-1
+    for i in lhsr
         for k = 1:nc  
-            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[$puxind] )
+            x[i] = ($op)(x[i], c[k]*x[$puxind] )
         end
     end
     # main loop
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
-            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] )
+            x[i] = ($op)(x[i], c1*x[i+rhsis] )
         end
     elseif nc == 2
         c1,c2 = c[1],c[2]
         rhsisp1 = rhsis+1
         for i in irange
-            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
+            x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
         end
     elseif nc == 3
         c1,c2,c3 = c[1],c[2],c[3]
         rhsisp1 = rhsis+1
         rhsisp2 = rhsis+2
         for i = irange
-            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] )
+            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] )
         end
     else
         for i in irange
             for k = 1:nc  
-                @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[i+k-1+rhsis] )
+                @inbounds x[i] = ($op)(x[i], c[k]*x[i+k-1+rhsis] )
             end
         end
     end
     # periodic boundary
     for i in rhsr
         for k = 1:nc
-            @inbounds x[i+lhsis] = ($op)(x[i+lhsis], c[k]*x[$puxind] )
+            @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
         end
     end
 
