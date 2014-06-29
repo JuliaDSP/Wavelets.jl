@@ -85,7 +85,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
 
     for j in jrange
         if fw
-            split!(s,tmp,ns)
+            split!(s, ns, tmp)
             for step in stepseq
                 if step.stept == 'p'
                     predictfw!(s, half, step.coef, step.shift)
@@ -206,26 +206,40 @@ end
 
 # predict and update lifting step inplace on x, forward and backward
 # half: half of the length under consideration, shift: shift to left, c: coefs
-for (fname,op,puxind,iss,pred) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0),true),
-                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),:(rhsis = -shift+half; lhsis = 0),true),
-                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift-half;),false),
-                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),:(rhsis = -shift-half;),false)
+for (fname,op,puxind,pred) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),true),
+                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),true),
+                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),false),
+                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),false)
                             )
 @eval begin
 function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vector{T}, shift::Integer)
 
     nc = length(c)
     # define index shift rhsis
-    $iss
-    # range limits for 1<=irange<=half without going over boundaries
-    irmin = min(max(1, shift+1),  half)
-    irmax = max(min(half, half+1+shift-nc),  1)
-    irange = irmin:irmax
-    # periodic boundary
-    lhsr = 1:irmin-1
-    if length(irange)==0
-        rhsr = irmin:half
+    if $pred
+    	rhsis = -shift+half
     else
+        rhsis = -shift-half
+    end
+    # conditions for every element i in irange to be in bounds
+    # 1 <= i <= half
+    # 1 <= i+1-1-shift <= half
+    # 1 <= i+nc-1-shift <= half
+    irmin = max(shift+1, 1-nc+shift)
+    irmax = min(half+1+shift-nc, half+shift)
+    if irmin > half || irmax < 1
+        irange = 1:0  # empty
+    else
+        irmin = max(irmin,1)
+        irmax = min(irmax,half)
+        irange = irmin:irmax
+    end
+    # periodic boundary
+    if length(irange)==0
+        lhsr = 1:half
+        rhsr = 1:0
+    else
+        lhsr = 1:irmin-1
         rhsr = irmax+1:half
     end
     if !($pred)  # shift ranges for update
@@ -236,20 +250,20 @@ function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vect
     # periodic boundary
     for i in lhsr
         for k = 1:nc  
-            x[i] = ($op)(x[i], c[k]*x[$puxind] )
+            @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
         end
     end
     # main loop
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
-            x[i] = ($op)(x[i], c1*x[i+rhsis] )
+            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] )
         end
     elseif nc == 2
         c1,c2 = c[1],c[2]
         rhsisp1 = rhsis+1
         for i in irange
-            x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
+            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
         end
     elseif nc == 3
         c1,c2,c3 = c[1],c[2],c[3]

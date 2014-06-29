@@ -41,7 +41,8 @@ function split!{T<:Number}(a::AbstractVector{T})
     split!(a,tmp)
     return a
 end
-function split!{T<:Number}(a::AbstractVector{T}, tmp::Vector{T}, n::Integer=length(a))
+# split only the range 1:n
+function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
     n > length(a) && error("n too big")
     n == 2 && return nothing
     n%2 == 1 && error("must be even length")
