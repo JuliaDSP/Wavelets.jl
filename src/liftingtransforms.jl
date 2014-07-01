@@ -62,12 +62,16 @@ end
 # 1D
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+# oopc: out of place computation (e.g. for a non-unit strided vector)
+# oopv: the out of place location
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2); oopc::Bool=false, oopv::Union(AbstractVector{T},Nothing)=nothing)
 
     n = length(y)
     J = nscales(n)
     n != 2^J && error("length not a power of 2")
     !(0 <= L <= J) && error("L out of bounds, use 0 <= L <= J")
+    oopc && oopv == nothing && error("out of place vector not set")
+    oopc && n != length(oopv) && error("out of place vector not same length as input")
     L == 0 && return y          # do nothing
     
     if fw
@@ -85,7 +89,12 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
 
     for j in jrange
         if fw
-            split!(s, ns, tmp)
+            if oopc && j==jrange[1]
+                split!(oopv, y, ns)
+                s = oopv
+            else
+                split!(s, ns, tmp)
+            end
             for step in stepseq
                 if step.stept == 'p'
                     predictfw!(s, half, step.coef, step.shift)
@@ -95,11 +104,27 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
                     error("step type ", step.stept," not supported")
                 end
             end
-            normalize!(s, half, ns, scheme.norm1, scheme.norm2)
+            if oopc && L==1  # directly use out of place normalize
+                normalize!(y, oopv, half, ns, scheme.norm1, scheme.norm2)
+            elseif oopc && j==jrange[end]
+                normalize!(s, half, ns, scheme.norm1, scheme.norm2)
+                copy!(y, oopv)
+            else
+                normalize!(s, half, ns, scheme.norm1, scheme.norm2)
+            end
             ns = ns>>1 
             half = half>>1
         else
-            normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+            if oopc && L==1  # directly use out of place normalize
+                normalize!(oopv, y, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+                s = oopv
+            elseif oopc && j==jrange[1]
+                copy!(oopv, y)
+                s = oopv
+                normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+            else
+                normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+            end
             for step in stepseq
                 if step.stept == 'p'
                     predictbw!(s, half, step.coef, step.shift)
@@ -109,7 +134,11 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
                     error("step type ", step.stept," not supported")
                 end
             end
-            merge!(s,tmp,ns)        # inverse split
+            if oopc && j==jrange[end]
+                merge!(y, oopv, ns)
+            else
+                merge!(s, ns, tmp)        # inverse split
+            end
             ns = ns<<1 
             half = half<<1
         end
@@ -148,11 +177,8 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, 
                 xi = i
                 xm = n*(nsub-1)+i
                 ya = sub(y, xi:xs:xm)  # final dest and src
-                # move to a dense array for speed
-                copy!(tmpsub,1,ya,1,nsub)
-                dwt!(tmpsub, 1, scheme, fw, tmp)
-                copy!(ya,1,tmpsub,1,nsub)
-                #dwt!(ya, 1, scheme, fw, tmp)
+                # out of place in a dense array for speed
+                dwt!(ya, 1, scheme, fw, tmp, oopc=true, oopv=tmpsub)
             end
             # columns
             for i=1:nsub
@@ -175,11 +201,8 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, 
                 xi = i
                 xm = n*(nsub-1)+i
                 ya = sub(y, xi:xs:xm)  # final dest and src
-                # move to a dense array for speed
-                copy!(tmpsub,1,ya,1,nsub)
-                dwt!(tmpsub, 1, scheme, fw, tmp)
-                copy!(ya,1,tmpsub,1,nsub)
-                #dwt!(ya, 1, scheme, fw, tmp)
+                # out of place in a dense array for speed
+                dwt!(ya, 1, scheme, fw, tmp, oopc=true, oopv=tmpsub)
             end
 
         end 
@@ -202,6 +225,16 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::I
         @inbounds x[i] *= n2
     end
     return x
+end
+# out of place normalize from x to y
+function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
+    for i = 1:half
+        @inbounds y[i] = n1*x[i]
+    end
+    for i = half+1:ns
+        @inbounds y[i] = n2*x[i]
+    end
+    return y
 end
 
 # predict and update lifting step inplace on x, forward and backward

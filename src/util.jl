@@ -11,6 +11,7 @@ detailn(j::Integer) = 2^j
 nscales(n::Integer) = int(log2(n))
 # mirror of filter
 mirror{T<:Number}(f::Vector{T}) = f.*(-1).^(0:length(f)-1)
+
 # inplace circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
 function circshift!(a::AbstractVector, shift::Integer)
     atype = typeof(a)
@@ -33,6 +34,7 @@ function circshift!(a::AbstractVector, shift::Integer)
     end
     return a::atype
 end
+
 # put odd elements into first half, even into second half
 function split!{T<:Number}(a::AbstractVector{T})
     n = length(a)
@@ -61,6 +63,26 @@ function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
     copy!(a,n>>1+1,tmp,1,nt)
     return a
 end
+# out of place split from a to b, only the range 1:n
+function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
+    (n > length(a) || n > length(b)) && error("n too big")
+    if n == 2
+    	b[1] = a[1]
+    	b[2] = a[2]
+    	return b
+    end
+    n%2 == 1 && error("must be even length")
+    h=n>>1
+    for i=1:h  # odds to b
+        @inbounds b[i] = a[(i-1)<<1 + 1]
+    end
+    for i=h+1:n  # evens to b
+        @inbounds b[i] = a[2*(i - h)]
+    end
+
+    return b
+end
+
 # inverse the operation of split!
 function merge!{T<:Number}(a::AbstractVector{T})
     n = length(a)
@@ -69,9 +91,10 @@ function merge!{T<:Number}(a::AbstractVector{T})
     merge!(a,tmp)
     return a
 end
-function merge!{T<:Number}(a::AbstractVector{T}, tmp::Vector{T}, n::Integer=length(a))
+# merge only the range 1:n
+function merge!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
     n > length(a) && error("n too big")
-    n == 2 && return nothing
+    n == 2 && return a
     n%2 == 1 && error("must be even length")
     nt = n>>2 + (n>>1)%2
     nt > length(tmp) && error("tmp vector to small")
@@ -88,7 +111,25 @@ function merge!{T<:Number}(a::AbstractVector{T}, tmp::Vector{T}, n::Integer=leng
     end
     return a
 end
+# out of place merge from a to b, only the range 1:n
+function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
+    (n > length(a) || n > length(b)) && error("n too big")
+    if n == 2
+    	b[1] = a[1]
+    	b[2] = a[2]
+    	return b
+    end
+    n%2 == 1 && error("must be even length")
+    h=n>>1
+    for i=1:h  # odds to b
+        @inbounds b[(i-1)<<1 + 1] = a[i]
+    end
+    for i=h+1:n  # evens to b
+        @inbounds b[2*(i - h)] = a[i]
+    end
 
+    return b
+end
 
 end
 

@@ -26,6 +26,36 @@ xtt = iwt(yw,L,wf)
 @assert abs(vecnorm(x2)-vecnorm(yw))<1e-12
 @test_approx_eq xtt x2
 
+# 2D lifting and filtering comparison
+for WT in ("db1","db2")
+	wf = POfilter(WT)
+	wls = GPLS(WT)
+	n = 64
+	x = randn(n)
+	
+	x2 = copy(x)
+	tmp = zeros(n)
+	tmpsub = zeros(n)
+	
+	for L in (nscales(n),0,1,2)
+		println(WT," : ", L)
+		yf = fwt(x, L, wf)
+		yls = fwt(x, L, wls)
+		dwt!(x2, L, wls, true, tmp, oopc=true, oopv=tmpsub)
+		
+		@test_approx_eq yf yls
+		@test_approx_eq yf x2
+		
+		ytf = iwt(yf, L, wf)
+		ytls = iwt(yls, L, wls)
+		dwt!(x2, L, wls, false, tmp, oopc=true, oopv=tmpsub)
+		
+		@test_approx_eq ytf x
+		@test_approx_eq ytls x
+		@test_approx_eq x2 x
+		
+	end
+end
 
 # ============= type tests ================
 
