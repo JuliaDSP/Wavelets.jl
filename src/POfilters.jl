@@ -1,7 +1,8 @@
 module POfilters
-export WaveletFilter, POfilter, scale
+export WaveletFilter, WaveletType, POfilter, scale
 
-abstract WaveletFilter
+abstract WaveletType
+abstract WaveletFilter <: WaveletType
 
 # Periodic, Orthogonal
 immutable POfilter <: WaveletFilter

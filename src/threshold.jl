@@ -1,5 +1,14 @@
 module Threshold
-export thf,
+using ..Util, ..POfilters, ..FilterTransforms, ..LiftingSchemes, ..LiftingTransforms
+export 
+    # denoising types
+    DNFT,
+    VisuShrink,
+    # denoising functions
+    denoise,
+    noisest,
+    
+    thf,
     # threshold with parameter m
     biggestterms!,
     biggestterms,
@@ -17,10 +26,66 @@ export thf,
     thresholdneg,
     thresholdpos!,
     thresholdpos
-    
+
 # thresholding and denoising utilities
 
-const out_type = Float64   # for non inplace functions
+abstract DNFT
+
+type VisuShrink <: DNFT
+    f::Function     # thresholding function (inplace)
+    t::Real         # threshold for noise level sigma=1, use sigma*t in application
+end
+function VisuShrink(n::Real)
+    return VisuShrink(thf("hard"), sqrt(2*log(n)))
+end
+
+const out_type = Float64                # for non inplace functions
+const def_wavelet = POfilter("sym5")    # default wavelet type
+
+function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;  
+                                    wt::Union(T,Nothing)=def_wavelet, 
+                                    level::Int=max(nscales(size(x,1))-6,1),
+                                    dnt::S=VisuShrink(size(x,1)),
+                                    sigma::Real=noisest(x, wt=wt) )
+    if wt == nothing
+        y = copy(x)
+        dnt.f(y, sigma*dnt.t)
+    else
+        L = nscales(size(x,1)) - level
+        
+        y = fwt(x, L, wt)
+        # threshold
+        dnt.f(y, sigma*dnt.t)
+        
+        if T <: WaveletLS
+            dwt!(y, L, wt, false)
+        else
+            y = iwt(y, L, wt)
+        end
+    end
+    return y
+end
+
+# estimate the std. dev. of the signal noise, assuming Gaussian distribution
+function noisest{T<:WaveletType}(x::AbstractArray; wt::Union(T,Nothing)=def_wavelet)
+    if wt == nothing
+        y = copy(x)
+    else
+        y = fwt(x, 1, wt)
+    end
+    ind = detailrange(maxlevel(size(y,1)))
+    return mad(y[ind])/0.6745
+end
+# Median absolute deviation
+function mad(x::AbstractArray)
+    y = copy(x)
+    m = median!(y)
+    for i in 1:length(y)
+        y[i] = abs(y[i]-m)
+    end
+    return median!(y, checknan=false)
+end
+
 
 # return an inplace threshold function
 function thf(th::String="hard")
@@ -89,11 +154,11 @@ function thresholdsemisoft!(x::AbstractArray, t::Real)
     @inbounds begin
         for i = 1:length(x)
             if x[i] <= 2*t
-                sh = 2*(x[i] - t)
+                sh = abs(x[i]) - t
                 if sh < 0
                     x[i] = 0
-                else
-                    x[i] = sh
+                elseif sh - t < 0
+                    x[i] = sign(x[i])*sh*2
                 end
             end
         end

@@ -11,6 +11,8 @@ Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tom
 
 * 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 10x faster than the filter transforms.
 
+* Denoising and thresholding functions and utilities.
+
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
 Usage
@@ -37,6 +39,12 @@ wt1 = scale(POfilter("haar"), 1/sqrt(2))
 # requiring very little memory allocation (especially for L=1)
 dwt!(x, L, wt, true)      # inplace by lifting
 dwt!(xt, x, L, wt, true)  # write to xt by filtering
+
+# denoising with default parameters (VisuShrink hard thresholding)
+n = 1024
+x0 = testfunction(n,"HeaviSine")
+x = 0.3*randn(n)+x0
+y = denoise(x)
 ```
 
 
@@ -80,9 +88,7 @@ To-do list
 
 * Boundary orthogonal wavelets
 * Define more lifting schemes
-* Thresholding/denoising functions
-* Best M-term approx. and sparsity utilities
-* Wavelet packets
+* Redundant transforms and wavelet packets
 * Continuous wavelets
 * Visualization functions
 * Wavelet scalogram

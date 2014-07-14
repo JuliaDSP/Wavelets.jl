@@ -1,7 +1,8 @@
 module LiftingSchemes
 export WaveletLS, LSstep, GPLS
+import ..POfilters: WaveletType
 
-abstract WaveletLS
+abstract WaveletLS <: WaveletType
 
 immutable LSstep
     stept::Char             # step type: 'p' for predict, 'u' for update

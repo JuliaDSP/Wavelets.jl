@@ -1,5 +1,5 @@
 module Util
-export detailindex, detailrange, detailn, nscales, mirror, split!, merge!
+export detailindex, detailrange, detailn, nscales, maxlevel, mirror, split!, merge!, testfunction
 
 # detail coef at level j location i (i starting at 1) -> vector index
 detailindex(j::Integer,i::Integer) = 2^j+i
@@ -9,6 +9,8 @@ detailrange(j::Integer) = (2^j+1):(2^(j+1))
 detailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
 nscales(n::Integer) = int(log2(n))
+# the largest detial scale
+maxlevel(n::Integer) = nscales(n)-1
 # mirror of filter
 mirror{T<:Number}(f::Vector{T}) = f.*(-1).^(0:length(f)-1)
 
@@ -129,6 +131,15 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
     end
 
     return b
+end
+
+
+function testfunction(n::Int, t::String)
+	if t=="HeaviSine"
+		return [4*sin(4*pi*t)-sign(t-0.3)-sign(0.72-t) for t=0:1/n:1-eps()]
+	else
+		error("test function not found")
+	end
 end
 
 end
