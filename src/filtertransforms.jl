@@ -8,7 +8,6 @@ export fwt, iwt, dwt!
 # IWT, Inverse Wavelet Transform
 # DWT, Discrete Wavelet Transform
 # periodic boundaries, orthogonal, dyadic length (powers of 2)
-# L=0 does nothing, L=1 transforms 1 level, L=J=length(x) is a full transform
 
 # 1D
 # Forward Wavelet Transform

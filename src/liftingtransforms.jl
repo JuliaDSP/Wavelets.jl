@@ -7,7 +7,7 @@ export dwt!
 # FWT, Forward Wavelet Transform
 # IWT, Inverse Wavelet Transform
 # DWT, Discrete Wavelet Transform
-# periodic, dyadic length (powers of 2)
+# periodic boundaries, dyadic length (powers of 2)
 
 # 1D
 # Forward Wavelet Transform

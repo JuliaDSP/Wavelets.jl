@@ -8,8 +8,10 @@ include("filtertransforms.jl")
 include("liftingschemes.jl")
 include("liftingtransforms.jl")
 
+include("threshold.jl")
+
 using Reexport
-@reexport using .FilterTransforms, .LiftingTransforms, .Util, .POfilters, .LiftingSchemes
+@reexport using .FilterTransforms, .LiftingTransforms, .Util, .POfilters, .LiftingSchemes, .Threshold
 
 end
 
