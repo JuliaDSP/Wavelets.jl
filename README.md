@@ -5,13 +5,13 @@ Wavelets
 
 A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1D, 2D, by filtering or lifting).
 
-Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). See Usage, Benchmarks and a To-do list below.
+Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
 * 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 10x faster than the filter transforms.
 
-* Denoising and thresholding functions and utilities.
+* Denoising and thresholding functions and utilities. See example code and image below.
 
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
@@ -81,7 +81,28 @@ fwt (N=32768), 13 levels
 elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
 ```
 
+Denoising and thesholding
+---------
 
+The `Wavelets.Threshold` module includes the following utilities
+
+* denoising (VisuShrink, translation invariant (TI))
+* noise estimator
+* hard threshold
+* soft threshold
+* semisoft threshold
+* stein threshold
+* biggest m-term (best m-term) approximation
+* positive and negative thresholds
+
+Example of usage:
+```julia
+n = 2^11;
+x0 = testfunction(n,"Doppler")
+x = x0 + 0.05*randn(n)
+y = denoise(x,TI=true)
+```
+![Doppler](/example/denoise_doppler.png)
 
 To-do list
 ---------
