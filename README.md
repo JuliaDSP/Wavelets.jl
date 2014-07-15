@@ -47,6 +47,7 @@ x = 0.3*randn(n)+x0
 y = denoise(x)
 ```
 
+![Bumps](/example/transform1d_bumps.png)
 
 Benchmarks
 ---------
