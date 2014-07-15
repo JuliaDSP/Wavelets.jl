@@ -101,7 +101,14 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
     end
     
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si)
-    return nothing
+    return y
+end
+# "inplace" by copying
+function dwt!{T<:FloatingPoint}(x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool)
+    y = Array(T,length(x))
+    dwt!(y, x, L, filter, fw)
+    copy!(x,y)
+    return x
 end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Union(Vector{T},Nothing) = nothing)
     n = length(x)
@@ -138,7 +145,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
         !fw && j != jrange[end] && copy!(snew,1,y,1,detailn(j+1))
         L > 1 && (s = snew)
     end
-    return nothing
+    return y
 end
 
 # 2D
@@ -156,7 +163,14 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::I
     end
     
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si, tmpvec)
-    return nothing
+    return y
+end
+# "inplace" by copying
+function dwt!{T<:FloatingPoint}(x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool)
+    y = Array(T,size(x))
+    dwt!(y, x, L, filter, fw)
+    copy!(x, y)
+    return x
 end
 function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
 
@@ -232,7 +246,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::I
         !fw && j != jrange[end] && (tmpsub = sub(tmpvec,1:nsub))
         #s = y
     end
-    return nothing
+    return y
 end
 
 

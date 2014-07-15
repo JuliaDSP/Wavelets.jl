@@ -35,34 +35,56 @@ type VisuShrink <: DNFT
     f::Function     # thresholding function (inplace)
     t::Real         # threshold for noise level sigma=1, use sigma*t in application
 end
-function VisuShrink(n::Real)
+# define type for signal length n
+function VisuShrink(n::Int)
     return VisuShrink(thf("hard"), sqrt(2*log(n)))
 end
 
 const out_type = Float64                # for non inplace functions
 const def_wavelet = POfilter("sym5")    # default wavelet type
 
+# denoise signal x by thresholding in wavelet space
 function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;  
                                     wt::Union(T,Nothing)=def_wavelet, 
                                     level::Int=max(nscales(size(x,1))-6,1),
                                     dnt::S=VisuShrink(size(x,1)),
-                                    sigma::Real=noisest(x, wt=wt) )
-    if wt == nothing
-        y = copy(x)
-        dnt.f(y, sigma*dnt.t)
-    else
+                                    sigma::Real=noisest(x, wt=wt),
+                                    TI::Bool=false,
+                                    nspin::Union(Int,Tuple)=tuple([8 for i=1:length(size(x))]...) )
+    
+    if TI
+        wt == nothing && error("TI not supported with wt=nothing")
+        y = zeros(eltype(x), size(x))
         L = nscales(size(x,1)) - level
-        
-        y = fwt(x, L, wt)
-        # threshold
-        dnt.f(y, sigma*dnt.t)
-        
-        if T <: WaveletLS
-            dwt!(y, L, wt, false)
+        pns = prod(nspin)
+        for i = 1:pns
+            shift = nspin2circ(nspin, i)
+            z = circshift(x, shift)
+            
+            dwt!(z, L, wt, true)
+            dnt.f(z, sigma*dnt.t)   # threshold
+            dwt!(z, L, wt, false)
+            
+            z = circshift(z, -shift)
+            for j = 1:length(x)
+                @inbounds y[j] += z[j]
+            end
+        end
+        for j = 1:length(x)
+            @inbounds y[j] /= pns
+        end
+    else
+        if wt == nothing
+            y = copy(x)
+            dnt.f(y, sigma*dnt.t)
         else
-            y = iwt(y, L, wt)
+            L = nscales(size(x,1)) - level
+            y = fwt(x, L, wt)
+            dnt.f(y, sigma*dnt.t)   # threshold
+            dwt!(y, L, wt, false)
         end
     end
+    
     return y
 end
 
@@ -86,6 +108,16 @@ function mad(x::AbstractArray)
     return median!(y, checknan=false)
 end
 
+# convert index i to a circshift array starting at 0 shift
+function nspin2circ(nspin::Union(Int,Tuple), i::Int)
+    typeof(nspin) == Int && (nspin = (nspin,))
+    c1 = ind2sub(nspin,i)
+    c = Array(Int,length(c1))
+    for k = 1:length(c1)
+        c[k] = c1[k]-1
+    end
+    return c
+end
 
 # return an inplace threshold function
 function thf(th::String="hard")

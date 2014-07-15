@@ -69,9 +69,9 @@ end
 function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
     (n > length(a) || n > length(b)) && error("n too big")
     if n == 2
-    	b[1] = a[1]
-    	b[2] = a[2]
-    	return b
+        b[1] = a[1]
+        b[2] = a[2]
+        return b
     end
     n%2 == 1 && error("must be even length")
     h=n>>1
@@ -117,9 +117,9 @@ end
 function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
     (n > length(a) || n > length(b)) && error("n too big")
     if n == 2
-    	b[1] = a[1]
-    	b[2] = a[2]
-    	return b
+        b[1] = a[1]
+        b[2] = a[2]
+        return b
     end
     n%2 == 1 && error("must be even length")
     h=n>>1
@@ -133,13 +133,47 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
     return b
 end
 
-
-function testfunction(n::Int, t::String)
-	if t=="HeaviSine"
-		return [4*sin(4*pi*t)-sign(t-0.3)-sign(0.72-t) for t=0:1/n:1-eps()]
-	else
-		error("test function not found")
-	end
+# return a vector of test function values on [0,1), see
+#Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
+function testfunction(n::Int, ft::String)
+    f = Array(Float64,n)
+    range = 0:1/n:1-eps()
+    i = 1
+    if ft=="Blocks"
+        tj = [0.1,0.13,0.15,0.23,0.25,0.4,0.44,0.65,0.76,0.78,0.81]
+        hj = [4,-5,3,-4,5,-4.2,2.1,4.3,-3.1,2.1,-4.2]
+        for t in range
+            f[i] = 0
+            for j = 1:11
+                f[i] += hj[j]*(1+sign(t-tj[j]))/2
+            end
+            i += 1
+        end
+    elseif ft=="Bumps"
+        tj = [0.1,0.13,0.15,0.23,0.25,0.4,0.44,0.65,0.76,0.78,0.81]
+        hj = [4,5,3,4,5,4.2,2.1,4.3,3.1,5.1,4.2]
+        wj = [0.005,0.005,0.006,0.01,0.01,0.03,0.01,0.01,0.005,0.008,0.005]
+        for t in range
+            f[i] = 0
+            for j = 1:11
+                f[i] += hj[j]/(1+abs((t-tj[j])/wj[j]))^4
+            end
+            i += 1
+        end
+    elseif ft=="HeaviSine"
+        for t in range
+            f[i] = 4*sin(4*pi*t) - sign(t-0.3) - sign(0.72-t)
+            i += 1
+        end
+    elseif ft=="Doppler"
+        for t in range
+            f[i] = sqrt(t*(1-t))*sin(2*pi*1.05/(t+0.05))
+            i += 1
+        end
+    else
+        error("test function not found")
+    end
+    return f
 end
 
 end
