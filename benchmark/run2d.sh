@@ -8,11 +8,11 @@ fi
 
 
 # warm up
-julia benchmarks_fwt.jl > /dev/null
+julia bm_fwt2.jl > /dev/null
 
-julia benchmarks_fwt.jl
-julia benchmarks_lsfwt.jl
-julia benchmarks_fft.jl
+julia bm_fwt2.jl
+julia bm_iwt2.jl
+julia bm_fft2.jl
 
 exit
 
