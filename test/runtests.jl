@@ -1,6 +1,7 @@
 using Wavelets
 using Base.Test
 
+include("util.jl")
 
 # ============= accuracy tests ================
 

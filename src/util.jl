@@ -1,5 +1,8 @@
 module Util
-export detailindex, detailrange, detailn, nscales, maxlevel, mirror, split!, merge!, testfunction
+export detailindex, detailrange, detailn, nscales, maxlevel, mirror, wcount, 
+    split!, merge!, 
+    testfunction, 
+    wplotdots, wplotim
 
 # detail coef at level j location i (i starting at 1) -> vector index
 detailindex(j::Integer,i::Integer) = 2^j+i
@@ -13,6 +16,29 @@ nscales(n::Integer) = int(log2(n))
 maxlevel(n::Integer) = nscales(n)-1
 # mirror of filter
 mirror{T<:Number}(f::Vector{T}) = f.*(-1).^(0:length(f)-1)
+# count coefficients above threshold t (>=), excluding coefficients in levels < level
+# where level -1 is the x[1] coefficient
+function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
+    c = 0
+    level < -1 && error("level < -1")
+    si = 1
+    level >= 0 && (si = 1 + 2^level)
+    @inbounds for i = si:length(x)
+        if abs(x[i]) >= t
+            c += 1
+        end
+    end
+    return c
+end
+function wcount(x::AbstractArray, t::Real=0)
+    c = 0
+    @inbounds for i = 1:length(x)
+        if abs(x[i]) >= t
+            c += 1
+        end
+    end
+    return c
+end
 
 # inplace circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
 function circshift!(a::AbstractVector, shift::Integer)
@@ -175,6 +201,56 @@ function testfunction(n::Int, ft::String)
     end
     return f
 end
+
+
+# PLOTTING UTILITIES
+
+# return levels and detail coefficient centers on the interval [0,r) above (>=) threshold t
+# as tuple (d,l)
+function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
+	n = length(x)
+	c = wcount(x, t, level=0)
+    d = Array(Float64, c)
+    l = Array(Int, c)
+    range = 0:1/n:1-eps()
+    range *= r
+    
+    J = nscales(n)
+    k = 1
+    @inbounds begin
+        for j = 0:J-1
+            rind = 2^(J-1-j):2^(J-j):n
+            for i in 1:detailn(j)
+                if abs(x[detailindex(j,i)]) >= t
+                    d[k] = range[rind[i]]
+                    l[k] = j
+                    k += 1
+                end
+            end
+        end
+    end
+    return (d,l)
+end
+
+# return a matrix of detail coefficient values where row j+1 is level j
+function wplotim(x::AbstractVector)
+    n = length(x)
+    J = nscales(n)
+    A = zeros(Float64, J, n)
+
+    for j = 0:J-1
+	    dr = detailrange(j)
+	    m = 2^(J-j)
+	    for i = 1:length(dr)
+		    A[j+1,1+(i-1)*m:i*m] = x[dr[i]]
+	    end
+    end
+    return A
+end
+
+
+
+
 
 end
 

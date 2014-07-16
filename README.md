@@ -13,6 +13,8 @@ Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tom
 
 * Denoising and thresholding functions and utilities. See example code and image below.
 
+* Plotting/visualization utilities for 1-d signals
+
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
 Usage
@@ -41,10 +43,15 @@ dwt!(x, L, wt, true)      # inplace by lifting
 dwt!(xt, x, L, wt, true)  # write to xt by filtering
 
 # denoising with default parameters (VisuShrink hard thresholding)
-n = 1024
-x0 = testfunction(n,"HeaviSine")
-x = 0.3*randn(n)+x0
+x0 = testfunction(n, "HeaviSine")
+x = x0 + 0.3*randn(n)
 y = denoise(x)
+
+# plotting utilities
+x = testfunction(n, "Bumps")
+y = fwt(x, GPLS("cdf9/7"))
+d,l = wplotdots(y, 0.1, n)
+A = wplotim(y)
 ```
 
 ![Bumps](/example/transform1d_bumps.png)
