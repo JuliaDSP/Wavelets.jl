@@ -5,13 +5,18 @@ notifications:
   email: false
 env:
   matrix:
-    - JULIAVERSION="juliareleases"
+#    - JULIAVERSION="juliareleases"
     - JULIAVERSION="julianightlies"
 before_install:
   - sudo add-apt-repository ppa:staticfloat/julia-deps -y
   - sudo add-apt-repository ppa:staticfloat/${JULIAVERSION} -y
   - sudo apt-get update -qq -y
   - sudo apt-get install libpcre3-dev julia -y
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 script:
-  - julia -e 'Pkg.init(); Pkg.clone(pwd()); Pkg.test("Wavelets")'
+#  - julia -e 'Pkg.init(); Pkg.clone(pwd()); Pkg.test("Wavelets")'
+  - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir("Wavelets"))`); Pkg.pin("Wavelets"); Pkg.resolve()'
+  - if [ $JULIAVERSION = "julianightlies" ]; then julia --code-coverage  test/runtests.jl; fi
+after_success:
+    - if [ $JULIAVERSION = "julianightlies" ]; then julia -e 'cd(Pkg.dir("Wavelets")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'; fi
+

@@ -39,7 +39,6 @@ for WT in ("db1","db2")
 	tmpsub = zeros(n)
 	
 	for L in (nscales(n),0,1,2)
-		println(WT," : ", L)
 		yf = fwt(x, L, wf)
 		yls = fwt(x, L, wls)
 		dwt!(x2, L, wls, true, tmp, oopc=true, oopv=tmpsub)

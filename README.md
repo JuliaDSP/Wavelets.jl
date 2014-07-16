@@ -2,8 +2,9 @@ Wavelets
 =========
 
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
+[![Coverage Status](https://coveralls.io/repos/gummif/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/gummif/Wavelets.jl?branch=master)
 
-A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1D, 2D, by filtering or lifting).
+A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1-d, 2-d, by filtering or lifting).
 
 Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
@@ -60,7 +61,7 @@ xts = wplotim(x, L, POfilter("db3"))
 ```
 
 ![Bumps](/example/transform1d_bumps.png)
-![Lena](/example/transform2d_lena.png)
+![Lena](/example/transform2d_lena.jpg)
 
 Benchmarks
 ---------
@@ -125,7 +126,6 @@ To-do list
 * Define more lifting schemes
 * Redundant transforms and wavelet packets
 * Continuous wavelets
-* Visualization functions
 * Wavelet scalogram
 
 

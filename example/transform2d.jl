@@ -2,10 +2,13 @@
 using Wavelets
 using Images  # for imread and imwrite
 
-img = imread("lena.png")
+img = imread("lena.tiff")
 x = permutedims(img.data, [ndims(img.data):-1:1])
 L = 2
 xts = wplotim(x, L, POfilter("db3"))
 
-imwrite(xts, "transform2d_lena.png")
+imwrite(xts, "lena_2d.png")
+# convert with ImageMagick
+run(`convert lena_2d.png transform2d_lena.jpg`)
+
 
