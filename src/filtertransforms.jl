@@ -1,13 +1,46 @@
 module FilterTransforms
 using ..Util
 using ..POfilters
-export fwt, iwt, dwt!
+export fwt, iwt, dwt!, fwtc, iwtc
 
 
 # FWT, Forward Wavelet Transform
 # IWT, Inverse Wavelet Transform
 # DWT, Discrete Wavelet Transform
 # periodic boundaries, orthogonal, dyadic length (powers of 2)
+
+# general functions for all types and dimensions
+for Xwt in (:fwt, :iwt, :fwtc, :iwtc)
+@eval begin
+	# assume full transform
+	$Xwt(x::AbstractArray, wt::WaveletType) = $Xwt(x,nscales(size(x,1)),wt)
+	# int -> float
+	$Xwt{T<:Integer}(x::AbstractArray{T}, L::Integer,  wt::WaveletType) = $Xwt(float(x),L,wt)
+end
+end
+for Xwt in (:fwtc, :iwtc)
+@eval begin
+	# column wise transforms or color images, transform each x[:,...,:,i] separately
+    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, wt::WaveletType)
+        dim = ndims(x)
+        cn = size(x, dim)
+        y = Array(eltype(x), size(x))
+        
+        ind = Array(Any,dim)
+        for i = 1:dim
+            ind[i] = 1:size(x, i)
+        end
+        
+        for d = 1:cn
+            ind[dim] = d
+	        xc = reshape(x[ind...], size(x)[1:end-1]...)
+	        y[:,:,d] = fwt(xc, L, wt)
+        end
+        return y
+    end
+end
+end
+
 
 # 1D
 # Forward Wavelet Transform
@@ -20,14 +53,6 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         dwt!(y,x,L,filter,$fw)
         return y
     end
-    # assume full transform
-    function $Xwt{T<:FloatingPoint}(x::AbstractVector{T}, filter::POfilter)
-        y = Array(T,length(x))
-        dwt!(y,x,nscales(length(x)),filter,$fw)
-        return y
-    end
-    $Xwt{T<:Integer}(x::AbstractVector{T}, L::Integer, filter::POfilter) = $Xwt(float(x),L,filter)
-    $Xwt{T<:Integer}(x::AbstractVector{T}, filter::POfilter) = $Xwt(float(x),filter)
 end
 end
 
@@ -44,16 +69,6 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         dwt!(y,x,L,filter,$fw)
         return y
     end
-    # assume full transform
-    function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, filter::POfilter)
-        n = size(x,1)
-        n != size(x,2) && error("2D dwt: not a square matrix")   
-        y = Array(T,n,n)
-        dwt!(y,x,nscales(n),filter,$fw)
-        return y
-    end
-    $Xwt{T<:Integer}(x::AbstractMatrix{T}, L::Integer, filter::POfilter) = $Xwt(float(x),L,filter)
-    $Xwt{T<:Integer}(x::AbstractMatrix{T}, filter::POfilter) = $Xwt(float(x),filter)
 end
 end
 

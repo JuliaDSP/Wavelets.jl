@@ -2,7 +2,7 @@ module LiftingTransforms
 using ..Util
 using ..LiftingSchemes
 import ..FilterTransforms: fwt,iwt,dwt!
-export dwt!
+export fwt,iwt,dwt!
 
 # FWT, Forward Wavelet Transform
 # IWT, Inverse Wavelet Transform
@@ -21,15 +21,6 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         dwt!(y,L,scheme,$fw,tmp)
         return y
     end
-    # assume full transform
-    function $Xwt{T<:FloatingPoint}(x::AbstractVector{T}, scheme::GPLS)
-        y = copy(x)
-        tmp = Array(T,length(x)>>2)
-        dwt!(y,nscales(length(x)),scheme,$fw,tmp)
-        return y
-    end
-    $Xwt{T<:Integer}(x::AbstractVector{T}, L::Integer, scheme::GPLS) = $Xwt(float(x),L,scheme)
-    $Xwt{T<:Integer}(x::AbstractVector{T}, scheme::GPLS) = $Xwt(float(x),scheme)
 end
 end
 
@@ -46,16 +37,6 @@ for (Xwt, fw) in ((:fwt,true),(:iwt,false))
         dwt!(y,L,scheme,$fw)
         return y
     end
-    # assume full transform
-    function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, scheme::GPLS)
-        n = size(x,1)
-        n != size(x,2) && error("2D dwt: not a square matrix")   
-        y = copy(x)
-        dwt!(y,nscales(n),scheme,$fw)
-        return y
-    end
-    $Xwt{T<:Integer}(x::AbstractMatrix{T}, L::Integer, scheme::GPLS) = $Xwt(float(x),L,scheme)
-    $Xwt{T<:Integer}(x::AbstractMatrix{T}, scheme::GPLS) = $Xwt(float(x),scheme)
 end
 end
 
@@ -97,9 +78,9 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
             end
             for step in stepseq
                 if step.stept == 'p'
-                    predictfw!(s, half, step.coef, step.shift)
+                    predictfw!(s, half, convert(Array{T}, step.coef), step.shift)
                 elseif step.stept == 'u'
-                    updatefw!(s, half, step.coef, step.shift)
+                    updatefw!(s, half, convert(Array{T}, step.coef), step.shift)
                 else
                     error("step type ", step.stept," not supported")
                 end
@@ -127,9 +108,9 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
             end
             for step in stepseq
                 if step.stept == 'p'
-                    predictbw!(s, half, step.coef, step.shift)
+                    predictbw!(s, half, convert(Array{T}, step.coef), step.shift)
                 elseif step.stept == 'u'
-                    updatebw!(s, half, step.coef, step.shift)
+                    updatebw!(s, half, convert(Array{T}, step.coef), step.shift)
                 else
                     error("step type ", step.stept," not supported")
                 end
@@ -218,6 +199,8 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, 
 end
 
 function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
+	n1 = convert(T, n1)
+	n2 = convert(T, n2)
     for i = 1:half
         @inbounds x[i] *= n1
     end
@@ -228,6 +211,8 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::I
 end
 # out of place normalize from x to y
 function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
+	n1 = convert(T, n1)
+	n2 = convert(T, n2)
     for i = 1:half
         @inbounds y[i] = n1*x[i]
     end

@@ -13,7 +13,7 @@ Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tom
 
 * Denoising and thresholding functions and utilities. See example code and image below.
 
-* Plotting/visualization utilities for 1-d signals
+* Plotting/visualization utilities for 1-d and 2-d signals
 
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
@@ -47,14 +47,20 @@ x0 = testfunction(n, "HeaviSine")
 x = x0 + 0.3*randn(n)
 y = denoise(x)
 
-# plotting utilities
+# plotting utilities 1-d
 x = testfunction(n, "Bumps")
 y = fwt(x, GPLS("cdf9/7"))
 d,l = wplotdots(y, 0.1, n)
 A = wplotim(y)
+# plotting utilities 2-d
+img = imread("lena.png")
+x = permutedims(img.data, [ndims(img.data):-1:1])
+L = 2
+xts = wplotim(x, L, POfilter("db3"))
 ```
 
 ![Bumps](/example/transform1d_bumps.png)
+![Lena](/example/transform2d_lena.png)
 
 Benchmarks
 ---------
