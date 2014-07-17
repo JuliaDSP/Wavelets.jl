@@ -8,6 +8,10 @@ immutable LSstep
     stept::Char             # step type: 'p' for predict, 'u' for update
     coef::Vector            # lifting coefficients
     shift::Integer          # + left shift, - right shift
+    function LSstep(stept,coef,shift)
+        @assert stept=='p' || stept=='u'
+        return new(stept,coef,shift)
+    end
 end
 
 # general periodic lifting scheme

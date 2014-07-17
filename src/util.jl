@@ -1,5 +1,5 @@
 module Util
-export detailindex, detailrange, detailn, nscales, maxlevel, mirror, wcount, 
+export detailindex, detailrange, detailn, nscales, maxlevel, mirror, wcount, circshift!,
     split!, merge!, 
     testfunction, 
     wplotdots, wplotim

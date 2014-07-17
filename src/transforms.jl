@@ -47,7 +47,7 @@ for Xwt in (:fwtc, :iwtc)
         for d = 1:cn
             ind[dim] = d
 	        xc = reshape(x[ind...], size(x)[1:end-1]...)
-	        y[:,:,d] = fwt(xc, L, wt)
+	        y[ind...] = fwt(xc, L, wt)
         end
         return y
     end
@@ -411,8 +411,6 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
                     predictfw!(s, half, convert(Array{T}, step.coef), step.shift)
                 elseif step.stept == 'u'
                     updatefw!(s, half, convert(Array{T}, step.coef), step.shift)
-                else
-                    error("step type ", step.stept," not supported")
                 end
             end
             if oopc && L==1  # directly use out of place normalize
@@ -441,8 +439,6 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
                     predictbw!(s, half, convert(Array{T}, step.coef), step.shift)
                 elseif step.stept == 'u'
                     updatebw!(s, half, convert(Array{T}, step.coef), step.shift)
-                else
-                    error("step type ", step.stept," not supported")
                 end
             end
             if oopc && j==jrange[end]

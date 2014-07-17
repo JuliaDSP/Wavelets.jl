@@ -19,6 +19,23 @@ J = 13
 @test mirror([2,3,4]) == [2,-3,4]
 @test mirror([4.9,5,6,7]) == [4.9,-5,6,-7]
 
+n = 64
+@test wcount(randn(n)) == n
+@test wcount(rand(n),0) == n
+@test wcount(rand(n),1.01) == 0
+@test wcount(rand(n).-2.5,1.01) == n
+@test wcount([0,2,6,7,8],6.6) == 2
+@test wcount([10,-11,6,7,8.0,-5,-8,0],3,level=2) == 3
+@test wcount(randn(n,n)) == n*n
+@test wcount(rand(n,n),1.01) == 0
+@test wcount([-1 2;3 4],2.5) == 2
+
+n = 32
+x = randn(n)
+@test circshift(x,5) == circshift!(copy(x),5)
+@test circshift(x,-5) == circshift!(copy(x),-5)
+@test x == circshift!(circshift!(copy(x),29),-29)
+@test x == circshift!(circshift!(copy(x),292),-292)
 
 a0 = [1,2]
 exp = [1,2]
