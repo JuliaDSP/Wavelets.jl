@@ -4,6 +4,8 @@ export detailindex, detailrange, detailn, nscales, maxlevel, mirror, wcount,
     testfunction, 
     wplotdots, wplotim
 
+# WAVELET INDEXING AND SIZES 
+
 # detail coef at level j location i (i starting at 1) -> vector index
 detailindex(j::Integer,i::Integer) = 2^j+i
 # the range of detail coefs for level j
@@ -14,13 +16,17 @@ detailn(j::Integer) = 2^j
 nscales(n::Integer) = int(log2(n))
 # the largest detial scale
 maxlevel(n::Integer) = nscales(n)-1
+
+# UTILITY FUNCTIONS
+
 # mirror of filter
-mirror{T<:Number}(f::Vector{T}) = f.*(-1).^(0:length(f)-1)
+mirror{T<:Number}(f::AbstractVector{T}) = f.*(-1).^(0:length(f)-1)
+
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
 function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
+    @assert level >= -1
     c = 0
-    level < -1 && error("level < -1")
     si = 1
     level >= 0 && (si = 1 + 2^level)
     @inbounds for i = si:length(x)
@@ -30,6 +36,7 @@ function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
     end
     return c
 end
+# count coefficients above threshold t (>=)
 function wcount(x::AbstractArray, t::Real=0)
     c = 0
     @inbounds for i = 1:length(x)
@@ -67,17 +74,18 @@ end
 function split!{T<:Number}(a::AbstractVector{T})
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = Array(T,nt)
-    split!(a,tmp)
+    tmp = Array(T, nt)
+    split!(a, n, tmp)
     return a
 end
+
 # split only the range 1:n
 function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
-    n > length(a) && error("n too big")
-    n == 2 && return nothing
-    n%2 == 1 && error("must be even length")
+    @assert n <= length(a)
+    @assert n%2 == 0
+    n == 2 && return a
     nt = n>>2 + (n>>1)%2
-    nt > length(tmp) && error("tmp vector to small")
+    @assert nt <= length(tmp)
 
     for i=1:nt # store evens
         @inbounds tmp[i] = a[i<<1]
@@ -91,16 +99,18 @@ function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
     copy!(a,n>>1+1,tmp,1,nt)
     return a
 end
+
 # out of place split from a to b, only the range 1:n
 function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
-    (n > length(a) || n > length(b)) && error("n too big")
+    @assert n <= length(a) && n <= length(b)
+    @assert n%2 == 0
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
         return b
     end
-    n%2 == 1 && error("must be even length")
-    h=n>>1
+    
+    h = n>>1
     for i=1:h  # odds to b
         @inbounds b[i] = a[(i-1)<<1 + 1]
     end
@@ -116,16 +126,17 @@ function merge!{T<:Number}(a::AbstractVector{T})
     n = length(a)
     nt = n>>2 + (n>>1)%2
     tmp = Array(T,nt)
-    merge!(a,tmp)
+    merge!(a, n, tmp)
     return a
 end
+
 # merge only the range 1:n
 function merge!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
-    n > length(a) && error("n too big")
+    @assert n <= length(a)
+    @assert n%2 == 0
     n == 2 && return a
-    n%2 == 1 && error("must be even length")
     nt = n>>2 + (n>>1)%2
-    nt > length(tmp) && error("tmp vector to small")
+    @assert nt <= length(tmp)
 
     copy!(tmp,1,a,n>>1+1,nt)
     for i=nt-1:-1:0  # evens from end
@@ -139,16 +150,18 @@ function merge!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
     end
     return a
 end
+
 # out of place merge from a to b, only the range 1:n
 function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
-    (n > length(a) || n > length(b)) && error("n too big")
+    @assert n <= length(a) && n <= length(b)
+    @assert n%2 == 0
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
         return b
     end
-    n%2 == 1 && error("must be even length")
-    h=n>>1
+    
+    h = n>>1
     for i=1:h  # odds to b
         @inbounds b[(i-1)<<1 + 1] = a[i]
     end
@@ -162,6 +175,7 @@ end
 # return a vector of test function values on [0,1), see
 #Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
 function testfunction(n::Int, ft::String)
+    @assert n >= 1
     f = Array(Float64,n)
     range = 0:1/n:1-eps()
     i = 1

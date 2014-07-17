@@ -7,24 +7,24 @@ include("util.jl")
 
 include("data_fwt.jl")
 
-# 1D
+# 1-d
 wf = POfilter("db3")
 L = nscales(n1)
 yw = fwt(x1, L, wf)
 xtt = iwt(yw,L,wf)
 
-@assert vecnorm(yw-y1)<4e-4
-@assert abs(vecnorm(x1)-vecnorm(yw))<1e-12
+@test vecnorm(yw-y1)<4e-4
+@test abs(vecnorm(x1)-vecnorm(yw))<1e-12
 @test_approx_eq xtt x1
 
-# 2D
+# 2-d
 wf = POfilter("db3")
 L = nscales(n2)
 yw = fwt(x2, L, wf)
 xtt = iwt(yw,L,wf)
 
-@assert vecnorm(yw-y2)<4e-4
-@assert abs(vecnorm(x2)-vecnorm(yw))<1e-12
+@test vecnorm(yw-y2)<4e-4
+@test abs(vecnorm(x2)-vecnorm(yw))<1e-12
 @test_approx_eq xtt x2
 
 # 2D lifting and filtering comparison
@@ -57,8 +57,9 @@ for WT in ("db1","db2")
 	end
 end
 
-# ============= type tests ================
+# TYPES AND SIZES
 
+# 1-d
 n = 8
 wf = POfilter("db2")
 L = 2
@@ -67,8 +68,11 @@ ft = Float64; x = ft[1:n]; y=fwt(x,wf);
 ft = Float32; x = ft[1:n]; y=fwt(x,wf);
 @test Array{ft,1} == typeof(y) && length(y) == n
 ft = Int64; x = ft[1:n]; y=fwt(x,wf);
-@test Array{typeof(1.0),1} == typeof(y) && length(y) == n
+@test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
+ft = Int32; x = ft[1:n]; y=fwt(x,wf);
+@test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
 
+# 2-d
 n = 8
 wf = POfilter("db2")
 L = 2
@@ -77,7 +81,9 @@ ft = Float64; x = ft[1:n]; y=fwt(x*x',wf);
 ft = Float32; x = ft[1:n]; y=fwt(x*x',wf);
 @test Array{ft,2} == typeof(y) && length(y) == n*n
 ft = Int64; x = ft[1:n]; y=fwt(int(x*x'),wf);
-@test Array{typeof(1.0),2} == typeof(y) && length(y) == n*n
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
+ft = Int32; x = ft[1:n]; y=fwt(int(x*x'),wf);
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
 
 
 

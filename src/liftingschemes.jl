@@ -1,6 +1,6 @@
 module LiftingSchemes
-export WaveletLS, LSstep, GPLS
 import ..POfilters: WaveletType
+export WaveletLS, LSstep, GPLS
 
 abstract WaveletLS <: WaveletType
 

@@ -1,5 +1,5 @@
 module Plot
-using ..Util, ..FilterTransforms, ..LiftingTransforms
+using ..Util, ..Transforms
 import ..POfilters: WaveletType
 export wplotdots, wplotim
 
