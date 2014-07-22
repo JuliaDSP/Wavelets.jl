@@ -1,26 +1,78 @@
 module Util
-export detailindex, detailrange, detailn, nscales, maxlevel, mirror, wcount, circshift!,
+export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
+    mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
     split!, merge!, 
-    testfunction, 
-    wplotdots, wplotim
+    testfunction
 
 # WAVELET INDEXING AND SIZES 
 
 # detail coef at level j location i (i starting at 1) -> vector index
 detailindex(j::Integer,i::Integer) = 2^j+i
-# the range of detail coefs for level j
+# the range of detail coefs at level j
 detailrange(j::Integer) = (2^j+1):(2^(j+1))
+# the range of scaling coefs at level j
+scalingrange(j::Integer) = 1:2^j
 # number of detail coefs at level j
 detailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
 nscales(n::Integer) = int(log2(n))
-# the largest detial scale
+nscales(x::Vector) = nscales(length(x))
+# the largest detail level
 maxlevel(n::Integer) = nscales(n)-1
+maxlevel(x::Vector) = maxlevel(length(x))
+# convert number of transformed levels L to minimum level j
+tl2level(n::Integer, L::Integer) = nscales(n)-L
+tl2level(x::Vector, L::Integer) = tl2level(length(x), L)
+# convert maximum level j to number of transformed levels L
+level2tl(arg...) = tl2level(arg...)
+
 
 # UTILITY FUNCTIONS
 
 # mirror of filter
 mirror{T<:Number}(f::AbstractVector{T}) = f.*(-1).^(0:length(f)-1)
+# upsample
+function upsample(x::AbstractVector, sw::Int=0)
+    @assert sw==0 || sw==1
+    n = length(x)
+    y = zeros(eltype(x), n<<1)
+    sw -= 1
+    
+    for i = 1:n
+        @inbounds y[i<<1 + sw] = x[i]
+    end
+    return y
+end
+# downsample
+function downsample(x::AbstractVector, sw::Int=0)
+    @assert sw==0 || sw==1
+    n = length(x)
+    @assert n%2 == 0
+    y = zeros(eltype(x), n>>1)
+    sw -= 1
+    
+    for i = 1:length(y)
+        @inbounds y[i] = x[i<<1 + sw]
+    end
+    return y
+end
+
+# are all dimensions equal length?
+function iscube(x::AbstractArray)
+    for i = 1:ndims(x)
+        size(x,1)!=size(x,i) && return false
+    end
+    return true
+end
+# are all dimensions dyadic length?
+function isdyadic(x::AbstractArray)
+    for i = 1:ndims(x)
+        n = size(x,i)
+        J = nscales(n)
+        n != 2^J && return false
+    end
+    return true
+end
 
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
@@ -68,6 +120,27 @@ function circshift!(a::AbstractVector, shift::Integer)
         a[1:shift] = tmp
     end
     return a::atype
+end
+# out of place circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
+function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
+    @assert length(a) == length(b)
+    atype = typeof(a)
+    s = length(a)
+    shift = mod(shift,s)
+    shift == 0 && return a
+    shift = ifelse(s>>1 < shift, shift-s, shift)  # shift a smaller distance if possible
+    if shift < 0
+        for i = 1:s+shift
+            @inbounds b[i] = a[i-shift]
+        end
+        b[s+1+shift:s] = a[1:-shift]
+    else
+        for i = s:-1:1+shift
+            @inbounds b[i] = a[i-shift]
+        end
+        b[1:shift] = a[s+1-shift:s]
+    end
+    return b::atype
 end
 
 # put odd elements into first half, even into second half

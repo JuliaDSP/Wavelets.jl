@@ -39,7 +39,7 @@ for Xwt in (:fwtc, :iwtc)
         cn = size(x, dim)
         y = Array(eltype(x), size(x))
         
-        ind = Array(Any,dim)
+        ind = Array(Any, dim)
         for i = 1:dim
             ind[i] = 1:size(x, i)
         end
@@ -82,11 +82,9 @@ end
 for (Xwt, fw) in ((:fwt,true),(:iwt,false))
 @eval begin
     function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, L::Integer, wt::WaveletType)
-        @assert size(x,1) == size(x,2)
-        n = size(x,1)
-        
+
         if typeof(wt) == POfilter
-            y = Array(T,n,n)
+            y = Array(T, size(x))
             dwt!(y, x, L, wt, $fw)
         elseif typeof(wt) == GPLS
             y = copy(x)
@@ -121,23 +119,22 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::I
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si)
     return y
 end
-# "inplace" by copying
-function dwt!{T<:FloatingPoint}(x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool)
-    y = Array(T,length(x))
+# pseudo "inplace" by copying
+function dwt!{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, filter::POfilter, fw::Bool)
+    y = Array(T, size(x))
     dwt!(y, x, L, filter, fw)
     copy!(x,y)
     return x
 end
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Union(Vector{T},Nothing) = nothing)
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
     J = nscales(n)
-    @assert n == 2^J
-    @assert n == length(y)
+    @assert size(x) == size(y)
+    @assert isdyadic(y)
     @assert 0 <= L <= J
     is(y,x) && error("input vector is output vector")
     
     L == 0 && return copy!(y,x)     # do nothing
-    L > 1 && snew == nothing && (snew = Array(T,n>>1)) # tmp storage of scaling coefs (not used for L<=1)
     L > 1 && length(snew) != n>>1 && error("length of snew incorrect")
     s = x                           # s is currect scaling coefs location
     
@@ -183,19 +180,13 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::I
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si, tmpvec)
     return y
 end
-# "inplace" by copying
-function dwt!{T<:FloatingPoint}(x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool)
-    y = Array(T,size(x))
-    dwt!(y, x, L, filter, fw)
-    copy!(x, y)
-    return x
-end
 function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
-    @assert size(x,1) == size(x,2)
-    @assert size(x) == size(y)
+
     n = size(x,1)
     J = nscales(n)
-    @assert n == 2^J
+    @assert size(x) == size(y)
+    @assert iscube(y)
+    @assert isdyadic(y)
     @assert 0 <= L <= J
     is(y,x) && error("input matrix is output matrix")
     
@@ -379,7 +370,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
 
     n = length(y)
     J = nscales(n)
-    @assert n == 2^J
+    @assert isdyadic(y)
     @assert 0 <= L <= J
     @assert !(oopc && oopv == nothing)
     @assert !(oopc && n != length(oopv))
@@ -452,16 +443,23 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
     end
     return y
 end
+# pseudo "out of place" by copying
+function dwt!{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, L::Integer, filter::POfilter, fw::Bool)
+    copy!(y, x)
+    dwt!(y, L, filter, fw)
+    return y
+end
 
 # 2-d
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
 function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
-    @assert size(y,1) == size(y,2)
+
     n = size(y,1)
     J = nscales(n)
-    @assert n == 2^J
+    @assert iscube(y)
+    @assert isdyadic(y)
     @assert 0 <= L <= J
     L == 0 && return y          # do nothing
     

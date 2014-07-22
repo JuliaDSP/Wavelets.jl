@@ -40,6 +40,7 @@ FILTERC2N=(ASCIIString=>ASCIIString)[
 "Coiflet" => "coif",
 "Daubechies" => "db",
 "Symmlet" => "sym",
+"Symlet" => "sym",
 "Battle" => "batt"
 ]
 

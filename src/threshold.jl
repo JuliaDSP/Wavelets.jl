@@ -21,7 +21,7 @@ export
     thresholdsemisoft,
     thresholdsemistein!,
     thresholdsemistein,
-    # treshold without parameters
+    # threshold without parameters
     thresholdneg!,
     thresholdneg,
     thresholdpos!,
@@ -51,34 +51,57 @@ function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;
                                     sigma::Real=noisest(x, wt=wt),
                                     TI::Bool=false,
                                     nspin::Union(Int,Tuple)=tuple([8 for i=1:length(size(x))]...) )
+    @assert iscube(x)
     
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
-        L = nscales(size(x,1)) - level
+        L = level2tl(size(x,1),level)
         pns = prod(nspin)
-        for i = 1:pns
-            shift = nspin2circ(nspin, i)
-            z = circshift(x, shift)
-            
-            dwt!(z, L, wt, true)
-            dnt.f(z, sigma*dnt.t)   # threshold
-            dwt!(z, L, wt, false)
-            
-            z = circshift(z, -shift)
-            for j = 1:length(x)
-                @inbounds y[j] += z[j]
+        
+        if ndims(x)==1
+            z = Array(eltype(x), size(x))
+            T<:GPLS && (tmp=Array(eltype(x),length(x)>>2))
+            T<:POfilter && (xt=Array(eltype(x),length(x)))
+            for i = 1:pns
+                shift = nspin2circ(nspin, i)[1]
+                circshift!(z, x, shift)
+                
+                if T<:GPLS
+                    dwt!(z, L, wt, true, tmp)
+                    dnt.f(z, sigma*dnt.t)   # threshold
+                    dwt!(z, L, wt, false, tmp)
+                elseif T<:POfilter
+                    dwt!(xt, z, L, wt, true)
+                    dnt.f(xt, sigma*dnt.t)   # threshold
+                    dwt!(z, xt, L, wt, false)
+                else
+                    dwt!(z, L, wt, true)
+                    dnt.f(z, sigma*dnt.t)   # threshold
+                    dwt!(z, L, wt, false)
+                end
+               shiftadd!(y,z,-shift)
+            end
+        else # ndims > 1
+            for i = 1:pns
+                shift = nspin2circ(nspin, i)
+                z = circshift(x, shift)
+                
+                dwt!(z, L, wt, true)
+                dnt.f(z, sigma*dnt.t)   # threshold
+                dwt!(z, L, wt, false)
+
+                z = circshift(z, -shift)
+                broadcast!(+,y,y,z)
             end
         end
-        for j = 1:length(x)
-            @inbounds y[j] /= pns
-        end
+        scale!(y,1/pns)
     else
         if wt == nothing
             y = copy(x)
             dnt.f(y, sigma*dnt.t)
         else
-            L = nscales(size(x,1)) - level
+            L = level2tl(size(x,1),level)
             y = fwt(x, L, wt)
             dnt.f(y, sigma*dnt.t)   # threshold
             dwt!(y, L, wt, false)
@@ -87,25 +110,43 @@ function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;
     
     return y
 end
+# shift z and add to y
+function shiftadd!(y,z,shift)
+    @assert shift<=0
+    @assert length(y)==length(z)
+    n = length(y)
+    for i = 1:n+shift
+        @inbounds y[i] += z[i-shift]
+    end
+    sh = n+shift
+    for i = n+shift+1:n
+        @inbounds y[i] += z[i-sh]
+    end
+    return y
+end
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
 function noisest{T<:WaveletType}(x::AbstractArray; wt::Union(T,Nothing)=def_wavelet)
     if wt == nothing
-        y = copy(x)
+        y = x
     else
         y = fwt(x, 1, wt)
     end
     ind = detailrange(maxlevel(size(y,1)))
-    return mad(y[ind])/0.6745
+    dr = y[ind]
+    return mad!(dr)/0.6745
 end
 # Median absolute deviation
-function mad(x::AbstractArray)
-    y = copy(x)
+function mad!(y::AbstractArray)
     m = median!(y)
     for i in 1:length(y)
         y[i] = abs(y[i]-m)
     end
     return median!(y, checknan=false)
+end
+function mad(x::AbstractArray)
+    y = copy(x)
+    mad!(y)
 end
 
 # convert index i to a circshift array starting at 0 shift
@@ -139,7 +180,7 @@ end
 # biggest m-term approximation (best m-term approximation for orthogonal transforms)
 # returns a m-sparse array
 function biggestterms!(x::AbstractArray, m::Int)
-    m < 0 && error("m negative")
+    @assert m >= 0
     n = length(x)
     m > n && (m = n)
     ind = sortperm(sub(x,1:n), alg=QuickSort, by=abs)
@@ -153,7 +194,7 @@ end
 
 # hard
 function thresholdhard!(x::AbstractArray, t::Real)
-    t < 0 && error("t negative")
+    @assert t >= 0
     @inbounds begin
         for i = 1:length(x)
             if abs(x[i]) <= t
@@ -166,7 +207,7 @@ end
 
 # soft
 function thresholdsoft!(x::AbstractArray, t::Real)
-    t < 0 && error("t negative")
+    @assert t >= 0
     @inbounds begin
         for i = 1:length(x)
             sh = abs(x[i]) - t
@@ -182,7 +223,7 @@ end
 
 # semisoft
 function thresholdsemisoft!(x::AbstractArray, t::Real)
-    t < 0 && error("t negative")
+    @assert t >= 0
     @inbounds begin
         for i = 1:length(x)
             if x[i] <= 2*t
@@ -200,7 +241,7 @@ end
 
 # stein
 function thresholdstein!(x::AbstractArray, t::Real)
-    t < 0 && error("t negative")
+    @assert t >= 0
     @inbounds begin
         for i = 1:length(x)
             sh = 1 - t*t/(x[i]*x[i])
