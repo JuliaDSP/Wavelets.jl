@@ -1,7 +1,8 @@
 module WaveletTypes
 export WaveletType, WaveletFilter, OrthoFilter, NRLS, PeriodicWavelet, 
         POfilter, scale,
-        WaveletLS, LSstep, GPLS
+        WaveletLS, LSstep, GPLS,
+        wavelet, waveletfilter, waveletls
 
 abstract WaveletType
 
@@ -39,16 +40,18 @@ function POfilter(name::String)
     return POfilter(qmf./norm(qmf),name)
 end
 # e.g. "Coiflet", 18
-function POfilter(class::String, n::Integer)
-    namebase = get(FILTERC2N, class, nothing)
-    namebase == nothing && error("filter not found")
-    return POfilter(string(namebase,n))
-end
+POfilter(class::String, n::Integer) = POfilter(getname(class,n))
+
 # scale filter by scalar
 function scale{T<:OrthoFilter}(f::T, a::Number)
     return T(f.qmf.*a, f.name)
 end
-
+# convert class and number to name
+function getname(class::String, n::Integer)
+    namebase = get(FILTERC2N, class, nothing)
+    namebase == nothing && error("wavelet type not found")
+    return string(namebase,n)
+end
 
 
 # LIFTING SCHEMES
@@ -76,10 +79,54 @@ function GPLS(name::String)
     step == nothing && error("scheme not found")
     return GPLS(step,norm1,norm2,name)
 end
+GPLS(class::String, n::Integer) = GPLS(getname(class,n))
 
 
+# TRANSFORM TYPE DEFINITIONS
 
-# DEFINITIONS
+function wavelet(name::String; transform::String="filter", boundary::String="P", t::String="O")
+    transform = lowercase(transform)
+    transform=="filter" && return waveletfilter(name; boundary=boundary, t=t)
+    transform=="ls" && return waveletls(name; boundary=boundary, t=t)
+    error("uknown transform type")
+end
+wavelet(class::String, n::Integer; arg...) = wavelet(getname(class,n); arg...)
+
+function waveletfilter(name::String; boundary::String="P", t::String="O")
+    boundary = lowercase(boundary)
+    t = lowercase(t)
+    
+    if t=="o" || t=="orthogonal" || t=="ortho"
+        if boundary=="p" || boundary=="periodic" || boundary=="per"
+            return POfilter(name)
+        end
+    #elseif t=="mo" || t=="redundant" ... 
+        
+        error("unkown boundary")
+    end
+
+    error("unkown type")
+end
+waveletfilter(class::String, n::Integer; arg...) = waveletfilter(getname(class,n); arg...)
+
+function waveletls(name::String; boundary::String="P", t::String="O")
+    boundary = lowercase(boundary)
+    t = lowercase(t)
+    
+    if t=="o" || t=="orthogonal" || t=="ortho" || t=="nr"
+        if boundary=="p" || boundary=="periodic" || boundary=="per"
+            wf = GPLS(name)
+        else
+            error("unkown boundary")
+        end
+    else
+        error("unkown type")
+    end
+
+    return wf
+end
+waveletls(class::String, n::Integer; arg...) = waveletls(getname(class,n); arg...)
+
 
 # boundary types
 PeriodicWavelet = Union(POfilter, GPLS)

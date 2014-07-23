@@ -4,9 +4,7 @@ Wavelets
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
 [![Coverage Status](https://coveralls.io/repos/gummif/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/gummif/Wavelets.jl?branch=master)
 
-A [Julia](https://github.com/JuliaLang/julia) package for very fast wavelet transforms (1-d, 2-d, by filtering or lifting).
-
-Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
+A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-d, 2-d, by filtering or lifting).
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
@@ -14,7 +12,11 @@ Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tom
 
 * Denoising and thresholding functions and utilities. See example code and image below.
 
+* Wavelet utilities e.g. indexing and size calculation, scaling and wavelet functions computation, test functions, up and down sampling, filter mirrors, coefficient counting, inplace circshifts, and more
+
 * Plotting/visualization utilities for 1-d and 2-d signals
+
+Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
@@ -24,31 +26,40 @@ Usage
 A rough idea of the API:
 
 ```julia
-# set up filter (Periodic, Orthogonal, 4 vanishing moments)
-wt = POfilter("Coiflet", 4)
-# or do it this way
+# the simplest way to transform a signal x is
+xt = fwt(x, wavelet("db2"))
+
+# the transform type can be more explicitly specified
+# set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
+wt = wavelet("Coiflet", 4)  # or
+wt = wavelet("Coiflet", 4, transform="filter")  # or
+wt = waveletfilter("coif4", boundary="periodic", t="orthogonal")  # or even
+wt = wavelet("coif4", transform="filter", boundary="P", t="O")
+# which equivalent to 
 wt = POfilter("coif4")
-# the input object determines the transform type 
-# wt now contains instructions for a periodic lifting scheme
-wt = GPLS("cdf9/7")
+# the object wt determines the transform type 
+# wt now contains instructions for a periodic biorthogonal CDF 9/7 lifting scheme
+wt = waveletls("cdf9/7")
 # xt is a 5 level transform of vector x
 xt = fwt(x, 5, wt)
-# x2 is approx. equal to x
+# inverse tranform
 x2 = iwt(xt, 5, wt)
+# a full transform
+xt = fwt(x, wt)
 
 # scaling filters is easy
-wt1 = scale(POfilter("haar"), 1/sqrt(2))
+wt = scale(wt, 1/sqrt(2))
 # signals can be transformed inplace with a low-level command
-# requiring very little memory allocation (especially for L=1)
-dwt!(x, L, wt, true)      # inplace by lifting
-dwt!(xt, x, L, wt, true)  # write to xt by filtering
+# requiring very little memory allocation (especially for L=1 for filters)
+dwt!(x, L, wt, true)      # inplace (lifting)
+dwt!(xt, x, L, wt, true)  # write to xt (filter)
 
 # denoising with default parameters (VisuShrink hard thresholding)
 x0 = testfunction(n, "HeaviSine")
 x = x0 + 0.3*randn(n)
 y = denoise(x)
 
-# plotting utilities 1-d
+# plotting utilities 1-d (see images and code in /example)
 x = testfunction(n, "Bumps")
 y = fwt(x, GPLS("cdf9/7"))
 d,l = wplotdots(y, 0.1, n)
