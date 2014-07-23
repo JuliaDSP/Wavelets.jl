@@ -2,16 +2,14 @@ module Wavelets
 
 include("util.jl")
 
-include("POfilters.jl")
-include("liftingschemes.jl")
-
+include("wavelettypes.jl")
 include("transforms.jl")
 
 include("threshold.jl")
 include("plot.jl")
 
 using Reexport
-@reexport using .Util, .POfilters, .LiftingSchemes, .Transforms, .Threshold, .Plot
+@reexport using .Util, .WaveletTypes, .Transforms, .Threshold, .Plot
 
 end
 

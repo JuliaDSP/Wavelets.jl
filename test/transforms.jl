@@ -1,28 +1,43 @@
 
-
 # ============= accuracy tests ================
 
-include("data_fwt.jl")
+# test against data made by data/make_filter_data.m in Octave
+wname = {"Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"};
+wnum = {[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]};
+wvm = {[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]};
 
-# 1-d
-wf = POfilter("db3")
-L = nscales(n1)
-yw = fwt(x1, L, wf)
-xtt = iwt(yw,L,wf)
+name = "filter"
+data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
+data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_data.txt"),'\t')
 
-@test vecnorm(yw-y1)<4e-4
-@test abs(vecnorm(x1)-vecnorm(yw))<1e-12
-@test_approx_eq xtt x1
-
-# 2-d
-wf = POfilter("db3")
-L = nscales(n2)
-yw = fwt(x2, L, wf)
-xtt = iwt(yw,L,wf)
-
-@test vecnorm(yw-y2)<4e-4
-@test abs(vecnorm(x2)-vecnorm(yw))<1e-12
-@test_approx_eq xtt x2
+for i = 1:length(wname)
+    for num = 1:length(wnum[i])
+        
+        ye = vec(readdlm(joinpath(dirname(@__FILE__), "data", string(name,"1d_",wname[i],wnum[i][num],".txt")),'\t'))
+        ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
+        
+        wn = wnum[i][num]
+        wn!=0 && (wt = POfilter(wname[i],wvm[i][num]))
+        wn==0 && (wt = POfilter(lowercase(wname[i][1:4])))
+        y = fwt(data, wt)
+        y2 = fwt(data2, wt)
+        #println(wname[i],wn,' ',wvm[i][num], ' ',vecnorm(y - ye))
+        #println(vecnorm(iwt(y,wt) - data))
+        #println(wname[i],wn,' ',wvm[i][num], ' ',vecnorm(y2 - ye2))
+        #println(vecnorm(iwt(y2,wt) - data2))
+        #println(abs(vecnorm(data)-vecnorm(y)))
+        #println(abs(vecnorm(data2)-vecnorm(y2)))
+        @test vecnorm(y - ye) < 5e-9
+        @test vecnorm(y2 - ye2) < 5e-9
+        # a few bad cases have quite large norms
+        if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
+            @test abs(vecnorm(data)-vecnorm(y)) < 1e-9
+            @test abs(vecnorm(data2)-vecnorm(y2)) < 1e-9
+            @test vecnorm(iwt(y,wt) - data) < 5e-7
+            @test vecnorm(iwt(y,wt) - data) < 5e-7
+        end
+    end
+end
 
 # 1-d and 2-d lifting and filtering comparison
 for WT in ("db1","db2")
@@ -92,6 +107,11 @@ y[:,:,2] = fwt(reshape(x[:,:,2],n,n),wf)
 wf = POfilter("db2")
 x = randn(16)
 @test_approx_eq fwt(x,2,wf) dwt!(copy(x),2,wf,true)
+
+# "out of place" for LS
+wt = GPLS("db2")
+x = randn(16)
+@test_approx_eq fwt(x,2,wt) dwt!(similar(x),x,2,wt,true)
 
 
 # ============= types and sizes ================

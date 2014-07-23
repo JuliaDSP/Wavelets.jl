@@ -2,7 +2,7 @@ module Util
 export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
     mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
     split!, merge!, 
-    testfunction
+    makewavelet, testfunction
 
 # WAVELET INDEXING AND SIZES 
 
@@ -121,7 +121,7 @@ function circshift!(a::AbstractVector, shift::Integer)
     end
     return a::atype
 end
-# out of place circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
+# out of place circular shift of vector by shift, such that b[i]=a[i-shift] (mod length(a))
 function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
     @assert length(a) == length(b)
     atype = typeof(a)
@@ -133,12 +133,18 @@ function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
         for i = 1:s+shift
             @inbounds b[i] = a[i-shift]
         end
-        b[s+1+shift:s] = a[1:-shift]
+        sh = s+shift
+        for i = s+shift+1:s
+            @inbounds b[i] = a[i-sh]
+        end
     else
         for i = s:-1:1+shift
             @inbounds b[i] = a[i-shift]
         end
-        b[1:shift] = a[s+1-shift:s]
+        sh = -s+shift
+        for i = shift:-1:1
+            @inbounds b[i] = a[i-sh]
+        end
     end
     return b::atype
 end
@@ -243,6 +249,25 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
     end
 
     return b
+end
+
+# return scaling and wavelet functions and location vector, made from filter h 
+# iterated with a cascade algorithm with N steps
+makewavelet(h, arg...) = makewavelet(h.qmf, arg...)
+function makewavelet(h::AbstractVector, N::Integer=8)
+	@assert N>=0
+	sc = norm(h)
+	h = h*sqrt(2)/sc
+	phi = copy(h)
+	psi = mirror(reverse(h))
+
+	for i=1:N
+		phi = conv(upsample(phi), h)
+		psi = conv(upsample(psi), h)
+	end
+	phi = phi[1:end-2^(N)+1]
+	psi = psi[1:end-2^(N)+1]
+	return scale!(phi,sc/sqrt(2)), scale!(psi,sc/sqrt(2)), linspace(0,length(h)-1,length(psi))
 end
 
 # return a vector of test function values on [0,1), see

@@ -9,15 +9,40 @@ using Base.Test
 j = 5
 @test detailn(j)+1 == detailrange(j)[1]
 @test detailindex(j,3) == detailrange(j)[3]
-J = 13
+J = 7
 @test nscales(2^J) == J
 @test detailn(maxlevel(2^J)) == 2^(J-1)
+@test nscales(rand(2^J)) == J
+@test maxlevel(rand(2^J)) == J-1
 
+@test tl2level(512,1) == 8
+@test level2tl(512,9) == 0
+@test tl2level(rand(2^9),1) == 8
+@test level2tl(rand(2^9),9) == 0
+
+
+# UTILITY FUNCTIONS
 
 @test mirror([1]) == [1]
 @test mirror([2,3]) == [2,-3]
 @test mirror([2,3,4]) == [2,-3,4]
 @test mirror([4.9,5,6,7]) == [4.9,-5,6,-7]
+
+@test upsample([1]) == [1,0]
+@test upsample([1],1) == [0,1]
+@test upsample([1,2]) == [1,0,2,0]
+@test upsample([1,2],1) == [0,1,0,2]
+@test downsample([1,2]) == [1]
+@test downsample([1,2],1) == [2]
+@test downsample([1,2,3,4]) == [1,3]
+@test downsample([1,2,3,4],1) == [2,4]
+
+@test iscube(rand(4)) == true
+@test iscube(rand(4,4,4,4)) == true
+@test iscube(rand(4,5)) == false
+@test isdyadic(rand(4)) == true
+@test isdyadic(rand(32,32)) == true
+@test isdyadic(rand(6)) == false
 
 n = 64
 @test wcount(randn(n)) == n
@@ -36,6 +61,8 @@ x = randn(n)
 @test circshift(x,-5) == circshift!(copy(x),-5)
 @test x == circshift!(circshift!(copy(x),29),-29)
 @test x == circshift!(circshift!(copy(x),292),-292)
+@test circshift(x,5) == circshift!(similar(x),x,5)
+@test circshift(x,-8) == circshift!(similar(x),x,-8)
 
 a0 = [1,2]
 exp = [1,2]

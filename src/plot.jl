@@ -1,6 +1,6 @@
 module Plot
 using ..Util, ..Transforms
-import ..POfilters: WaveletType
+import ..WaveletTypes: WaveletType
 export wplotdots, wplotim
 
 # PLOTTING UTILITIES

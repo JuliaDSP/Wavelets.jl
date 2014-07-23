@@ -1,6 +1,5 @@
 module Transforms
-using ..Util
-using ..POfilters, ..LiftingSchemes
+using ..Util, ..WaveletTypes
 export fwt, iwt, dwt!, fwtc, iwtc
 
 # includes:
@@ -31,9 +30,32 @@ for Xwt in (:fwt, :iwt, :fwtc, :iwtc)
 	$Xwt(x::AbstractArray, wt::WaveletType, L::Integer) = $Xwt(x, L, wt)
 end
 end
+
+# 1-d
+# 2-d MRA (multiresolution analysis)
+# Forward Wavelet Transform
+# and
+# Inverse Wavelet Transform
+for (Xwt, fw) in ((:fwt,true),(:iwt,false))
+@eval begin
+    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, wt::WaveletType)
+        if typeof(wt) == POfilter
+            y = Array(T, size(x))
+            dwt!(y, x, L, wt, $fw)
+        elseif typeof(wt) == GPLS
+            y = copy(x)
+            dwt!(y, L, wt, $fw)
+        else
+            error("unknown wavelet type")
+        end
+        return y
+    end
+end
+end
+
+# column-wise transforms or color images, transform each x[:,...,:,i] separately
 for Xwt in (:fwtc, :iwtc)
 @eval begin
-	# column-wise transforms or color images, transform each x[:,...,:,i] separately
     function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, wt::WaveletType)
         dim = ndims(x)
         cn = size(x, dim)
@@ -54,48 +76,7 @@ for Xwt in (:fwtc, :iwtc)
 end
 end
 
-# 1-d
-# Forward Wavelet Transform
-# and
-# Inverse Wavelet Transform
-for (Xwt, fw) in ((:fwt,true),(:iwt,false))
-@eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractVector{T}, L::Integer, wt::WaveletType)
-        if typeof(wt) == POfilter
-            y = Array(T,length(x))
-            dwt!(y, x, L, wt, $fw)
-        elseif typeof(wt) == GPLS
-            y = copy(x)
-            dwt!(y, L, wt, $fw)
-        else
-            error("unknown wavelet type")
-        end
-        return y
-    end
-end
-end
 
-# 2-d MRA (multiresolution analysis)
-# Forward Wavelet Transform
-# and
-# Inverse Wavelet Transform
-for (Xwt, fw) in ((:fwt,true),(:iwt,false))
-@eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractMatrix{T}, L::Integer, wt::WaveletType)
-
-        if typeof(wt) == POfilter
-            y = Array(T, size(x))
-            dwt!(y, x, L, wt, $fw)
-        elseif typeof(wt) == GPLS
-            y = copy(x)
-            dwt!(y, L, wt, $fw)
-        else
-            error("unknown wavelet type")
-        end
-        return y
-    end
-end
-end
 
 ##################################################################################
 #
@@ -104,23 +85,33 @@ end
 #
 ##################################################################################
 
+function makeqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
+	scfilter, dcfilter = makereverseqmf(h, fw, T)
+    return reverse(scfilter), reverse(dcfilter)
+end
+function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
+	h = convert(Vector{T}, h)
+    if fw
+    	scfilter = reverse(h)
+        dcfilter = mirror(h)
+    else
+        scfilter = h
+        dcfilter = reverse(mirror(h))
+    end
+    return scfilter, dcfilter
+end
+
 # 1-d
 # writes to y
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::POfilter, fw::Bool)
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, L::Integer, filter::OrthoFilter, fw::Bool)
     si = Array(T, filter.n-1)       # tmp filter vector
-    if fw
-        dcfilter = mirror(convert(Vector{T},filter.qmf))  #mqmf
-        scfilter = reverse(convert(Vector{T},filter.qmf))  #rqmf
-    else
-        scfilter = convert(Vector{T},filter.qmf)  #qmf
-        dcfilter = reverse(mirror(convert(Vector{T},filter.qmf)))  #mrqmf
-    end
+    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
     
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si)
     return y
 end
 # pseudo "inplace" by copying
-function dwt!{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, filter::POfilter, fw::Bool)
+function dwt!{T<:FloatingPoint}(x::AbstractArray{T}, L::Integer, filter::OrthoFilter, fw::Bool)
     y = Array(T, size(x))
     dwt!(y, x, L, filter, fw)
     copy!(x,y)
@@ -165,22 +156,16 @@ end
 
 # 2-d
 # writes to y
-function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool)
+function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::OrthoFilter, fw::Bool)
     n = size(x,1)
     si = Array(T, filter.n-1)       # tmp filter vector
     tmpvec = Array(T,n)             # tmp storage vector
-    if fw
-        dcfilter = mirror(convert(Vector{T},filter.qmf))  #mqmf
-        scfilter = reverse(convert(Vector{T},filter.qmf))  #rqmf
-    else
-        scfilter = convert(Vector{T},filter.qmf)  #qmf
-        dcfilter = reverse(mirror(convert(Vector{T},filter.qmf)))  #mrqmf
-    end
+    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
     
     dwt!(y, x, L, filter, fw, dcfilter, scfilter, si, tmpvec)
     return y
 end
-function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::POfilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
+function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, L::Integer, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
 
     n = size(x,1)
     J = nscales(n)
@@ -444,9 +429,9 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, L::Integer, scheme::GPLS, 
     return y
 end
 # pseudo "out of place" by copying
-function dwt!{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, L::Integer, filter::POfilter, fw::Bool)
+function dwt!{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, L::Integer, scheme::NRLS, fw::Bool)
     copy!(y, x)
-    dwt!(y, L, filter, fw)
+    dwt!(y, L, scheme, fw)
     return y
 end
 
@@ -454,7 +439,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::GPLS, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
+function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, L::Integer, scheme::NRLS, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
     J = nscales(n)

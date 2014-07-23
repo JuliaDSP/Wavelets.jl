@@ -1,5 +1,5 @@
 module Threshold
-using ..Util, ..POfilters, ..LiftingSchemes, ..Transforms
+using ..Util, ..WaveletTypes, ..Transforms
 export 
     # denoising types
     DNFT,

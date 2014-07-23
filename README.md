@@ -61,6 +61,7 @@ xts = wplotim(x, L, POfilter("db3"))
 ```
 
 ![Bumps](/example/transform1d_bumps.png)
+
 ![Lena](/example/transform2d_lena.jpg)
 
 Benchmarks
