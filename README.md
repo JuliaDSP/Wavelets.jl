@@ -16,7 +16,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * Plotting/visualization utilities for 1-d and 2-d signals.
 
-Rouchly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
+Roughly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
 Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
 
