@@ -32,25 +32,16 @@ immutable POfilter <: OrthoFilter
         new(qmf,name,length(qmf))
     end
 end
-# e.g. "coif18"
 function POfilter(name::String)
     qmf = get(FILTERS, name, nothing)
     qmf == nothing && error("filter not found")
     # make sure it is normalized in l2-norm!!!
     return POfilter(qmf./norm(qmf),name)
 end
-# e.g. "Coiflet", 18
-POfilter(class::String, n::Integer) = POfilter(getname(class,n))
 
 # scale filter by scalar
 function scale{T<:OrthoFilter}(f::T, a::Number)
     return T(f.qmf.*a, f.name)
-end
-# convert class and number to name
-function getname(class::String, n::Integer)
-    namebase = get(FILTERC2N, class, nothing)
-    namebase == nothing && error("wavelet type not found")
-    return string(namebase,n)
 end
 
 
@@ -79,7 +70,6 @@ function GPLS(name::String)
     step == nothing && error("scheme not found")
     return GPLS(step,norm1,norm2,name)
 end
-GPLS(class::String, n::Integer) = GPLS(getname(class,n))
 
 
 # TRANSFORM TYPE DEFINITIONS
@@ -90,7 +80,6 @@ function wavelet(name::String; transform::String="filter", boundary::String="P",
     transform=="ls" && return waveletls(name; boundary=boundary, t=t)
     error("uknown transform type")
 end
-wavelet(class::String, n::Integer; arg...) = wavelet(getname(class,n); arg...)
 
 function waveletfilter(name::String; boundary::String="P", t::String="O")
     boundary = lowercase(boundary)
@@ -107,7 +96,6 @@ function waveletfilter(name::String; boundary::String="P", t::String="O")
 
     error("unkown type")
 end
-waveletfilter(class::String, n::Integer; arg...) = waveletfilter(getname(class,n); arg...)
 
 function waveletls(name::String; boundary::String="P", t::String="O")
     boundary = lowercase(boundary)
@@ -125,11 +113,27 @@ function waveletls(name::String; boundary::String="P", t::String="O")
 
     return wf
 end
-waveletls(class::String, n::Integer; arg...) = waveletls(getname(class,n); arg...)
 
 
-# boundary types
+# BOUNDARY TYPES
 PeriodicWavelet = Union(POfilter, GPLS)
+
+
+# CLASSES
+
+# convert class and number to name
+function getname(class::String, n::Union(Integer,String))
+    namebase = get(FILTERC2N, class, nothing)
+    namebase == nothing && error("wavelet type not found")
+    return string(namebase,n)
+end
+
+for f in (:wavelet, :waveletfilter, :waveletls, :GPLS, :POfilter)
+@eval begin
+	# convert to type name
+	$f(class::String, n::Union(Integer,String); arg...) = $f(getname(class,n); arg...)
+end
+end
 
 # class => namebase
 const FILTERC2N=(ASCIIString=>ASCIIString)[
@@ -140,7 +144,8 @@ const FILTERC2N=(ASCIIString=>ASCIIString)[
 "Symlet" => "sym",
 "Battle" => "batt",
 "Beylkin" => "beyl",
-"Vaidyanathan" => "vaid"
+"Vaidyanathan" => "vaid",
+"CDF" => "cdf"
 ]
 
 
