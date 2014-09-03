@@ -75,19 +75,19 @@ xts = wplotim(x, L, POfilter("db3"))
 
 ![Lena](/example/transform2d_lena.jpg)
 
-#### Wavelet class infomation
+#### Wavelet class information
 
- |Long name | Short | Type | Numbers |
- |:------- | :------ | :----- | :----- |
-|`Haar` | `haar` | Ortho |   |
-|`Coiflet` | `coif` | Ortho | 2:2:8 |
-|`Daubechies` | `db` | Ortho | 1:10 |
-|`Symmlet` | `sym` | Ortho | 4:10 |
-|`Symlet` | - | - | - |
-|`Battle` | `batt` | Ortho | 2:2:6
-|`Beylkin` | `beyl` | Ortho |  |
-|`Vaidyanathan` | `vaid` | Ortho |  |
-|`CDF` | `cdf` | BiOrtho | "9/7" |
+| Long name | Short | Type | Numbers |
+|:------- |:------ |:----- |:----- |
+| `Haar` | `haar` | Ortho |   |
+| `Coiflet` | `coif` | Ortho | 2:2:8 |
+| `Daubechies` | `db` | Ortho | 1:10 |
+| `Symmlet` | `sym` | Ortho | 4:10 |
+| `Symlet` | - | - | - |
+| `Battle` | `batt` | Ortho | 2:2:6
+| `Beylkin` | `beyl` | Ortho |  |
+| `Vaidyanathan` | `vaid` | Ortho |  |
+| `CDF` | `cdf` | BiOrtho | "9/7" |
 
 
 Benchmarks
