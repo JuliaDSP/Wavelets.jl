@@ -1,5 +1,6 @@
-Wavelets
-=========
+<img src="wavelets.png" alt="Wavelets">
+
+---------
 
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
 [![Coverage Status](https://coveralls.io/repos/gummif/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/gummif/Wavelets.jl?branch=master)
@@ -82,8 +83,7 @@ xts = wplotim(x, L, POfilter("db3"))
 | `Haar` | `haar` | Ortho |   |
 | `Coiflet` | `coif` | Ortho | 2:2:8 |
 | `Daubechies` | `db` | Ortho | 1:10 |
-| `Symmlet` | `sym` | Ortho | 4:10 |
-| `Symlet` | - | - | - |
+| `Symmlet`/`Symlet` | `sym` | Ortho | 4:10 |
 | `Battle` | `batt` | Ortho | 2:2:6
 | `Beylkin` | `beyl` | Ortho |  |
 | `Vaidyanathan` | `vaid` | Ortho |  |
