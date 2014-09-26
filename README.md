@@ -19,10 +19,18 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 Roughly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
-Written by Gudmundur Adalsteinsson (c) 2014. See license (MIT) in LICENSE.md.
+See license (MIT) in LICENSE.md.
+
 
 Usage
 ---------
+
+Install via the package manager and load with `using`
+
+```julia
+julia> Pkg.add("Wavelets")
+julia> using Wavelets
+```
 
 A rough idea of the API:
 
