@@ -1,125 +1,104 @@
 module WaveletTypes
-export WaveletType, WaveletFilter, OrthoFilter, NRLS, PeriodicWavelet, 
-        POfilter, scale,
-        WaveletLS, LSstep, GPLS,
-        wavelet, waveletfilter, waveletls
+export  WaveletType, 
+        FilterWavelet, 
+        LSWavelet, 
+        ContinuousWavelet, 
+        DiscreteWavelet,
+        #
+        WaveletBoundary, 
+        PerBoundary,
+        #ZPBoundary,
+        #CPBoundary,
+        #
+        OrthoFilter,
+        #BiOrthoFilter,
+        LSstep,
+        GLS,
+        #
+        scale,
+        wavelet, 
+        waveletfilter, 
+        waveletls
 
-abstract WaveletType
+# TYPE HIERARCHY
 
-abstract WaveletFilter <: WaveletType
-abstract WaveletLS <: WaveletType
+abstract WaveletType{T}
+# discrete transforms via filtering
+abstract FilterWavelet{T} <: WaveletType{T}
+# discrete transforms via lifting
+abstract LSWavelet{T} <: WaveletType{T}
+# continuous transforms
+abstract ContinuousWavelet{T} <: WaveletType{T}
+# discrete transforms union
+typealias DiscreteWavelet Union(FilterWavelet, LSWavelet)
 
-# orthogonal
-abstract OrthoFilter <: WaveletFilter 
-# non-redundant
-abstract NRLS <: WaveletLS
 
-# boundary types defined below
+# BOUNDARY TYPES
+
+abstract WaveletBoundary
+# periodic (default)
+immutable PerBoundary <: WaveletBoundary end
+# zero padding
+#immutable ZPBoundary <: WaveletBoundary end
+# constant padding
+#immutable CPBoundary <: WaveletBoundary end
+# and so on...
 
 
-# FILTERS
+# IMPLEMENTATIONS OF FilterWavelet
 
-# Periodic, Orthogonal
-immutable POfilter <: OrthoFilter
-    qmf::Vector{Float64}    # the quadrature mirror filter
-    name::String            # filter short name
-    n::Integer              # filter length
-    function POfilter(qmf::Vector,name::String)
-        new(qmf,name,length(qmf))
-    end
-    function POfilter(qmf::Vector,name::String,n::Integer)
-        length(qmf) != n && error("n does not match filter length")
-        new(qmf,name,length(qmf))
-    end
+immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+    qmf::Vector{Float64}        # quadrature mirror filter
+    name::ASCIIString           # filter short name
+    OrthoFilter(qmf, name) = new(qmf, name)
 end
-function POfilter(name::String)
+function OrthoFilter{T<:WaveletBoundary}(name::String)
     qmf = get(FILTERS, name, nothing)
     qmf == nothing && error("filter not found")
-    # make sure it is normalized in l2-norm!!!
-    return POfilter(qmf./norm(qmf),name)
+    # make sure it is normalized in l2-norm
+    return OrthoFilter{T}(qmf./norm(qmf), name)
 end
 
-# scale filter by scalar
-function scale{T<:OrthoFilter}(f::T, a::Number)
-    return T(f.qmf.*a, f.name)
-end
+#immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+#    qmf1::Vector{Float64}       # quadrature mirror filter 1
+#    qmf2::Vector{Float64}       # quadrature mirror filter 2
+#    name::ASCIIString           # filter short name
+#    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
+#end
 
 
-# LIFTING SCHEMES
+# IMPLEMENTATIONS OF LSWavelet
 
 immutable LSstep
     stept::Char             # step type: 'p' for predict, 'u' for update
-    coef::Vector            # lifting coefficients
-    shift::Integer          # + left shift, - right shift
+    coef::Vector{Float64}   # lifting coefficients
+    shift::Int              # + left shift, - right shift
     function LSstep(stept,coef,shift)
         @assert stept=='p' || stept=='u'
         return new(stept,coef,shift)
     end
 end
-
-# general periodic lifting scheme
-immutable GPLS <: NRLS
+# general lifting scheme
+immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step::Vector{LSstep}    # steps to be taken
-    norm1::Real             # normalization of scaling coefs.
-    norm2::Real             # normalization of detail coefs.
-    name::String            # name of scheme
+    norm1::Float64          # normalization of scaling coefs.
+    norm2::Float64          # normalization of detail coefs.
+    name::ASCIIString       # name of scheme
+    GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 end
-
-function GPLS(name::String)
-    step,norm1,norm2 = get(SCHEMES, name, nothing)
-    step == nothing && error("scheme not found")
-    return GPLS(step,norm1,norm2,name)
-end
-
-
-# TRANSFORM TYPE DEFINITIONS
-
-function wavelet(name::String; transform::String="filter", boundary::String="P", t::String="O")
-    transform = lowercase(transform)
-    transform=="filter" && return waveletfilter(name; boundary=boundary, t=t)
-    transform=="ls" && return waveletls(name; boundary=boundary, t=t)
-    error("uknown transform type")
-end
-
-function waveletfilter(name::String; boundary::String="P", t::String="O")
-    boundary = lowercase(boundary)
-    t = lowercase(t)
-    
-    if t=="o" || t=="orthogonal" || t=="ortho"
-        if boundary=="p" || boundary=="periodic" || boundary=="per"
-            return POfilter(name)
-        end
-    #elseif t=="mo" || t=="redundant" ... 
-        
-        error("unkown boundary")
-    end
-
-    error("unkown type")
-end
-
-function waveletls(name::String; boundary::String="P", t::String="O")
-    boundary = lowercase(boundary)
-    t = lowercase(t)
-    
-    if t=="o" || t=="orthogonal" || t=="ortho" || t=="nr"
-        if boundary=="p" || boundary=="periodic" || boundary=="per"
-            wf = GPLS(name)
-        else
-            error("unkown boundary")
-        end
-    else
-        error("unkown type")
-    end
-
-    return wf
+function GLS{T<:WaveletBoundary}(name::String)
+    schemedef = get(SCHEMES, name, nothing)
+    schemedef == nothing && error("scheme not found")
+    return GPLS(schemedef..., name)
 end
 
 
-# BOUNDARY TYPES
-PeriodicWavelet = Union(POfilter, GPLS)
+# IMPLEMENTATIONS OF ContinuousWavelet
+
+# ...
 
 
-# CLASSES
+# CLASSES AND DEFAULT BOUNDARY
 
 # convert class and number to name
 function getname(class::String, n::Union(Integer,String))
@@ -128,12 +107,73 @@ function getname(class::String, n::Union(Integer,String))
     return string(namebase,n)
 end
 
-for f in (:wavelet, :waveletfilter, :waveletls, :GPLS, :POfilter)
+for f in (:OrthoFilter, :GLS)
+@eval begin
+	# convert class and number to wavelet name
+	($f)(class::String, n::Union(Integer,String)) = ($f)(getname(class, n))
+	# default boundary
+	($f)(args...) = ($f){PerBoundary}(args...)
+end
+end
+
+
+# UTIL
+
+# scale filter by scalar
+function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
+    return OrthoFilter{T}(f.qmf.*a, f.name)
+end
+
+
+
+# TRANSFORM TYPE CONSTRUCTORS
+
+function wavelet(name::String; transform::String="filter", boundary::String="per")
+    transform = lowercase(transform)
+    if transform == "filter"
+    	return waveletfilter(name, boundary=boundary)
+    elseif transform == "ls"
+    	return waveletls(name, boundary=boundary)
+   # elseif transform == "continuous"
+   # 	return waveletcontinuous(name, boundary=boundary)
+    else
+    	error("uknown transform type")
+    end
+end
+
+function waveletfilter(name::String; boundary::String="per")
+    BT = getboundarytype(boundary)
+    qmf = get(FILTERS, name, nothing)
+    if qmf != nothing 
+    	return OrthoFilter{BT}(name)
+    else
+    	return BiOrthoFilter{BT}(name)
+    end
+end
+
+function waveletls(name::String; boundary::String="per")
+    BT = getboundarytype(boundary)
+	return GLS{BT}(name)
+end
+
+function getboundarytype(boundary::String="per")
+    boundary = lowercase(boundary)
+    if boundary == "per"
+        BT = PerBoundary
+    else
+        error("unkown boundary type")
+    end
+    return BT
+end
+
+for f in (:wavelet, :waveletfilter, :waveletls)
 @eval begin
 	# convert to type name
-	$f(class::String, n::Union(Integer,String); arg...) = $f(getname(class,n); arg...)
+	($f)(class::String, n::Union(Integer,String); arg...) = ($f)(getname(class,n); arg...)
 end
 end
+
+
 
 # class => namebase
 const FILTERC2N=(ASCIIString=>ASCIIString)[
@@ -150,8 +190,6 @@ const FILTERC2N=(ASCIIString=>ASCIIString)[
 
 
 # scaling filters h (low pass)
-# correct order: haar, db, sym, coif
-# reverse: 
 # the number at end of a filter name is the 
 # number of vanishing moments of the mother wavelet function
 # sources:
@@ -255,9 +293,19 @@ const FILTERS=(ASCIIString=>Vector{Float64})[
 ]
 
 
+# biortho filters
+# name => (qmf1,qmf2)
+const BIFILTERS=(ASCIIString=>NTuple{2,Vector{Float64}})[
+# test
+"test" =>
+([0.7071067811865475,0.7071067811865475],
+ [0.7071067811865475,0.7071067811865475])
+
+]
+
 
 # in matlab (d,p) -> (p,u)
-const SCHEMES=(ASCIIString=>Tuple)[
+const SCHEMES=(ASCIIString=>NTuple{3})[
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([ LSstep('u',1.5861343420604  *[1.0,1.0],0),
