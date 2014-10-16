@@ -534,7 +534,7 @@ end
 # predict and update lifting steps inplace on x, forward and backward
 # half: half of the length under consideration, shift: shift to left, c: lift coefs
 # For predict: writes to range 1:half, reads from 1:2*half
-# For update : writes to range 1:2*half, reads from 1:half
+# For update : writes to range half+1:2*half, reads from 1:2*half
 for (fname,op,pred) in ((:predictfw!,:-,true),
                         (:predictbw!,:+,true),
                         (:updatefw!, :-,false),
