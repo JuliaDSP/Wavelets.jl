@@ -158,6 +158,8 @@ y = denoise(x,TI=true)
 To-do list
 ---------
 
+* don't use sub arrays in 2d
+* error: y[ind...] = fwt(xc, L, wt)
 * Boundary orthogonal wavelets
 * Define more lifting schemes
 * Redundant transforms and wavelet packets

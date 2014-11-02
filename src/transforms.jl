@@ -69,7 +69,7 @@ for Xwt in (:fwtc, :iwtc)
         for d = 1:cn
             ind[dim] = d
 	        xc = reshape(x[ind...], size(x)[1:end-1]...)
-	        y[ind...] = fwt(xc, L, wt)
+	        y[ind...] = fwt(xc, L, wt) # TODO fix fwt/iwt error and use less alloc.
         end
         return y
     end
