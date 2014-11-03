@@ -3,7 +3,7 @@
 ---------
 
 [![Build Status](https://travis-ci.org/gummif/Wavelets.jl.svg?branch=master)](https://travis-ci.org/gummif/Wavelets.jl)
-[![Coverage Status](https://coveralls.io/repos/gummif/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/gummif/Wavelets.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/JuliaDSP/Wavelets.jl?branch=master)
 
 A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-d, 2-d, by filtering or lifting).
 
