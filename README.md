@@ -120,7 +120,7 @@ idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
 Benchmarks
 ---------
 
-Timing of `dwt` (using `db2` filter of length 4) and `fft`. The wavelet transforms are faster and use less memory than `fft` in 1-D. `dwt` by lifting is currently an order of magnitude faster than by filtering.
+Timing of `dwt` (using `db2` filter of length 4) and `fft`. The lifting wavelet transforms are faster and use less memory than `fft` in 1-D and 2-D. `dwt` by lifting is currently an order of magnitude faster than by filtering.
 
 ```julia
 # 10 iterations
@@ -136,11 +136,11 @@ For 2-D transforms (using a `db4` filter and CDF 9/7 lifting scheme):
 ```julia
 # 10 iterations
 dwt by filtering (N=1024x1024), 10 levels
-elapsed time: 2.46512438 seconds (100389904 bytes allocated, 0.89% gc time)
+elapsed time: 2.413446543 seconds (100389904 bytes allocated, 0.89% gc time)
 dwt by lifting (N=1024x1024), 10 levels
-elapsed time: 1.297261089 seconds (298782304 bytes allocated, 6.70% gc time)
+elapsed time: 0.350695373 seconds (89420144 bytes allocated, 6.37% gc time)
 fft (N=1024x1024), (FFTW)
-elapsed time: 0.653394533 seconds (167805936 bytes allocated, 6.59% gc time)
+elapsed time: 0.591834364 seconds (167805936 bytes allocated, 7.07% gc time)
 ```
 
 By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and a little speedup). This is useful when transforming multiple signals.

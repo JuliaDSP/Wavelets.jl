@@ -1,7 +1,7 @@
 module Util
 export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
     mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
-    split!, merge!, 
+    split!, merge!, stridedcopy!,
     makewavelet, testfunction
 
 # WAVELET INDEXING AND SIZES 
@@ -173,7 +173,7 @@ function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
         @inbounds a[i] = a[(i-1)<<1 + 1]
     end
     for i=0:nt - 1  # evens to end
-        @inbounds a[n-i] = a[n - 2*i]
+        @inbounds a[n-i] = a[n - i<<1]
     end
     copy!(a,n>>1+1,tmp,1,nt)
     return a
@@ -194,7 +194,30 @@ function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
         @inbounds b[i] = a[(i-1)<<1 + 1]
     end
     for i=h+1:n  # evens to b
-        @inbounds b[i] = a[2*(i - h)]
+        @inbounds b[i] = a[(i - h)<<1]
+    end
+
+    return b
+end
+# out of place split from a to b, only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
+function split!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer)
+    @assert ia+(n-1)*inca <= length(a) && n <= length(b)
+    @assert n%2 == 0
+    if n == 2
+        b[1] = a[ia]
+        b[2] = a[ia + inca]
+        return b
+    end
+    
+    h = n>>1
+    inca2 = inca<<1
+    for i=1:h  # odds to b
+        @inbounds b[i] = a[ia + (i-1)*inca2]
+    end
+    iainca = ia + inca
+    hp1 = h + 1
+    for i=h+1:n  # evens to b
+        @inbounds b[i] = a[iainca + (i - hp1)*inca2]
     end
 
     return b
@@ -245,11 +268,53 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
         @inbounds b[(i-1)<<1 + 1] = a[i]
     end
     for i=h+1:n  # evens to b
-        @inbounds b[2*(i - h)] = a[i]
+        @inbounds b[(i - h)<<1] = a[i]
     end
 
     return b
 end
+# out of place merge from a to b, only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
+function merge!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer)
+    @assert n <= length(a) && ib+(n-1)*incb <= length(b)
+    @assert n%2 == 0
+    if n == 2
+        b[ib] = a[1]
+        b[ib + incb] = a[2]
+        return b
+    end
+    
+    h = n>>1
+    incb2 = incb<<1
+    for i=1:h  # odds to b
+        @inbounds b[ib + (i-1)*incb2] = a[i]
+    end
+    ibincb = ib + incb
+    hp1 = h + 1
+    for i=h+1:n  # evens to b
+        @inbounds b[ibincb + (i - hp1)*incb2] = a[i]
+    end
+
+    return b
+end
+
+
+function stridedcopy!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer)
+    @assert ia+(n-1)*inca <= length(a) && n <= length(b)
+
+    @inbounds for i = 1:n
+        b[i] = a[ia + (i-1)*inca]
+    end
+    return b
+end
+function stridedcopy!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer)
+    @assert ib+(n-1)*incb <= length(b) && n <= length(a)
+
+    @inbounds for i = 1:n
+        b[ib + (i-1)*incb] = a[i]
+    end
+    return b
+end
+
 
 # return scaling and wavelet functions and location vector, made from filter h 
 # iterated with a cascade algorithm with N steps
@@ -313,8 +378,6 @@ function testfunction(n::Int, ft::String)
     end
     return f
 end
-
-
 
 end
 
