@@ -20,11 +20,11 @@ for i = 1:length(wname)
         ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
         
         wn = wnum[i][num]
-        wn!=0 && (wt = POfilter(wname[i],wvm[i][num]))
-        wn==0 && (wt = POfilter(lowercase(wname[i][1:4])))
+        wn!=0 && (wt = OrthoFilter(wname[i],wvm[i][num]))
+        wn==0 && (wt = OrthoFilter(lowercase(wname[i][1:4])))
         # transform data
-        y = fwt(data, wt)
-        y2 = fwt(data2, wt)
+        y = dwt(data, wt)
+        y2 = dwt(data2, wt)
         
         @test_vecnorm_eq_eps y ye stderr
         @test_vecnorm_eq_eps y2 ye2 stderr2
@@ -32,16 +32,16 @@ for i = 1:length(wname)
         if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
             @test abs(vecnorm(data)-vecnorm(y)) < 1e-9
             @test abs(vecnorm(data2)-vecnorm(y2)) < 1e-9
-            @test_vecnorm_eq_eps iwt(y,wt) data stderr*100
-            @test_vecnorm_eq_eps iwt(y2,wt) data2 stderr2*100
+            @test_vecnorm_eq_eps idwt(y,wt) data stderr*100
+            @test_vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100
         end
     end
 end
 
 # 1-d and 2-d lifting and filtering comparison
 for WT in ("db1","db2")
-    wf = POfilter(WT)
-    wls = GPLS(WT)
+    wf = OrthoFilter(WT)
+    wls = GLS(WT)
     n = 64
     x = randn(n)
     stderr = 1e-10*sqrt(n)
@@ -52,16 +52,16 @@ for WT in ("db1","db2")
     tmpsub = zeros(n)
     
     for L in (nscales(n),0,1,2)
-        yf = fwt(x, L, wf)
-        yls = fwt(x, L, wls)
-        dwt!(x2, L, wls, true, tmp, oopc=true, oopv=tmpsub)
+        yf = dwt(x, wf, L)
+        yls = dwt(x, wls, L)
+        dwt!(x2, wls, L, true, tmp, oopc=true, oopv=tmpsub)
         
         @test_vecnorm_eq_eps yf yls stderr
         @test_vecnorm_eq_eps yf x2 stderr
         
-        ytf = iwt(yf, L, wf)
-        ytls = iwt(yls, L, wls)
-        dwt!(x2, L, wls, false, tmp, oopc=true, oopv=tmpsub)
+        ytf = idwt(yf, wf, L)
+        ytls = idwt(yls, wls, L)
+        dwt!(x2, wls, L, false, tmp, oopc=true, oopv=tmpsub)
         
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
@@ -72,14 +72,14 @@ for WT in ("db1","db2")
     x = randn(n,n)
     x2 = copy(x)
     for L in (nscales(n),0,1,2)
-        yf = fwt(x, L, wf)
-        yls = fwt(x, L, wls)
+        yf = dwt(x, wf, L)
+        yls = dwt(x, wls, L)
         
         @test_vecnorm_eq_eps yf yls stderr2
         @test_approx_eq yf yls
         
-        ytf = iwt(yf, L, wf)
-        ytls = iwt(yls, L, wls)
+        ytf = idwt(yf, wf, L)
+        ytls = idwt(yls, wls, L)
         
         @test_vecnorm_eq_eps ytf x stderr2
         @test_vecnorm_eq_eps ytls x stderr2
@@ -90,78 +90,76 @@ end
 # ============= transform functionality ================
 
 # column-wise 1-d
-wf = POfilter("db2")
+wf = OrthoFilter("db2")
 x = randn(16,2)
 y = copy(x)
-y[:,1] = fwt(vec(x[:,1]),wf)
-y[:,2] = fwt(vec(x[:,2]),wf)
-@test_approx_eq fwtc(x,wf) y
+y[:,1] = dwt(vec(x[:,1]),wf)
+y[:,2] = dwt(vec(x[:,2]),wf)
+@test_approx_eq dwtc(x,wf) y
 
 # column-wise 2-d
 n = 16
 x = randn(n,n,2)
 y = copy(x)
-y[:,:,1] = fwt(reshape(x[:,:,1],n,n),wf)
-y[:,:,2] = fwt(reshape(x[:,:,2],n,n),wf)
-@test_approx_eq fwtc(x,wf) y
+y[:,:,1] = dwt(reshape(x[:,:,1],n,n),wf)
+y[:,:,2] = dwt(reshape(x[:,:,2],n,n),wf)
+@test_approx_eq dwtc(x,wf) y
 
 # "inplace" for filter
-wf = POfilter("db2")
+wf = OrthoFilter("db2")
 x = randn(16)
-@test_approx_eq fwt(x,2,wf) dwt!(copy(x),2,wf,true)
+@test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2,true)
 
 # "out of place" for LS
-wt = GPLS("db2")
+wt = GLS("db2")
 x = randn(16)
-@test_approx_eq fwt(x,2,wt) dwt!(similar(x),x,2,wt,true)
+@test_approx_eq dwt(x,wt,2) dwt!(similar(x),x,wt,2,true)
 
 
 # ============= types and sizes ================
 
-function makefwt(ft::Type, n, wf, L)
+function makedwt(ft::Type, n, wf, L)
 	x0 = rand(-5:5, n)
 	x = zeros(ft, n)
 	copy!(x,x0)
-	return (x, fwt(x, wf, L))
+	return (x, dwt(x, wf, L))
 end
 
 # 1-d
-n = 8; wf = POfilter("db2"); L = 2
+n = 8; wf = OrthoFilter("db2"); L = 2
 sett = (n,wf,L)
 
-ft = Float64; x, y = makefwt(ft, sett...)
+ft = Float64; x, y = makedwt(ft, sett...)
 @test Array{ft,1} == typeof(y) && length(y) == n
-ft = Float32; x, y = makefwt(ft, sett...)
+ft = Float32; x, y = makedwt(ft, sett...)
 @test Array{ft,1} == typeof(y) && length(y) == n
-ft = Int64; x, y = makefwt(ft, sett...)
+ft = Int64; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
-ft = Int32; x, y = makefwt(ft, sett...)
+ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
-@test_approx_eq fwt(x,wf) fwt(float(x),wf)
-@test_approx_eq fwt(x,wf,2) fwt(x,2,wf)
+@test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 
 # 2-d
 sett = ((n,n),wf,L)
-ft = Float64; x, y = makefwt(ft, sett...)
+ft = Float64; x, y = makedwt(ft, sett...)
 @test Array{ft,2} == typeof(y) && length(y) == n*n
-ft = Float32; x, y = makefwt(ft, sett...)
+ft = Float32; x, y = makedwt(ft, sett...)
 @test Array{ft,2} == typeof(y) && length(y) == n*n
-ft = Int64; x, y = makefwt(ft, sett...)
+ft = Int64; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
-ft = Int32; x, y = makefwt(ft, sett...)
+ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
-@test_approx_eq fwt(x,wf) fwt(float(x),wf)
-@test_approx_eq fwt(x,wf,2) fwt(x,2,wf)
+@test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 
 # ============= error tests ================
 
-type wunknownt <: WaveletType end
+type wunknownt <: DiscreteWavelet end
 uwt = wunknownt()
-EE = ErrorException
-@test_throws EE fwt(randn(4),uwt)
-@test_throws EE fwt(randn(4,4),uwt)
+EE = Exception
+@test_throws EE dwt(randn(4),uwt)
+@test_throws EE dwt(randn(4,4),uwt)
 
 
 

@@ -1,7 +1,7 @@
 
 using Wavelets
 
-wf = POfilter("db6")
+wf = waveletfilter("db6")
 N = 1024*32;
 x0 = rand(N);
 L = int(log2(N)-2)
@@ -24,7 +24,7 @@ y=x0*0.0
 
 println("dwt! (N=",N,"), ", L, " levels")
 #f(x0, L, wf) = for i = 1:tn; fwt(x0, L, wf); end
-f(x0, L, wf) = for i = 1:tn; dwt!(y, x0, L, wf, fw, dcfilter, scfilter, si, snew); end
+f(x0, L, wf) = for i = 1:tn; dwt!(y, x0, wf, L, fw, dcfilter, scfilter, si, snew); end
 f(x0, L, wf);
 @time f(x0, L, wf);
 
