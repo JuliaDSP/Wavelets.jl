@@ -120,25 +120,27 @@ idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
 Benchmarks
 ---------
 
-Timing of `dwt` (using `db2` filter of length 4) and `fft`. The wavelet transforms are faster and use less memory than `fft` in all cases. `dwt` by lifting is currently an order of magnitude faster than by filtering.
+Timing of `dwt` (using `db2` filter of length 4) and `fft`. The wavelet transforms are faster and use less memory than `fft` in 1-D. `dwt` by lifting is currently an order of magnitude faster than by filtering.
 
 ```julia
 # 10 iterations
-dwt by filtering (N=1048576), 18 levels
-elapsed time: 1.262672396 seconds (125866088 bytes allocated, 2.35% gc time)
-dwt by lifting (N=1048576), 18 levels
-elapsed time: 0.153162937 seconds (104927608 bytes allocated, 13.18% gc time)
+dwt by filtering (N=1048576), 20 levels
+elapsed time: 1.337276268 seconds (125861504 bytes allocated, 2.55% gc time)
+dwt by lifting (N=1048576), 20 levels
+elapsed time: 0.164345171 seconds (105640144 bytes allocated, 13.60% gc time)
 fft (N=1048576), (FFTW)
-elapsed time: 2.836224168 seconds (587236088 bytes allocated, 4.83% gc time)
+elapsed time: 0.491585123 seconds (167805248 bytes allocated, 7.00% gc time)
 ```
 
-For 2D transforms (the `dwt` using a CDF 9/7 lifting scheme):
+For 2-D transforms (using a `db4` filter and CDF 9/7 lifting scheme):
 ```julia
 # 10 iterations
+dwt by filtering (N=1024x1024), 10 levels
+elapsed time: 2.46512438 seconds (100389904 bytes allocated, 0.89% gc time)
 dwt by lifting (N=1024x1024), 10 levels
-elapsed time: 0.952415385 seconds (109075368 bytes allocated, 2.14% gc time)
-fft (N=1024 x 1024), (FFTW)
-elapsed time: 2.945895417 seconds (587236728 bytes allocated, 4.69% gc time)
+elapsed time: 1.297261089 seconds (298782304 bytes allocated, 6.70% gc time)
+fft (N=1024x1024), (FFTW)
+elapsed time: 0.653394533 seconds (167805936 bytes allocated, 6.59% gc time)
 ```
 
 By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and a little speedup). This is useful when transforming multiple signals.
