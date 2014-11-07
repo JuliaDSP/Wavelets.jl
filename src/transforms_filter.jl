@@ -61,12 +61,12 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
             # detail coefficients
             filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), s, 1,-filtlen+1,1)
             # scaling coefficients
-            filtdown!(scfilter, si, y, 1,                detailn(j), s, 1, 0, 0)
+            filtdown!(scfilter, si, y,                1, detailn(j), s, 1, 0, 0)
         else
             # scaling coefficients
-            filtup!(false,scfilter,  si, y, 1, detailn(j+1), s, 1, -filtlen+1, 0)
+            filtup!(false, scfilter, si, y, 1, detailn(j+1), s, 1, -filtlen+1, 0)
             # detail coefficients
-            filtup!(true,dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, 1)
+            filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, 1)
         end
         # if not final iteration: copy to tmp location
         fw  && j != jrange[end] && copy!(snew,1,y,1,detailn(j))
@@ -75,19 +75,37 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     end
     return y
 end
+function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
+    n = length(x)
+    j = nscales(n) - 1
+    filtlen = length(filter)
+
+    if fw
+        # detail coefficients
+        filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), x, 1,-filtlen+1,1)
+        # scaling coefficients
+        filtdown!(scfilter, si, y,                1, detailn(j), x, 1, 0, 0)
+    else
+        # scaling coefficients
+        filtup!(false, scfilter, si, y, 1, detailn(j+1), x, 1, -filtlen+1, 0)
+        # detail coefficients
+        filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, 1)
+    end
+    return y
+end
 
 # 2-d
 # writes to y
-function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
-    tmpvec = Array(T,n)             # tmp storage vector
+    tmpvec = Array(T,n<<1)             # tmp storage vector
     scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpvec)
     return y
 end
-function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
+function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
 
     n = size(x,1)
     J = nscales(n)
@@ -95,9 +113,11 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, filt
     @assert iscube(y)
     @assert isdyadic(y)
     @assert 0 <= L <= J
+    @assert length(tmpvec) >= n<<1
     is(y,x) && error("input matrix is output matrix")
     
     L == 0 && return copy!(y,x)        # do nothing
+    xs = n
     #s = x
 
     if fw
@@ -106,64 +126,77 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, x::AbstractMatrix{T}, filt
     else
         jrange = (J-L):(J-1)
         nsub = int(2^(J-L+1))
-        copy!(y,x) # !!! not needed if we have an iwt with seperate arrays for s and d 
+        copy!(y,x)
     end
-    tmpsub = sub(tmpvec,1:nsub)
+
     for j in jrange
-        
+        tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
+        tmpsub2 = unsafe_vectorslice(tmpvec, nsub+1, nsub)
         if fw
             # rows
-            xs = n
             for i=1:nsub
                 xi = i
-                xm = n*(nsub-1)+i
-                ya = sub(y, xi:xs:xm)  # final dest and src
                 if j != jrange[1]
-                    copy!(tmpsub,1,ya,1,nsub)
+                    stridedcopy!(tmpsub, y, xi, xs, nsub)
                 else  # use x in first iteration
-                    xa = sub(x, xi:xs:xm)  # src
-                    copy!(tmpsub,1,xa,1,nsub)
+                    stridedcopy!(tmpsub, x, xi, xs, nsub)
                 end
-                dwt!(ya, tmpsub, filter, 1, fw, dcfilter, scfilter, si)
+                unsafe_dwt1level!(tmpsub2, tmpsub, filter, fw, dcfilter, scfilter, si)
+                stridedcopy!(y, xi, xs, tmpsub2, nsub)
             end
             # columns
             for i=1:nsub
                 xi = 1+(i-1)*n
-                xm = xi+nsub-1
-                ya = sub(y, xi:xm)  # final dest and src
+                ya = unsafe_vectorslice(y, xi, nsub)
                 copy!(tmpsub,1,ya,1,nsub)
-                dwt!(ya, tmpsub, filter, 1, fw, dcfilter, scfilter, si)
+                unsafe_dwt1level!(ya, tmpsub, filter, fw, dcfilter, scfilter, si)
             end       
         else
             # columns
             for i=1:nsub
                 xi = 1+(i-1)*n
-                xm = xi+nsub-1
-                ya = sub(y, xi:xm)  # final dest and src
-                copy!(tmpsub,1,ya,1,nsub)  # x has been copied to y
-                dwt!(ya, tmpsub, filter, 1, fw, dcfilter, scfilter, si)
+                ya = unsafe_vectorslice(y, xi, nsub)
+                if j != jrange[1]
+                    copy!(tmpsub,1,ya,1,nsub)
+                    unsafe_dwt1level!(ya, tmpsub, filter, fw, dcfilter, scfilter, si)
+                else  # use x in first iteration
+                    #xsub = unsafe_vectorslice(x, xi, nsub)  # not safe for AbstractArray
+                    copy!(tmpsub,1,x,xi,nsub)
+                    unsafe_dwt1level!(ya, tmpsub, filter, fw, dcfilter, scfilter, si)
+                end
             end   
             # rows
-            xs = n
             for i=1:nsub
                 xi = i
-                xm = n*(nsub-1)+i
-                ya = sub(y, xi:xs:xm)  # final dest and src
-                copy!(tmpsub,1,ya,1,nsub)
-                dwt!(ya, tmpsub, filter, 1, fw, dcfilter, scfilter, si)
+                stridedcopy!(tmpsub, y, xi, xs, nsub)
+                unsafe_dwt1level!(tmpsub2, tmpsub, filter, fw, dcfilter, scfilter, si)
+                stridedcopy!(y, xi, xs, tmpsub2, nsub)
             end
 
         end 
 
         fw  && (nsub = nsub>>1)
         !fw && (nsub = nsub<<1)
-        fw && (tmpsub = sub(tmpvec,1:nsub))
-        !fw && j != jrange[end] && (tmpsub = sub(tmpvec,1:nsub))
-        #s = y
     end
     return y
 end
 
+macro filtermainloop(si, silen, b, val)
+    quote
+        @inbounds for j=2:$(esc(silen))
+            $(esc(si))[j-1] = $(esc(si))[j] + $(esc(b))[j]*$(esc(val))
+        end
+        @inbounds si[$(esc(silen))] = $(esc(b))[$(esc(silen))+1]*$(esc(val))
+    end
+end
+macro filtermainloopzero(si, silen)
+    quote
+        @inbounds for j=2:$(esc(silen))
+            $(esc(si))[j-1] = $(esc(si))[j]
+        end
+        @inbounds si[$(esc(silen))] = 0.0
+    end
+end
 
 # periodic filter and downsampling (by 2)
 # b : filter
@@ -173,7 +206,7 @@ end
 # sw : shift downsampling (0 or 1)
 # based on Base.filt
 function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
-                              out::Union(AbstractVector{T}, T),  iout::Integer, nout::Integer, 
+                              out::AbstractVector{T},  iout::Integer, nout::Integer, 
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, sw::Integer=0)
     nx = nout<<1
     silen = length(si)
@@ -188,18 +221,19 @@ function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
     istart = bs + sw
     dsshift = (bs%2 + sw)%2  # is bs odd, and shift downsampling
     @inbounds begin
-        for i = 1:(nx-1+istart)
+        for i = 1:istart-1
             # periodic in the range [ix:ix+nx-1]
-            xindex = mod(i-1+shift,nx) + ix
-            xatind = x[xindex]
+            xatind = x[mod(i-1+shift, nx) + ix]
+            @filtermainloop(si, silen, b, xatind)
+        end
+        for i = istart:(nx-1+istart)
+            # periodic in the range [ix:ix+nx-1]
+            xatind = x[mod(i-1+shift, nx) + ix]
             # take every other value after istart
-            if (i+dsshift)%2 == 0 && i >= istart
+            if (i+dsshift)%2 == 0
                 out[(i-istart)>>1 + iout] = si[1] + b[1]*xatind
             end
-            for j=1:(silen-1)
-                si[j] = si[j+1] + b[j+1]*xatind
-            end
-            si[silen] = b[silen+1]*xatind
+            @filtermainloop(si, silen, b, xatind)
         end
     end
 
@@ -214,7 +248,7 @@ end
 # sw : shift upsampling (0 or 1)
 # based on Base.filt
 function filtup!{T<:FloatingPoint}(add2out::Bool,b::Vector{T}, si::Vector{T},
-                              out::Union(AbstractVector{T}, T),  iout::Integer, nout::Integer, 
+                              out::AbstractVector{T},  iout::Integer, nout::Integer, 
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, sw::Integer=0)
     nx = nout>>1
     silen = length(si)
@@ -224,39 +258,44 @@ function filtup!{T<:FloatingPoint}(add2out::Bool,b::Vector{T}, si::Vector{T},
     @assert (nx<<1-1)>>1 + iout <= length(out)  # max for out index
     @assert sw==0 || sw==1
     @assert silen == bs-1
-  
+
     fill!(si,0.0)
     istart = bs - shift%2
     dsshift = (sw)%2  # shift upsampling
     @inbounds begin
-        for i = 1:(nout-1+istart)
-            # periodic in the range [ix:ix+nx-1]
+        xatind = 0.0
+        for i = 1:istart-1
+            if (i+dsshift)%2==0
+                @filtermainloopzero(si, silen)
+            else
+                # periodic in the range [ix:ix+nx-1]
+                xindex = mod((i-1)>>1+shift>>1,nx) + ix    #(i-1)>>1 increm. every other
+                xatind = x[xindex]
+                @filtermainloop(si, silen, b, xatind)
+            end
+        end
+        for i = istart:(nout-1+istart)
             if (i+dsshift)%2==0
                 xatind = 0.0
             else
-                xindex = mod((i-1)>>1+shift>>1,nx) + ix    #(i-1)>>1 increm. every other
+                xindex = mod((i-1)>>1+shift>>1,nx) + ix
                 xatind = x[xindex]
             end
-            if i >= istart
-                if add2out
-                    out[(i-istart) + iout] += si[1] + b[1]*xatind
-                else
-                    out[(i-istart) + iout] = si[1] + b[1]*xatind
-                end
+            if add2out
+                out[(i-istart) + iout] += si[1] + b[1]*xatind
+            else
+                out[(i-istart) + iout] = si[1] + b[1]*xatind
             end
             if (i+dsshift)%2==0
-                for j=1:(silen-1)
-                    si[j] = si[j+1]  # + 0
-                end
+                @filtermainloopzero(si, silen)
             else
-                for j=1:(silen-1)
-                    si[j] = si[j+1] + b[j+1]*xatind
-                end
+                @filtermainloop(si, silen, b, xatind)
             end
-            si[silen] = b[silen+1]*xatind
         end
     end
 
     return nothing
 end
+
+
 

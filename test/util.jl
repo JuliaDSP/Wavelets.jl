@@ -89,7 +89,20 @@ exp = [-1,2,3.3,4]
 a0 = randn(128)
 @test a0 == merge!(split!(a0))
 
+# with strides
+a0 = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+ia = 3
+inca = 2
+@test split!(similar(a0), copy(a0), ia, inca, 2)[1:2] == [3,5]
+@test split!(similar(a0), copy(a0), ia, inca, 4)[1:4] == [3,7,5,9]
+@test split!(similar(a0), copy(a0), 1, 3, 4)[1:4] == [1,7,4,10]
+@test split!(similar(a0), copy(a0), 1, 1, 8)[1:8] ==  split!(similar(a0), copy(a0), 8)[1:8]
 
-
+@test merge!(similar(a0), ia, inca, copy(a0), 2)[ia:inca:ia+(2-1)*inca] == [1,2]
+@test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
+ia = 1
+inca = 3
+@test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
+@test merge!(similar(a0), 1, 1, copy(a0), 8)[1:8] ==  merge!(similar(a0), copy(a0), 8)[1:8]
 
 

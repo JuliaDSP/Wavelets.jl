@@ -83,6 +83,11 @@ for (Xwtc, Xwt) in ((:dwtc, :dwt), (:idwtc, :idwt))
 end
 end
 
+# Array with shared memory
+function unsafe_vectorslice(A::Array, i::Int, n::Int)
+    return pointer_to_array(pointer(A, i), n, false)::Vector
+end
+
 # filter transforms
 include("transforms_filter.jl")
 

@@ -152,6 +152,12 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
+# non-Array type
+wt = GLS("db2")
+x = randn(16, 16)
+xs = sub(copy(x), 1:16, 1:16)
+@test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
+
 
 # ============= error tests ================
 
