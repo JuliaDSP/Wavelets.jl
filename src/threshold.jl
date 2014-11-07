@@ -61,8 +61,8 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
         
         if ndims(x)==1
             z = Array(eltype(x), size(x))
-            T<:GPLS && (tmp=Array(eltype(x),length(x)>>2))
-            T<:POfilter && (xt=Array(eltype(x),length(x)))
+            T<:LSWavelet && (tmp=Array(eltype(x),length(x)>>2))
+            T<:FilterWavelet && (xt=Array(eltype(x),length(x)))
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
                 circshift!(z, x, shift)

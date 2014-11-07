@@ -32,7 +32,7 @@ julia> Pkg.add("Wavelets")
 julia> using Wavelets
 ```
 
-A rough idea of the API:
+A few usage examples:
 
 ```julia
 # the simplest way to transform a signal x is
@@ -40,7 +40,6 @@ xt = dwt(x, wavelet("db2"))
 
 # the transform type can be more explicitly specified
 # set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
-wt = wavelet("Coiflet", 4)  # or
 wt = wavelet("Coiflet", 4, transform="filter", boundary="per")  # or
 wt = waveletfilter("coif4")
 # which is equivalent to 
@@ -83,9 +82,30 @@ xts = wplotim(x, L, waveletfilter("db3"))
 
 ![Lena](/example/transform2d_lena.jpg)
 
+
+API
+---------
+
+#### Wavelet transforms and types
+```julia
+# Type construction,
+# also accept (class::String, n::Union(Integer,String); ...)
+wavelet(name::String; transform::String="filter", boundary::String="per")
+waveletfilter(name::String; boundary::String="per")
+waveletls(name::String; boundary::String="per")
+# DWT (discrete wavelet transform)
+dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
+idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
+dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
+dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
+# DWTC (column-wise discrete wavelet transform)
+dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
+idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
+```
+
 #### Wavelet class information
 
-| Long name | Short | Type | Numbers |
+| Class | Short | Type | Numbers |
 |:------- |:------ |:----- |:----- |
 | `Haar` | `haar` | Ortho |   |
 | `Coiflet` | `coif` | Ortho | 2:2:8 |

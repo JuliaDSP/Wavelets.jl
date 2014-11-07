@@ -6,27 +6,27 @@ export dwt, idwt, dwt!, dwtc, idwtc
 
 ## API
 
-# for DWT (discrete wavelet transform)
+# DWT (discrete wavelet transform)
 #dwt(::AbstractVector, ::DiscreteWavelet)
 #idwt(::AbstractVector, ::DiscreteWavelet)
 
-# for DWTC (column-wise discrete wavelet transform)
+# DWTC (column-wise discrete wavelet transform)
 #dwtc(::AbstractArray, ::DiscreteWavelet)
 #idwtc(::AbstractArray, ::DiscreteWavelet)
 
-# for SWT (stationary wavelet transform)
+# SWT (stationary wavelet transform)
 #swt(::AbstractVector, ::DiscreteWavelet)
 #iswt(::AbstractVector, ::DiscreteWavelet)
 
-# for WPT (wavelet packet transform)
+# WPT (wavelet packet transform)
 #wpt(::AbstractVector, ::DiscreteWavelet)
 #iwpt(::AbstractVector, ::DiscreteWavelet)
 
-# for CWT (continuous wavelet transform)
+# CWT (continuous wavelet transform)
 #cwt(::AbstractVector, ::ContinuousWavelet)
 #icwt(::AbstractVector, ::ContinuousWavelet)
 
-# for CWTFT (continuous wavelet transform via FFT)
+# CWTFT (continuous wavelet transform via FFT)
 #cwtft(::AbstractVector, ::ContinuousWavelet)
 #icwtft(::AbstractVector, ::ContinuousWavelet)
 
