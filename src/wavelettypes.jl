@@ -1,11 +1,11 @@
 module WaveletTypes
-export  WaveletType, 
-        FilterWavelet, 
-        LSWavelet, 
-        ContinuousWavelet, 
-        DiscreteWavelet,
+export  DiscreteWavelet,
+        ContinuousWavelet,
+        FilterWavelet,
+        LSWavelet,
+        WaveletType,
         #
-        WaveletBoundary, 
+        WaveletBoundary,
         PerBoundary,
         #ZPBoundary,
         #CPBoundary,
@@ -16,21 +16,20 @@ export  WaveletType,
         GLS,
         #
         scale,
-        wavelet, 
-        waveletfilter, 
+        wavelet,
+        waveletfilter,
         waveletls
 
 # TYPE HIERARCHY
 
-abstract WaveletType{T}
+abstract DiscreteWavelet{T}
+abstract ContinuousWavelet{T}
 # discrete transforms via filtering
-abstract FilterWavelet{T} <: WaveletType{T}
+abstract FilterWavelet{T} <: DiscreteWavelet{T}
 # discrete transforms via lifting
-abstract LSWavelet{T} <: WaveletType{T}
-# continuous transforms
-abstract ContinuousWavelet{T} <: WaveletType{T}
-# discrete transforms union
-typealias DiscreteWavelet Union(FilterWavelet, LSWavelet)
+abstract LSWavelet{T} <: DiscreteWavelet{T}
+# all wavelet types
+typealias WaveletType Union(DiscreteWavelet, ContinuousWavelet)
 
 
 # BOUNDARY TYPES
@@ -44,6 +43,8 @@ immutable PerBoundary <: WaveletBoundary end
 #immutable CPBoundary <: WaveletBoundary end
 # and so on...
 
+const DEF_BOUNDARY = PerBoundary
+
 
 # IMPLEMENTATIONS OF FilterWavelet
 
@@ -52,12 +53,13 @@ immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     name::ASCIIString           # filter short name
     OrthoFilter(qmf, name) = new(qmf, name)
 end
-function OrthoFilter{T<:WaveletBoundary}(name::String)
+function OrthoFilter{T<:WaveletBoundary}(name::String, ::Type{T}=DEF_BOUNDARY)
     qmf = get(FILTERS, name, nothing)
     qmf == nothing && error("filter not found")
     # make sure it is normalized in l2-norm
     return OrthoFilter{T}(qmf./norm(qmf), name)
 end
+Base.length(f::OrthoFilter) = length(f.qmf)
 
 #immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
 #    qmf1::Vector{Float64}       # quadrature mirror filter 1
@@ -86,10 +88,10 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     name::ASCIIString       # name of scheme
     GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 end
-function GLS{T<:WaveletBoundary}(name::String)
+function GLS{T<:WaveletBoundary}(name::String, ::Type{T}=DEF_BOUNDARY)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && error("scheme not found")
-    return GPLS(schemedef..., name)
+    return GLS{T}(schemedef..., name)
 end
 
 
@@ -98,7 +100,7 @@ end
 # ...
 
 
-# CLASSES AND DEFAULT BOUNDARY
+# CLASSES
 
 # convert class and number to name
 function getname(class::String, n::Union(Integer,String))
@@ -110,9 +112,7 @@ end
 for f in (:OrthoFilter, :GLS)
 @eval begin
 	# convert class and number to wavelet name
-	($f)(class::String, n::Union(Integer,String)) = ($f)(getname(class, n))
-	# default boundary
-	($f)(args...) = ($f){PerBoundary}(args...)
+	($f)(class::String, n::Union(Integer,String), args...) = ($f)(getname(class, n), args...)
 end
 end
 
@@ -145,15 +145,15 @@ function waveletfilter(name::String; boundary::String="per")
     BT = getboundarytype(boundary)
     qmf = get(FILTERS, name, nothing)
     if qmf != nothing 
-    	return OrthoFilter{BT}(name)
+    	return OrthoFilter(name, BT)
     else
-    	return BiOrthoFilter{BT}(name)
+    	return BiOrthoFilter(name, BT)
     end
 end
 
 function waveletls(name::String; boundary::String="per")
     BT = getboundarytype(boundary)
-	return GLS{BT}(name)
+	return GLS(name, BT)
 end
 
 function getboundarytype(boundary::String="per")

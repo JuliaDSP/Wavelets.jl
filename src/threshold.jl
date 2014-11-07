@@ -41,12 +41,11 @@ function VisuShrink(n::Int)
     return VisuShrink(thf("hard"), sqrt(2*log(n)))
 end
 
-const out_type = Float64                # for non inplace functions
-const def_wavelet = POfilter("sym5")    # default wavelet type
+const DEF_WAVELET = waveletfilter("sym5")    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
-function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;  
-                                    wt::Union(T,Nothing)=def_wavelet, 
+function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;  
+                                    wt::Union(T,Nothing)=DEF_WAVELET, 
                                     level::Int=max(nscales(size(x,1))-6,1),
                                     dnt::S=VisuShrink(size(x,1)),
                                     sigma::Real=noisest(x, wt=wt),
@@ -69,17 +68,17 @@ function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;
                 circshift!(z, x, shift)
                 
                 if T<:GPLS
-                    dwt!(z, L, wt, true, tmp)
+                    dwt!(z, wt, L, true, tmp)
                     dnt.f(z, sigma*dnt.t)   # threshold
-                    dwt!(z, L, wt, false, tmp)
+                    dwt!(z, wt, L, false, tmp)
                 elseif T<:POfilter
-                    dwt!(xt, z, L, wt, true)
+                    dwt!(xt, z, wt, L, true)
                     dnt.f(xt, sigma*dnt.t)   # threshold
-                    dwt!(z, xt, L, wt, false)
+                    dwt!(z, xt, wt, L, false)
                 else
-                    dwt!(z, L, wt, true)
+                    dwt!(z, wt, L, true)
                     dnt.f(z, sigma*dnt.t)   # threshold
-                    dwt!(z, L, wt, false)
+                    dwt!(z, wt, L, false)
                 end
                shiftadd!(y,z,-shift)
             end
@@ -88,9 +87,9 @@ function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;
                 shift = nspin2circ(nspin, i)
                 z = circshift(x, shift)
                 
-                dwt!(z, L, wt, true)
+                dwt!(z, wt, L, true)
                 dnt.f(z, sigma*dnt.t)   # threshold
-                dwt!(z, L, wt, false)
+                dwt!(z, wt, L, false)
 
                 z = circshift(z, -shift)
                 broadcast!(+,y,y,z)
@@ -103,9 +102,9 @@ function denoise{T<:WaveletType,S<:DNFT}(x::AbstractArray;
             dnt.f(y, sigma*dnt.t)
         else
             L = level2tl(size(x,1),level)
-            y = fwt(x, L, wt)
+            y = dwt(x, wt, L)
             dnt.f(y, sigma*dnt.t)   # threshold
-            dwt!(y, L, wt, false)
+            dwt!(y, wt, L, false)
         end
     end
     
@@ -127,11 +126,11 @@ function shiftadd!(y,z,shift)
 end
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest{T<:WaveletType}(x::AbstractArray; wt::Union(T,Nothing)=def_wavelet)
+function noisest{T<:DiscreteWavelet}(x::AbstractArray; wt::Union(T,Nothing)=DEF_WAVELET)
     if wt == nothing
         y = x
     else
-        y = fwt(x, 1, wt)
+        y = dwt(x, wt, 1)
     end
     ind = detailrange(maxlevel(size(y,1)))
     dr = y[ind]
@@ -321,8 +320,8 @@ for (fn,fn!) in (   (:biggestterms,     :biggestterms!),
                     (:thresholdstein,   :thresholdstein!)
                  )
 @eval begin
-function ($fn)(x::AbstractArray, t::Real) 
-    y = Array(out_type, size(x))
+function ($fn){T<:Number}(x::AbstractArray{T}, t::Real) 
+    y = Array(T, size(x))
     return ($fn!)(copy!(y,x), t)
 end
 end # eval begin
@@ -360,8 +359,8 @@ for (fn,fn!) in (   (:thresholdneg, :thresholdneg!),
                     (:thresholdpos, :thresholdpos!)
                  )
 @eval begin
-function ($fn)(x::AbstractArray) 
-    y = Array(out_type, size(x))
+function ($fn){T<:Number}(x::AbstractArray{T}) 
+    y = Array(T, size(x))
     return ($fn!)(copy!(y,x))
 end
 end # eval begin

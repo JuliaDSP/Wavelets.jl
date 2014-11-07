@@ -1,6 +1,5 @@
 module Plot
-using ..Util, ..Transforms
-import ..WaveletTypes: WaveletType
+using ..Util, ..WaveletTypes, ..Transforms
 export wplotdots, wplotim
 
 # PLOTTING UTILITIES
@@ -52,7 +51,7 @@ end
 
 # return an array of scaled detail coefficients and unscaled scaling coefficients
 # ready to be plotted as an image
-function wplotim(x::AbstractArray, L::Integer, wt::Union(WaveletType,Nothing)=nothing; wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
+function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing; wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
     dim = ndims(x)
     (dim == 2 || dim == 3) || error("dimension ",dim," not supported")
     n = size(x,1)
@@ -65,9 +64,9 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union(WaveletType,Nothing)=no
     # do wavelet transform
     if wt != nothing
         if size(x,3)>1
-            x = fwtc(x, L, wt)
+            x = dwtc(x, wt, L)
         else
-            x = fwt(x, L, wt)
+            x = dwt(x, wt, L)
         end
     end
 
