@@ -26,11 +26,15 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
         stepseq = scheme.step
         ns = n
         half = ns>>1
+        norm1 = convert(T, scheme.norm1)
+        norm2 = convert(T, scheme.norm2)
     else
         jrange = (J-L):(J-1)
         stepseq = reverse(scheme.step)
         ns = 2^(jrange[1]+1)
         half = ns>>1
+        norm1 = convert(T, 1/scheme.norm1)
+        norm2 = convert(T, 1/scheme.norm2)
     end
     s = y
 
@@ -43,38 +47,40 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
                 split!(s, ns, tmp)
             end
             for step in stepseq
+                stepcoef = convert(Array{T}, step.coef)
                 if step.stept == 'p'
-                    predictfw!(s, half, convert(Array{T}, step.coef), step.shift)
+                    predictfw!(s, half, stepcoef, step.shift)
                 elseif step.stept == 'u'
-                    updatefw!(s, half, convert(Array{T}, step.coef), step.shift)
+                    updatefw!(s, half, stepcoef, step.shift)
                 end
             end
             if oopc && L==1  # directly use out of place normalize
-                normalize!(y, oopv, half, ns, scheme.norm1, scheme.norm2)
+                normalize!(y, oopv, half, ns, norm1, norm2)
             elseif oopc && j==jrange[end]
-                normalize!(s, half, ns, scheme.norm1, scheme.norm2)
+                normalize!(s, half, ns, norm1, norm2)
                 copy!(y, oopv)
             else
-                normalize!(s, half, ns, scheme.norm1, scheme.norm2)
+                normalize!(s, half, ns, norm1, norm2)
             end
             ns = ns>>1 
             half = half>>1
         else
             if oopc && L==1  # directly use out of place normalize
-                normalize!(oopv, y, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+                normalize!(oopv, y, half, ns, norm1, norm2)
                 s = oopv
             elseif oopc && j==jrange[1]
                 copy!(oopv, y)
                 s = oopv
-                normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+                normalize!(s, half, ns, norm1, norm2)
             else
-                normalize!(s, half, ns, 1/scheme.norm1, 1/scheme.norm2)
+                normalize!(s, half, ns, norm1, norm2)
             end
             for step in stepseq
+                stepcoef = convert(Array{T}, step.coef)
                 if step.stept == 'p'
-                    predictbw!(s, half, convert(Array{T}, step.coef), step.shift)
+                    predictbw!(s, half, stepcoef, step.shift)
                 elseif step.stept == 'u'
-                    updatebw!(s, half, convert(Array{T}, step.coef), step.shift)
+                    updatebw!(s, half, stepcoef, step.shift)
                 end
             end
             if oopc && j==jrange[end]
@@ -165,9 +171,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractMatrix{T}, scheme::GLS, L::Integer, f
     return y
 end
 
-function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
-	n1 = convert(T, n1)
-	n2 = convert(T, n2)
+function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds x[i] *= n1
     end
@@ -177,9 +181,7 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, ns::I
     return x
 end
 # out of place normalize from x to y
-function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, half::Integer, ns::Integer, n1::Real, n2::Real)
-	n1 = convert(T, n1)
-	n2 = convert(T, n2)
+function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds y[i] = n1*x[i]
     end
@@ -189,19 +191,34 @@ function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}
     return y
 end
 
-# predict and update lifting step inplace on x, forward and backward
-# half: half of the length under consideration, shift: shift to left, c: coefs
-for (fname,op,puxind,pred) in (  (:predictfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half),true),
-                            (:predictbw!,:+,:(mod1(i+k-1+rhsis-half,half)+half),true),
-                            (:updatefw!, :-,:(mod1(i+k-1+rhsis,half)),false),
-                            (:updatebw!, :+,:(mod1(i+k-1+rhsis,half)),false)
-                            )
+# predict and update lifting steps inplace on x, forward and backward
+# half: half of the length under consideration, shift: shift to left, c: lift coefs
+# For predict: writes to range 1:half, reads from 1:2*half
+# For update : writes to range half+1:2*half, reads from 1:2*half
+for (fname,op,pred) in ((:predictfw!,:-,true),
+                        (:predictbw!,:+,true),
+                        (:updatefw!, :-,false),
+                        (:updatebw!, :+,false) )
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vector{T}, shift::Integer)
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, c::Vector{T}, shift::Int)
+    lhsr, irange, rhsr, rhsis = getliftranges(half, length(c), shift, $pred)
+    lift_boundary = perboundaryfunc(string($op), $pred)
+    lift_inbounds = inboundsfunc(string($op))
+    
+    # left boundary
+    lift_boundary(x, half, c, lhsr, rhsis)
+    # main loop
+    lift_inbounds(x, c, irange, rhsis)
+    # right boundary
+    lift_boundary(x, half, c, rhsr, rhsis)
+    return x
+end
+end # eval begin
+end # for
 
-    nc = length(c)
+function getliftranges(half::Int, nc::Int, shift::Int, pred::Bool)
     # define index shift rhsis
-    if $pred
+    if pred
     	rhsis = -shift+half
     else
         rhsis = -shift-half
@@ -227,18 +244,54 @@ function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vect
         lhsr = 1:irmin-1
         rhsr = irmax+1:half
     end
-    if !($pred)  # shift ranges for update
+    if !(pred)  # shift ranges for update
     	irange += half
     	lhsr += half
     	rhsr += half
     end
-    # periodic boundary
-    for i in lhsr
+    return (lhsr, irange, rhsr, rhsis)
+end
+
+# periodic boundary
+for (fname,op,puxind) in (  (:liftp_perboundaryfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half)),
+                            (:liftp_perboundarybw!,:+,:(mod1(i+k-1+rhsis-half,half)+half)),
+                            (:liftu_perboundaryfw!, :-,:(mod1(i+k-1+rhsis,half))),
+                            (:liftu_perboundarybw!, :+,:(mod1(i+k-1+rhsis,half)))
+                            )
+@eval begin
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, c::Vector{T}, irange::Range, rhsis::Int)
+    nc = length(c)
+    for i in irange
         for k = 1:nc  
             @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
         end
     end
-    # main loop
+    return x
+end
+end # eval begin
+end # for
+function perboundaryfunc(op::String, pu::Bool)
+    if op == string(:-)
+        if pu
+	        func = liftp_perboundaryfw!
+        else
+            func = liftu_perboundaryfw!
+        end
+    else
+        if pu
+	        func = liftp_perboundarybw!
+        else
+            func = liftu_perboundarybw!
+        end
+    end
+    return func
+end
+
+# main lift loop
+for (fname,op) in ( (:lift_inboundsfw!,:-), (:lift_inboundsbw!,:+,) )
+@eval begin
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int)
+    nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
@@ -259,21 +312,22 @@ function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Integer, c::Vect
         end
     else
         for i in irange
-            for k = 1:nc  
-                @inbounds x[i] = ($op)(x[i], c[k]*x[i+k-1+rhsis] )
+            for k = 0:nc-1
+                @inbounds x[i] = ($op)(x[i], c[k]*x[i+k+rhsis] )
             end
         end
     end
-    # periodic boundary
-    for i in rhsr
-        for k = 1:nc
-            @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
-        end
-    end
-
     return x
 end
 end # eval begin
 end # for
+function inboundsfunc(op::String)
+    if op == string(:-)
+        func = lift_inboundsfw!
+    else
+        func = lift_inboundsbw!
+    end
+    return func
+end
 
 

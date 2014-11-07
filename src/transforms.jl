@@ -36,10 +36,10 @@ export dwt, idwt, dwt!, dwtc, idwtc
 # general functions for all types and dimensions
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc)
 @eval begin
-	# assume full transform
-	$Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, nscales(size(x,1)))
-	# int -> float
-	$Xwt{T<:Integer}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer) = $Xwt(float(x), wt, L)
+    # assume full transform
+    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, nscales(size(x,1)))
+    # int -> float
+    $Xwt{T<:Integer}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer) = $Xwt(float(x), wt, L)
 end
 end
 
@@ -75,8 +75,8 @@ for (Xwtc, Xwt) in ((:dwtc, :dwt), (:idwtc, :idwt))
         
         for d = 1:cn
             ind[dim] = d
-	        xc = reshape(x[ind...], size(x)[1:end-1]...)
-	        y[ind...] = $Xwt(xc, wt, L)
+            xc = reshape(x[ind...], size(x)[1:end-1]...)
+            y[ind...] = $Xwt(xc, wt, L)
         end
         return y
     end
