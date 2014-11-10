@@ -22,7 +22,7 @@ function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
     return scfilter, dcfilter
 end
 
-# 1-d
+# 1-D
 # writes to y
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
@@ -94,7 +94,7 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVe
     return y
 end
 
-# 2-d
+# 2-D
 # writes to y
 function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
@@ -178,6 +178,81 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
         fw  && (nsub = nsub>>1)
         !fw && (nsub = nsub<<1)
     end
+    return y
+end
+
+
+
+# WPT
+# 1-D
+# writes to y
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+    si = Array(T, length(filter)-1)       # tmp filter vector
+    if L > 1
+        if fw
+            ns = length(x)>>1
+        else
+            ns = length(x)
+        end
+    else
+        ns = 0
+    end
+    snew = Array(T, ns)
+    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
+    
+    wpt!(y, x, filter, L, fw, dcfilter, scfilter, si, snew)
+    return y
+end
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
+    n = length(x)
+    J = nscales(n)
+    @assert size(x) == size(y)
+    @assert isdyadic(y)
+    @assert 0 <= L <= J
+    is(y,x) && error("input vector is output vector")
+    L == 0 && return copy!(y,x) 
+    
+    if fw
+        unsafe_dwt1level!(y, x, filter, fw, dcfilter, scfilter, si)
+        if L > 1  # recursion
+            @assert length(snew) >= n>>1
+            nj = detailn(J-1)
+            dx = unsafe_vectorslice(snew, 1, nj)
+            dy = unsafe_vectorslice(y, detailindex(J-1,1), nj)
+            copy!(dx, dy)
+            # detail
+            wpt!(dy, dx, filter, L-1, fw, dcfilter, scfilter, si, snew)
+            dy = unsafe_vectorslice(y, 1, nj)
+            copy!(dx, dy)
+            # scaling
+            wpt!(dy, dx, filter, L-1, fw, dcfilter, scfilter, si, snew)
+        end
+    else
+        if L == 1
+            unsafe_dwt1level!(y, x, filter, fw, dcfilter, scfilter, si)
+        else
+            @assert length(snew) >= n
+            first = true
+            while L > 0
+                ix = 1
+                nj = detailn(tl2level(n, L-1))
+                dx = unsafe_vectorslice(snew, 1, nj)
+                while ix <= n
+                    dy = unsafe_vectorslice(y, ix, nj)
+                    if first
+                        dx = unsafe_vectorslice(x, ix, nj)
+                    else
+                        copy!(dx, dy)
+                    end
+                    unsafe_dwt1level!(dy, dx, filter, fw, dcfilter, scfilter, si)
+                    ix += nj
+                end
+                L -= 1
+                first = false
+            end
+        end
+    end
+    
     return y
 end
 

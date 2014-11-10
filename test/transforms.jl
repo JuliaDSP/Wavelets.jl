@@ -168,6 +168,34 @@ EE = Exception
 @test_throws EE dwt(randn(4,4),uwt)
 
 
+# ============= WPT ================
+
+wf = wavelet("db2")
+x = randn(16)
+
+L = 1
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+@test_approx_eq wp dw
+@test_approx_eq iwpt(wp,wf,L) x
+
+L = 2
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+dw2 = copy(dw)
+dw2[9:end] = dwt(dw[9:end],wf,1)
+@test_approx_eq dw[1:8] wp[1:8]
+@test_approx_eq dw2 wp
+@test_approx_eq iwpt(wp,wf,L) x
+
+L = 3
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+@test_approx_eq dw[1:4] wp[1:4]
+@test_approx_eq dwt(dw2[5:8],wf,1) wp[5:8]
+@test_approx_eq dwt(dw2[9:12],wf,1) wp[9:12]
+@test_approx_eq dwt(dw2[13:16],wf,1) wp[13:16]
+@test_approx_eq iwpt(wp,wf,L) x
 
 # ============= tranform low level functions ================
 

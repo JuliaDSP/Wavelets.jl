@@ -17,6 +17,7 @@ detailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
 nscales(n::Integer) = int(log2(n))
 nscales(x::Vector) = nscales(length(x))
+nscales(x::Array) = nscales(size(x,1))
 # the largest detail level
 maxlevel(n::Integer) = nscales(n)-1
 maxlevel(x::Vector) = maxlevel(length(x))
