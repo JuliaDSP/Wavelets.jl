@@ -20,6 +20,8 @@ export  DiscreteWavelet,
         waveletfilter,
         waveletls
 
+using Compat
+
 # TYPE HIERARCHY
 
 abstract DiscreteWavelet{T}
@@ -176,7 +178,7 @@ end
 
 
 # class => namebase
-const FILTERC2N=(ASCIIString=>ASCIIString)[
+const FILTERC2N=@compat Dict{ASCIIString,ASCIIString}(
 "Haar" => "haar",
 "Coiflet" => "coif",
 "Daubechies" => "db",
@@ -186,7 +188,7 @@ const FILTERC2N=(ASCIIString=>ASCIIString)[
 "Beylkin" => "beyl",
 "Vaidyanathan" => "vaid",
 "CDF" => "cdf"
-]
+)
 
 
 # scaling filters h (low pass)
@@ -197,7 +199,7 @@ const FILTERC2N=(ASCIIString=>ASCIIString)[
 # http://www.mathworks.com/matlabcentral/fileexchange/5502-filter-coefficients-to-popular-wavelets
 ### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
 # name => qmf
-const FILTERS=(ASCIIString=>Vector{Float64})[
+const FILTERS=@compat Dict{ASCIIString,Vector{Float64}}(
 # Haar filter, same as db1
 "haar" =>
 [0.7071067811865475,0.7071067811865475]
@@ -290,22 +292,22 @@ const FILTERS=(ASCIIString=>Vector{Float64})[
 [-0.0000629061180000,0.0003436319050000,-0.0004539566200000,-0.0009448971360000,0.0028438345470000,0.0007081375040000,-0.0088391034090000,0.0031538470560000,0.0196872150100000,-0.0148534480050000,-0.0354703986070000,0.0387426192930000,0.0558925236910000,-0.0777097509020000,-0.0839288843660000,0.1319716614170000,0.1350842271290000,-0.1944504717660000,-0.2634948024880000,0.2016121617750000,0.6356010598720000,0.5727977932110000,0.2501841295050000,0.0457993341110000]
 
 
-]
+)
 
 
 # biortho filters
 # name => (qmf1,qmf2)
-const BIFILTERS=(ASCIIString=>NTuple{2,Vector{Float64}})[
+const BIFILTERS=@compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
 # test
 "test" =>
 ([0.7071067811865475,0.7071067811865475],
  [0.7071067811865475,0.7071067811865475])
 
-]
+)
 
 
 # in matlab (d,p) -> (p,u)
-const SCHEMES=(ASCIIString=>NTuple{3})[
+const SCHEMES=@compat Dict{ASCIIString,NTuple{3}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([ LSstep('u',1.5861343420604  *[1.0,1.0],0),
@@ -334,7 +336,7 @@ const SCHEMES=(ASCIIString=>NTuple{3})[
             0.5176380902050414,
             1.9318516525781364)
 
-]           
+)        
 
 
 
