@@ -59,14 +59,14 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     for j in jrange
         if fw
             # detail coefficients
-            filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), s, 1,-filtlen+1,1)
+            filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), s, 1,-filtlen+1, true)
             # scaling coefficients
-            filtdown!(scfilter, si, y,                1, detailn(j), s, 1, 0, 0)
+            filtdown!(scfilter, si, y,                1, detailn(j), s, 1, 0, false)
         else
             # scaling coefficients
-            filtup!(false, scfilter, si, y, 1, detailn(j+1), s, 1, -filtlen+1, 0)
+            filtup!(false, scfilter, si, y, 1, detailn(j+1), s, 1, -filtlen+1, false)
             # detail coefficients
-            filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, 1)
+            filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, true)
         end
         # if not final iteration: copy to tmp location
         fw  && j != jrange[end] && copy!(snew,1,y,1,detailn(j))
@@ -82,14 +82,14 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVe
 
     if fw
         # detail coefficients
-        filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), x, 1,-filtlen+1,1)
+        filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), x, 1,-filtlen+1, true)
         # scaling coefficients
-        filtdown!(scfilter, si, y,                1, detailn(j), x, 1, 0, 0)
+        filtdown!(scfilter, si, y,                1, detailn(j), x, 1, 0, false)
     else
         # scaling coefficients
-        filtup!(false, scfilter, si, y, 1, detailn(j+1), x, 1, -filtlen+1, 0)
+        filtup!(false, scfilter, si, y, 1, detailn(j+1), x, 1, -filtlen+1, false)
         # detail coefficients
-        filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, 1)
+        filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, true)
     end
     return y
 end
@@ -181,6 +181,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     return y
 end
 
+
 macro filtermainloop(si, silen, b, val)
     quote
         @inbounds for j=2:$(esc(silen))
@@ -199,103 +200,188 @@ macro filtermainloopzero(si, silen)
 end
 
 # periodic filter and downsampling (by 2)
-# b : filter
-# si: tmp array of length 1 less than b
-# out : result gets written to out[iout:nout-1], where nout==nx/2
-# x : filter convolved with x[ix:nx-1] (shifted by shift)
-# sw : shift downsampling (0 or 1)
+# apply f to x[ix:ix+nx-1] and write to out[iout:iout+nout-1]
+# f : filter
+# si: tmp array of length 1 less than f
+# out : result gets written to out[iout:iout+nout-1]
+# x : filter convolved with x[ix:ix+nx-1], where nx=nout*2 (shifted by shift)
+# ss : shift downsampling
 # based on Base.filt
-function filtdown!{T<:FloatingPoint}(b::Vector{T}, si::Vector{T},
+function filtdown!{T<:FloatingPoint}(f::Vector{T}, si::Vector{T},
                               out::AbstractVector{T},  iout::Integer, nout::Integer, 
-                              x::AbstractVector{T}, ix::Integer, shift::Integer=0, sw::Integer=0)
+                              x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout<<1
     silen = length(si)
-    bs = length(b)
+    flen = length(f)
     @assert length(x) >= ix+nx-1
     @assert length(out) >= iout+nout-1
     @assert (nx-1)>>1 + iout <= length(out)
-    @assert sw==0 || sw==1
-    @assert silen == bs-1
+    @assert silen == flen-1
+    @assert shift <= 0
 
     fill!(si,0.0)
-    istart = bs + sw
-    dsshift = (bs%2 + sw)%2  # is bs odd, and shift downsampling
+    istart = flen + int(ss)
+    dsshift = (flen%2 + int(ss))%2  # is flen odd, and shift downsampling
+    
+    rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
     @inbounds begin
-        for i = 1:istart-1
+        for i in rout1  # rout1 assumed to be in 1:istart-1
             # periodic in the range [ix:ix+nx-1]
             xatind = x[mod(i-1+shift, nx) + ix]
-            @filtermainloop(si, silen, b, xatind)
+            @filtermainloop(si, silen, f, xatind)
         end
-        for i = istart:(nx-1+istart)
+        # rin is inbounds in [ix:ix+nx-1]
+        ixsh = -1 + shift + ix
+        for i in rin
+            xatind = x[i + ixsh]
+            # take every other value after istart
+            if (i+dsshift)%2 == 0 && i >= istart
+                out[(i-istart)>>1 + iout] = si[1] + f[1]*xatind
+            end
+            @filtermainloop(si, silen, f, xatind)
+        end
+        for i in rout2
             # periodic in the range [ix:ix+nx-1]
             xatind = x[mod(i-1+shift, nx) + ix]
             # take every other value after istart
-            if (i+dsshift)%2 == 0
-                out[(i-istart)>>1 + iout] = si[1] + b[1]*xatind
+            if (i+dsshift)%2 == 0 && i >= istart
+                out[(i-istart)>>1 + iout] = si[1] + f[1]*xatind
             end
-            @filtermainloop(si, silen, b, xatind)
+            @filtermainloop(si, silen, f, xatind)
         end
     end
 
     return nothing
 end
+# find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
+# where mod(i-1+shift, nx) + ix == i + ixsh
+function splitdownrangeper(istart, ix, nx, shift)
+    inxi = 0
+    ixsh = -1 + shift + ix
+    if mod(shift, nx) + ix == 1 + ixsh   # shift likely 0
+        inxi = 1
+        iend = nx-1
+        while mod(iend - 1 + shift, nx) + ix != iend + ixsh
+            iend -= 1
+        end
+        return (0:-1, inxi:iend, (iend+1):(nx-1+istart))
+    elseif mod(istart - 1 + shift, nx) + ix == istart + ixsh
+        inxi = istart
+        iend = nx-1+istart
+        while mod(iend - 1 + shift, nx) + ix != iend + ixsh
+            iend -= 1
+        end
+        return (1:inxi-1, inxi:iend, (iend+1):(nx-1+istart))
+    else
+        return (0:-1, 0:-1, 1:(nx-1+istart))
+    end
+end
+
 
 # periodic filter and upsampling (by 2)
-# b : filter
-# si: tmp array of length 1 less than b
-# out : result gets written to out[iout:nout-1], where nout==nx*2
-# x : filter convolved with x[ix:nx-1] upsampled (then shifted by shift)
-# sw : shift upsampling (0 or 1)
+# apply f to x[ix:ix+nx-1] upsampled and write to out[iout:iout+nout-1]
+# f : filter
+# si: tmp array of length 1 less than f
+# out : result gets written to out[iout:iout+nout-1]
+# x : filter convolved with x[ix:ix+nx-1] upsampled, where nout==nx*2 (then shifted by shift)
+# ss : shift upsampling
 # based on Base.filt
-function filtup!{T<:FloatingPoint}(add2out::Bool,b::Vector{T}, si::Vector{T},
+function filtup!{T<:FloatingPoint}(add2out::Bool, f::Vector{T}, si::Vector{T},
                               out::AbstractVector{T},  iout::Integer, nout::Integer, 
-                              x::AbstractVector{T}, ix::Integer, shift::Integer=0, sw::Integer=0)
+                              x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout>>1
     silen = length(si)
-    bs = length(b)
+    flen = length(f)
     @assert length(x) >= ix+nx-1                # check array size
     @assert length(out) >= iout+nout-1          # check array size
     @assert (nx<<1-1)>>1 + iout <= length(out)  # max for out index
-    @assert sw==0 || sw==1
-    @assert silen == bs-1
+    @assert silen == flen-1
+    @assert shift <= 0
 
     fill!(si,0.0)
-    istart = bs - shift%2
-    dsshift = (sw)%2  # shift upsampling
+    istart = flen - shift%2
+    dsshift = int(ss)%2  # shift upsampling
+    
+    rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin
         xatind = 0.0
-        for i = 1:istart-1
-            if (i+dsshift)%2==0
+        for i in rout1  # rout1 assumed to be in 1:istart-1
+            if (i+dsshift)%2 == 0
                 @filtermainloopzero(si, silen)
             else
                 # periodic in the range [ix:ix+nx-1]
                 xindex = mod((i-1)>>1+shift>>1,nx) + ix    #(i-1)>>1 increm. every other
                 xatind = x[xindex]
-                @filtermainloop(si, silen, b, xatind)
+                @filtermainloop(si, silen, f, xatind)
             end
         end
-        for i = istart:(nout-1+istart)
-            if (i+dsshift)%2==0
+        ixsh = shift>>1 + ix
+        for i in rin
+            if (i+dsshift)%2 == 0
+                xatind = 0.0
+            else
+                xindex = (i-1)>>1 + ixsh
+                xatind = x[xindex]
+            end
+            if i >= istart
+                if add2out
+                    out[(i-istart) + iout] += si[1] + f[1]*xatind
+                else
+                    out[(i-istart) + iout] = si[1] + f[1]*xatind
+                end
+            end
+            if (i+dsshift)%2 == 0
+                @filtermainloopzero(si, silen)
+            else
+                @filtermainloop(si, silen, f, xatind)
+            end
+        end
+        for i in rout2
+            if (i+dsshift)%2 == 0
                 xatind = 0.0
             else
                 xindex = mod((i-1)>>1+shift>>1,nx) + ix
                 xatind = x[xindex]
             end
-            if add2out
-                out[(i-istart) + iout] += si[1] + b[1]*xatind
-            else
-                out[(i-istart) + iout] = si[1] + b[1]*xatind
+            if i >= istart
+                if add2out
+                    out[(i-istart) + iout] += si[1] + f[1]*xatind
+                else
+                    out[(i-istart) + iout] = si[1] + f[1]*xatind
+                end
             end
-            if (i+dsshift)%2==0
+            if (i+dsshift)%2 == 0
                 @filtermainloopzero(si, silen)
             else
-                @filtermainloop(si, silen, b, xatind)
+                @filtermainloop(si, silen, f, xatind)
             end
         end
     end
 
     return nothing
 end
-
+# find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
+# where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
+function splituprangeper(istart, ix, nx, nout, shift)
+    inxi = 0
+    ixsh = shift>>1 + ix
+    if mod(shift>>1, nx) + ix == ixsh   # shift likely 0
+        inxi = 1
+        iend = nout-1
+        while mod((iend-1)>>1+shift>>1, nx) + ix != (iend-1)>>1 + ixsh
+            iend -= 1
+        end
+        return (0:-1, inxi:iend, (iend+1):(nout-1+istart))
+    elseif mod((istart-1)>>1+shift>>1, nx) + ix == (istart-1)>>1 + ixsh
+        inxi = istart
+        iend = nout-1+istart
+        while mod((iend-1)>>1+shift>>1, nx) + ix != (iend-1)>>1 + ixsh
+            iend -= 1
+        end
+        return (1:inxi-1, inxi:iend, (iend+1):(nout-1+istart))
+    else
+        return (0:-1, 0:-1, 1:(nout-1+istart))
+    end
+end
 
 

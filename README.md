@@ -9,7 +9,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
-* 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 10x faster than the filter transforms.
+* 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 2x faster than the filter transforms.
 
 * Denoising and thresholding functions and utilities, e.g. TI denoising by cycle spinning, noise estimation, matching pursuit. See example code and image below.
 
@@ -17,7 +17,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * Plotting/visualization utilities for 1-D and 2-D signals.
 
-Roughly 20x speedup and 50x less memory usage than [this](https://github.com/tomaskrehlik/Wavelets) implementation of `dwt`. Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
+Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
 See license (MIT) in LICENSE.md.
 
@@ -120,27 +120,27 @@ idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(size(x,1)))
 Benchmarks
 ---------
 
-Timing of `dwt` (using `db2` filter of length 4) and `fft`. The lifting wavelet transforms are faster and use less memory than `fft` in 1-D and 2-D. `dwt` by lifting is currently an order of magnitude faster than by filtering.
+Timing of `dwt` (using `db2` filter of length 4) and `fft`. The lifting wavelet transforms are faster and use less memory than `fft` in 1-D and 2-D. `dwt` by lifting is currently 2x faster than by filtering.
 
 ```julia
 # 10 iterations
 dwt by filtering (N=1048576), 20 levels
-elapsed time: 1.337276268 seconds (125861504 bytes allocated, 2.55% gc time)
+elapsed time: 0.247907616 seconds (125861504 bytes allocated, 8.81% gc time)
 dwt by lifting (N=1048576), 20 levels
-elapsed time: 0.164345171 seconds (105640144 bytes allocated, 13.60% gc time)
+elapsed time: 0.131240966 seconds (104898544 bytes allocated, 17.48% gc time)
 fft (N=1048576), (FFTW)
-elapsed time: 0.491585123 seconds (167805248 bytes allocated, 7.00% gc time)
+elapsed time: 0.487693289 seconds (167805296 bytes allocated, 8.67% gc time)
 ```
 
 For 2-D transforms (using a `db4` filter and CDF 9/7 lifting scheme):
 ```julia
 # 10 iterations
 dwt by filtering (N=1024x1024), 10 levels
-elapsed time: 2.413446543 seconds (100389904 bytes allocated, 0.89% gc time)
+elapsed time: 0.773281141 seconds (85813504 bytes allocated, 2.87% gc time)
 dwt by lifting (N=1024x1024), 10 levels
-elapsed time: 0.350695373 seconds (89420144 bytes allocated, 6.37% gc time)
+elapsed time: 0.317705928 seconds (88765424 bytes allocated, 3.44% gc time)
 fft (N=1024x1024), (FFTW)
-elapsed time: 0.591834364 seconds (167805936 bytes allocated, 7.07% gc time)
+elapsed time: 0.577537263 seconds (167805888 bytes allocated, 5.53% gc time)
 ```
 
 By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and a little speedup). This is useful when transforming multiple signals.
