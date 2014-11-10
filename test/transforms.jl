@@ -2,9 +2,9 @@
 # ============= accuracy tests ================
 
 # test against data made by data/make_filter_data.m in Octave
-wname = {"Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"};
-wnum = {[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]};
-wvm = {[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]};
+wname = Any["Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"];
+wnum = Any[[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]];
+wvm = Any[[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]];
 
 name = "filter"
 data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
@@ -153,7 +153,7 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 # non-Array type
-wt = GLS("db2")
+wt = wavelet("db2", transform="ls")
 x = randn(16, 16)
 xs = sub(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
@@ -166,7 +166,9 @@ uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
 @test_throws EE dwt(randn(4,4),uwt)
-
+@test_throws EE wavelet("db2", transform="asdf")
+@test_throws EE waveletfilter("db2asdsad")
+@test_throws EE waveletfilter("db2", boundary="ppppp")
 
 # ============= WPT ================
 
