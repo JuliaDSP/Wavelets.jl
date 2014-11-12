@@ -125,7 +125,7 @@ function makedwt(ft::Type, n, wf, L)
 end
 
 # 1-d
-n = 8; wf = OrthoFilter("db2"); L = 2
+n = 8; wf = wavelet("db2", transform="filter"); L = 2
 sett = (n,wf,L)
 
 ft = Float64; x, y = makedwt(ft, sett...)
@@ -202,8 +202,10 @@ wl = waveletls("db2")
 x = randn(128)
 @test_approx_eq iwpt(wpt(x,wf),wf) x
 @test_approx_eq iwpt(wpt(x,wl),wl) x
-@test_approx_eq wpt(x,wl) wpt(x,wf)
+@test_approx_eq wpt(x,wl,1) wpt(x,wf,1)
+@test_approx_eq wpt(x,wl,2) wpt(x,wf,2)
 @test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
+@test_approx_eq wpt(x,wl) wpt(x,wf)
 
 # ============= tranform low level functions ================
 
