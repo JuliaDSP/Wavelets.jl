@@ -6,26 +6,27 @@
 #
 ##################################################################################
 
-# pseudo "out of place" by copying
-function dwt!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{T}, scheme::GLS, L::Integer, fw::Bool)
-    copy!(y, x)
-    dwt!(y, scheme, L, fw)
-    return y
+for (Xwt) in (:dwt!, :wpt!)
+@eval begin
+    # pseudo "out of place" by copying
+    function $Xwt{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, scheme::GLS, L::Integer, fw::Bool)
+        copy!(y, x)
+        $Xwt(y, scheme, L, fw)
+        return y
+    end
+end
 end
 
 # 1-D
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
-# oopc: out of place computation (e.g. for a non-unit strided vector)
-# oopv: the out of place location
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2); oopc::Bool=false, oopv::Union(AbstractVector{T},Nothing)=nothing)
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
     J = nscales(n)
     @assert isdyadic(y)
     @assert 0 <= L <= J
-    @assert !(oopc && oopv == nothing)
-    @assert !(oopc && n != length(oopv))
+    @assert length(tmp) >= n>>2
     L == 0 && return y          # do nothing
     
     if fw
@@ -47,12 +48,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
 
     for j in jrange
         if fw
-            if oopc && j==jrange[1]
-                split!(oopv, y, ns)
-                s = oopv
-            else
-                split!(s, ns, tmp)
-            end
+            split!(s, ns, tmp)
             for step in stepseq
                 stepcoef = convert(Array{T}, step.coef)
                 if step.stept == 'p'
@@ -61,27 +57,11 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
                     updatefw!(s, half, stepcoef, step.shift)
                 end
             end
-            if oopc && L==1  # directly use out of place normalize
-                normalize!(y, oopv, half, ns, norm1, norm2)
-            elseif oopc && j==jrange[end]
-                normalize!(s, half, ns, norm1, norm2)
-                copy!(y, oopv)
-            else
-                normalize!(s, half, ns, norm1, norm2)
-            end
+            normalize!(s, half, ns, norm1, norm2)
             ns = ns>>1 
             half = half>>1
         else
-            if oopc && L==1  # directly use out of place normalize
-                normalize!(oopv, y, half, ns, norm1, norm2)
-                s = oopv
-            elseif oopc && j==jrange[1]
-                copy!(oopv, y)
-                s = oopv
-                normalize!(s, half, ns, norm1, norm2)
-            else
-                normalize!(s, half, ns, norm1, norm2)
-            end
+            normalize!(s, half, ns, norm1, norm2)
             for step in stepseq
                 stepcoef = convert(Array{T}, step.coef)
                 if step.stept == 'p'
@@ -90,11 +70,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
                     updatebw!(s, half, stepcoef, step.shift)
                 end
             end
-            if oopc && j==jrange[end]
-                merge!(y, oopv, ns)
-            else
-                merge!(s, ns, tmp)        # inverse split
-            end
+            merge!(s, ns, tmp)        # inverse split
             ns = ns<<1 
             half = half<<1
         end
@@ -156,7 +132,7 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, i
     return y
 end
 
-# 2-d
+# 2-D
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
@@ -167,6 +143,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool,
     @assert iscube(y)
     @assert isdyadic(y)
     @assert 0 <= L <= J
+    @assert length(tmp) >= n>>2
     @assert length(tmpvec) >= n
     L == 0 && return y          # do nothing
     
@@ -226,6 +203,54 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool,
     
     return y
 end
+
+
+
+# WPT
+# 1-D
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+
+    n = length(y)
+    J = nscales(n)
+    @assert isdyadic(y)
+    @assert 0 <= L <= J
+    @assert length(tmp) >= n>>2
+    L == 0 && return y          # do nothing
+    
+    if fw
+        stepseq = scheme.step
+        norm1 = convert(T, scheme.norm1)
+        norm2 = convert(T, scheme.norm2)
+    else
+        stepseq = reverse(scheme.step)
+        norm1 = convert(T, 1/scheme.norm1)
+        norm2 = convert(T, 1/scheme.norm2)
+    end
+    
+    if L == 1
+        unsafe_dwt1level!(y, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
+    else
+        L0 = L
+        while L > 0
+            ix = 1
+            if fw
+                nj = detailn(tl2level(n, L0-L))
+            else
+                nj = detailn(tl2level(n, L-1))
+            end
+            while ix <= n
+                dy = unsafe_vectorslice(y, ix, nj)
+                unsafe_dwt1level!(dy, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
+                ix += nj
+            end
+            L -= 1
+        end
+    end
+    
+    return y
+end
+
+
 
 function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half

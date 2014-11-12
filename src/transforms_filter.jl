@@ -22,6 +22,19 @@ function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
     return scfilter, dcfilter
 end
 
+for (Xwt) in (:dwt!, :wpt!)
+@eval begin
+    # pseudo "inplace" by copying
+    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+        y = Array(T, size(x))
+        $Xwt(y, x, filter, L, fw)
+        copy!(x,y)
+        return x
+    end
+end
+end
+
+# DWT
 # 1-D
 # writes to y
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
@@ -30,13 +43,6 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
     return y
-end
-# pseudo "inplace" by copying
-function dwt!{T<:FloatingPoint}(x::AbstractArray{T}, filter::OrthoFilter, L::Integer, fw::Bool)
-    y = Array(T, size(x))
-    dwt!(y, x, filter, L, fw)
-    copy!(x,y)
-    return x
 end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
@@ -183,20 +189,14 @@ end
 
 
 
+
+
 # WPT
 # 1-D
 # writes to y
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
-    si = Array(T, length(filter)-1)       # tmp filter vector
-    if L > 1
-        if fw
-            ns = length(x)>>1
-        else
-            ns = length(x)
-        end
-    else
-        ns = 0
-    end
+    si = Array(T, length(filter)-1)
+    ns = ifelse(L > 1, ifelse(fw, length(x)>>1, length(x)), 0)
     snew = Array(T, ns)
     scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
     

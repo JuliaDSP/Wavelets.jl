@@ -49,19 +49,18 @@ for WT in ("db1","db2")
     
     x2 = copy(x)
     tmp = zeros(n)
-    tmpsub = zeros(n)
     
     for L in (nscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        dwt!(x2, wls, L, true, tmp, oopc=true, oopv=tmpsub)
+        dwt!(x2, wls, L, true, tmp)
         
         @test_vecnorm_eq_eps yf yls stderr
         @test_vecnorm_eq_eps yf x2 stderr
         
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        dwt!(x2, wls, L, false, tmp, oopc=true, oopv=tmpsub)
+        dwt!(x2, wls, L, false, tmp)
         
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
@@ -172,7 +171,7 @@ EE = Exception
 
 # ============= WPT ================
 
-wf = wavelet("db2")
+wf = waveletfilter("db2")
 x = randn(16)
 
 L = 1
@@ -198,6 +197,13 @@ dw = dwt(x,wf,L)
 @test_approx_eq dwt(dw2[9:12],wf,1) wp[9:12]
 @test_approx_eq dwt(dw2[13:16],wf,1) wp[13:16]
 @test_approx_eq iwpt(wp,wf,L) x
+
+wl = waveletls("db2")
+x = randn(128)
+@test_approx_eq iwpt(wpt(x,wf),wf) x
+@test_approx_eq iwpt(wpt(x,wl),wl) x
+@test_approx_eq wpt(x,wl) wpt(x,wf)
+@test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
 
 # ============= tranform low level functions ================
 

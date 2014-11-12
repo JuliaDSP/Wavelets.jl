@@ -105,6 +105,7 @@ idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 wpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 iwpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
+wpt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
 ```
 
 #### Wavelet class information

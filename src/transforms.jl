@@ -45,29 +45,20 @@ for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
 end
 end
 
-# 1-D, 2-D MRA
-# DWT methods with Array allocation
-for (Xwt, fw) in ((:dwt, true), (:idwt, false))
+# DWT, WPT methods with Array allocation
+for (Xwt, fw, Xwtip) in ((:dwt, true, :dwt!), 
+                         (:idwt, false, :dwt!), 
+                         (:wpt, true, :wpt!), 
+                         (:iwpt, false, :wpt!))
 @eval begin
     function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::FilterWavelet, L::Integer)
         y = Array(T, size(x))
-        dwt!(y, x, wt, L, $fw)
+        $Xwtip(y, x, wt, L, $fw)
         return y
     end
     function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::LSWavelet, L::Integer)
         y = Array(T, size(x))
-        dwt!(y, x, wt, L, $fw)
-        return y
-    end
-end
-end
-# 1-D
-# WPT methods with Array allocation
-for (Xwt, fw) in ((:wpt, true), (:iwpt, false))
-@eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::FilterWavelet, L::Integer)
-        y = Array(T, size(x))
-        wpt!(y, x, wt, L, $fw)
+        $Xwtip(y, x, wt, L, $fw)
         return y
     end
 end
