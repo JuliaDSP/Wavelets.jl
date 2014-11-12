@@ -5,7 +5,7 @@
 [![Build Status](https://travis-ci.org/JuliaDSP/Wavelets.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/Wavelets.jl)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.png?branch=master)](https://coveralls.io/r/JuliaDSP/Wavelets.jl?branch=master)
 
-A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-D, 2-D, by filtering or lifting).
+A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-D, 2-D, by filtering or lifting). The package includes discrete wavelet transforms, column-wise discrete wavelet transforms, and wavelet packet transforms.
 
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
@@ -32,7 +32,50 @@ julia> Pkg.add("Wavelets")
 julia> using Wavelets
 ```
 
-A few usage examples:
+
+API
+---------
+
+#### Wavelet transforms and types
+```julia
+# Type construction,
+# also accept (class::String, n::Union(Integer,String); ...)
+wavelet(name::String; transform::String="filter", boundary::String="per")
+waveletfilter(name::String; boundary::String="per")
+waveletls(name::String; boundary::String="per")
+# DWT (discrete wavelet transform)
+dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
+dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
+# DWTC (column-wise discrete wavelet transform)
+dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+# WPT (wavelet packet transform)
+wpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+iwpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
+wpt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
+```
+
+#### Wavelet class information
+
+The numbers for orthogonal wavelets indicate the number vanishing moments of the wavelet function. The length of a `wt::OrthoFilter` can be obtained with `length(wt)`.
+
+| Class | Short | Type | Numbers |
+|:------- |:------ |:----- |:----- |
+| `Haar` | `haar` | Ortho |   |
+| `Coiflet` | `coif` | Ortho | 2:2:8 |
+| `Daubechies` | `db` | Ortho | 1:10 |
+| `Symmlet`/`Symlet` | `sym` | Ortho | 4:10 |
+| `Battle` | `batt` | Ortho | 2:2:6
+| `Beylkin` | `beyl` | Ortho |  |
+| `Vaidyanathan` | `vaid` | Ortho |  |
+| `CDF` | `cdf` | BiOrtho | "9/7" |
+
+
+Examples
+---------
 
 ```julia
 # the simplest way to transform a signal x is
@@ -81,45 +124,6 @@ xts = wplotim(x, L, waveletfilter("db3"))
 ![Bumps](/example/transform1d_bumps.png)
 
 ![Lena](/example/transform2d_lena.jpg)
-
-
-API
----------
-
-#### Wavelet transforms and types
-```julia
-# Type construction,
-# also accept (class::String, n::Union(Integer,String); ...)
-wavelet(name::String; transform::String="filter", boundary::String="per")
-waveletfilter(name::String; boundary::String="per")
-waveletls(name::String; boundary::String="per")
-# DWT (discrete wavelet transform)
-dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
-dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
-# DWTC (column-wise discrete wavelet transform)
-dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-# WPT (wavelet packet transform)
-wpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-iwpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
-wpt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
-```
-
-#### Wavelet class information
-
-| Class | Short | Type | Numbers |
-|:------- |:------ |:----- |:----- |
-| `Haar` | `haar` | Ortho |   |
-| `Coiflet` | `coif` | Ortho | 2:2:8 |
-| `Daubechies` | `db` | Ortho | 1:10 |
-| `Symmlet`/`Symlet` | `sym` | Ortho | 4:10 |
-| `Battle` | `batt` | Ortho | 2:2:6
-| `Beylkin` | `beyl` | Ortho |  |
-| `Vaidyanathan` | `vaid` | Ortho |  |
-| `CDF` | `cdf` | BiOrtho | "9/7" |
 
 
 Benchmarks
@@ -184,10 +188,13 @@ y = denoise(x,TI=true)
 To-do list
 ---------
 
-* don't use sub arrays in 2d
+* Transforms for non-dyadic signals
+* Transforms for non-square 2-D signals
+* Boundary extensions (other than periodic)
 * Boundary orthogonal wavelets
 * Define more lifting schemes
-* Redundant transforms and wavelet packets
+* Stationary transform
+* Wavelet packet tree transform (and best basis algorithm)
 * Continuous wavelets
 * Wavelet scalogram
 
