@@ -149,7 +149,8 @@ function waveletfilter(name::String; boundary::String="per")
     if qmf != nothing 
     	return OrthoFilter(name, BT)
     else
-    	return BiOrthoFilter(name, BT)
+        error("unknown filter")
+    	#return BiOrthoFilter(name, BT)
     end
 end
 
@@ -175,7 +176,7 @@ for f in (:wavelet, :waveletfilter, :waveletls)
 end
 end
 
-
+# TODO Use "Dict{String,String}(a=>b, ...)" instead. (only in julia v0.4)
 
 # class => namebase
 const FILTERC2N=@compat Dict{ASCIIString,ASCIIString}(

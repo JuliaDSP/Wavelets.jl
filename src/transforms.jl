@@ -1,6 +1,8 @@
 module Transforms
 using ..Util, ..WaveletTypes
-export dwt, idwt, dwt!, dwtc, idwtc
+export  dwt, idwt, dwt!, 
+        dwtc, idwtc, wpt, 
+        iwpt, wpt!
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 
@@ -34,7 +36,7 @@ export dwt, idwt, dwt!, dwtc, idwtc
 ## GENERAL TRANSFORM FUNCTIONS
 
 # general functions for all types and dimensions
-for Xwt in (:dwt, :idwt, :dwtc, :idwtc)
+for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
 @eval begin
     # assume full transform
     $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, nscales(size(x,1)))
@@ -43,18 +45,20 @@ for Xwt in (:dwt, :idwt, :dwtc, :idwtc)
 end
 end
 
-# 1-D, 2-D MRA
-# methods with Array allocation
-for (Xwt, fw) in ((:dwt, true), (:idwt, false))
+# DWT, WPT methods with Array allocation
+for (Xwt, fw, Xwtip) in ((:dwt, true, :dwt!), 
+                         (:idwt, false, :dwt!), 
+                         (:wpt, true, :wpt!), 
+                         (:iwpt, false, :wpt!))
 @eval begin
     function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::FilterWavelet, L::Integer)
         y = Array(T, size(x))
-        dwt!(y, x, wt, L, $fw)
+        $Xwtip(y, x, wt, L, $fw)
         return y
     end
     function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::LSWavelet, L::Integer)
         y = Array(T, size(x))
-        dwt!(y, x, wt, L, $fw)
+        $Xwtip(y, x, wt, L, $fw)
         return y
     end
 end

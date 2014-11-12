@@ -2,9 +2,9 @@
 # ============= accuracy tests ================
 
 # test against data made by data/make_filter_data.m in Octave
-wname = {"Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"};
-wnum = {[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]};
-wvm = {[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]};
+wname = Any["Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"];
+wnum = Any[[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]];
+wvm = Any[[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]];
 
 name = "filter"
 data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
@@ -49,19 +49,18 @@ for WT in ("db1","db2")
     
     x2 = copy(x)
     tmp = zeros(n)
-    tmpsub = zeros(n)
     
     for L in (nscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        dwt!(x2, wls, L, true, tmp, oopc=true, oopv=tmpsub)
+        dwt!(x2, wls, L, true, tmp)
         
         @test_vecnorm_eq_eps yf yls stderr
         @test_vecnorm_eq_eps yf x2 stderr
         
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        dwt!(x2, wls, L, false, tmp, oopc=true, oopv=tmpsub)
+        dwt!(x2, wls, L, false, tmp)
         
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
@@ -153,7 +152,7 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 # non-Array type
-wt = GLS("db2")
+wt = wavelet("db2", transform="ls")
 x = randn(16, 16)
 xs = sub(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
@@ -166,8 +165,45 @@ uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
 @test_throws EE dwt(randn(4,4),uwt)
+@test_throws EE wavelet("db2", transform="asdf")
+@test_throws EE waveletfilter("db2asdsad")
+@test_throws EE waveletfilter("db2", boundary="ppppp")
 
+# ============= WPT ================
 
+wf = waveletfilter("db2")
+x = randn(16)
+
+L = 1
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+@test_approx_eq wp dw
+@test_approx_eq iwpt(wp,wf,L) x
+
+L = 2
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+dw2 = copy(dw)
+dw2[9:end] = dwt(dw[9:end],wf,1)
+@test_approx_eq dw[1:8] wp[1:8]
+@test_approx_eq dw2 wp
+@test_approx_eq iwpt(wp,wf,L) x
+
+L = 3
+wp = wpt(x,wf,L)
+dw = dwt(x,wf,L)
+@test_approx_eq dw[1:4] wp[1:4]
+@test_approx_eq dwt(dw2[5:8],wf,1) wp[5:8]
+@test_approx_eq dwt(dw2[9:12],wf,1) wp[9:12]
+@test_approx_eq dwt(dw2[13:16],wf,1) wp[13:16]
+@test_approx_eq iwpt(wp,wf,L) x
+
+wl = waveletls("db2")
+x = randn(128)
+@test_approx_eq iwpt(wpt(x,wf),wf) x
+@test_approx_eq iwpt(wpt(x,wl),wl) x
+@test_approx_eq wpt(x,wl) wpt(x,wf)
+@test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
 
 # ============= tranform low level functions ================
 
