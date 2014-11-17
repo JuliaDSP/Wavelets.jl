@@ -57,12 +57,14 @@ n = 64
 
 n = 32
 x = randn(n)
-@test circshift(x,5) == circshift!(copy(x),5)
-@test circshift(x,-5) == circshift!(copy(x),-5)
-@test x == circshift!(circshift!(copy(x),29),-29)
-@test x == circshift!(circshift!(copy(x),292),-292)
-@test circshift(x,5) == circshift!(similar(x),x,5)
-@test circshift(x,-8) == circshift!(similar(x),x,-8)
+y = randn(n)
+for sh in (-43, -5, 0, 1, 28, 41)
+    @test circshift(x,sh) == circshift!(copy(x),sh)
+    @test circshift(x,-sh) == circshift!(copy(x),-sh)
+    @test x == circshift!(circshift!(copy(x),sh),-sh)
+    @test circshift(x,sh) == circshift!(similar(x),x,sh)
+    @test circshift(x,-sh) == circshift!(similar(x),x,-sh)
+end
 
 a0 = [1,2]
 exp = [1,2]
@@ -104,5 +106,7 @@ ia = 1
 inca = 3
 @test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
 @test merge!(similar(a0), 1, 1, copy(a0), 8)[1:8] ==  merge!(similar(a0), copy(a0), 8)[1:8]
+
+
 
 

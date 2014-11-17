@@ -56,47 +56,38 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
-        L = level2tl(size(x,1),level)
+        xt = Array(eltype(x), size(x))
+        L = level2tl(size(x,1), level)
         pns = prod(nspin)
         
-        if ndims(x)==1
+        if ndims(x) == 1
             z = Array(eltype(x), size(x))
-            T<:LSWavelet && (tmp=Array(eltype(x),length(x)>>2))
-            T<:FilterWavelet && (xt=Array(eltype(x),length(x)))
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
                 circshift!(z, x, shift)
                 
-                if T<:GPLS
-                    dwt!(z, wt, L, true, tmp)
-                    dnt.f(z, sigma*dnt.t)   # threshold
-                    dwt!(z, wt, L, false, tmp)
-                elseif T<:POfilter
-                    dwt!(xt, z, wt, L, true)
-                    dnt.f(xt, sigma*dnt.t)   # threshold
-                    dwt!(z, xt, wt, L, false)
-                else
-                    dwt!(z, wt, L, true)
-                    dnt.f(z, sigma*dnt.t)   # threshold
-                    dwt!(z, wt, L, false)
-                end
-               shiftadd!(y,z,-shift)
+                dwt!(xt, z, wt, L, true)
+                dnt.f(xt, sigma*dnt.t)   # threshold
+                dwt!(z, xt, wt, L, false)
+                
+                circshift!(xt, z, -shift)
+                arrayadd!(y, xt)
             end
         else # ndims > 1
             for i = 1:pns
                 shift = nspin2circ(nspin, i)
                 z = circshift(x, shift)
                 
-                dwt!(z, wt, L, true)
-                dnt.f(z, sigma*dnt.t)   # threshold
-                dwt!(z, wt, L, false)
-
+                dwt!(xt, z, wt, L, true)
+                dnt.f(xt, sigma*dnt.t)   # threshold
+                dwt!(z, xt, wt, L, false)
+                
                 z = circshift(z, -shift)
-                broadcast!(+,y,y,z)
+                arrayadd!(y, z)
             end
         end
-        scale!(y,1/pns)
-    else
+        scale!(y, 1/pns)
+    else # !TI
         if wt == nothing
             y = copy(x)
             dnt.f(y, sigma*dnt.t)
@@ -110,20 +101,15 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
     
     return y
 end
-# shift z and add to y
-function shiftadd!(y,z,shift)
-    @assert shift<=0
-    @assert length(y)==length(z)
-    n = length(y)
-    for i = 1:n+shift
-        @inbounds y[i] += z[i-shift]
-    end
-    sh = n+shift
-    for i = n+shift+1:n
-        @inbounds y[i] += z[i-sh]
+# add z to y
+function arrayadd!(y::AbstractArray, z::AbstractArray)
+    @assert length(y) == length(z)
+    for i = 1:length(y)
+        @inbounds y[i] += z[i]
     end
     return y
 end
+
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
 function noisest{T<:DiscreteWavelet}(x::AbstractArray; wt::Union(T,Nothing)=DEF_WAVELET)
@@ -150,10 +136,10 @@ function mad(x::AbstractArray)
 end
 
 # convert index i to a circshift array starting at 0 shift
-function nspin2circ(nspin::Union(Int,Tuple), i::Int)
-    typeof(nspin) == Int && (nspin = (nspin,))
+nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
+function nspin2circ(nspin::Tuple, i::Int)
     c1 = ind2sub(nspin,i)
-    c = Array(Int,length(c1))
+    c = Array(Int, length(c1))
     for k = 1:length(c1)
         c[k] = c1[k]-1
     end

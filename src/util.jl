@@ -128,7 +128,7 @@ function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
     atype = typeof(a)
     s = length(a)
     shift = mod(shift,s)
-    shift == 0 && return a
+    shift == 0 && return copy!(b,a)
     shift = ifelse(s>>1 < shift, shift-s, shift)  # shift a smaller distance if possible
     if shift < 0
         for i = 1:s+shift
