@@ -11,7 +11,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 2x faster than the filter transforms.
 
-* Denoising and thresholding functions and utilities, e.g. TI denoising by cycle spinning, noise estimation, matching pursuit. See example code and image below.
+* Thresholding, best basis and denoising functions, e.g. TI denoising by cycle spinning, best basis for WPT, noise estimation, matching pursuit. See example code and image below.
 
 * Wavelet utilities e.g. indexing and size calculation, scaling and wavelet functions computation, test functions, up and down sampling, filter mirrors, coefficient counting, inplace circshifts, and more.
 
@@ -127,6 +127,44 @@ xts = wplotim(x, L, waveletfilter("db3"))
 ![Lena](/example/transform2d_lena.jpg)
 
 
+Thesholding
+---------
+
+The `Wavelets.Threshold` module includes the following utilities
+
+* denoising (VisuShrink, translation invariant (TI))
+* best basis for WPT
+* noise estimator
+* matching pursuit
+* hard threshold
+* soft threshold
+* semisoft threshold
+* stein threshold
+* biggest m-term (best m-term) approximation
+* positive and negative thresholds
+
+Find best basis tree for WPT:
+```julia
+wt = wavelet("db4")
+x = sin(4*linspace(0,2*pi-eps(),1024))
+tree = bestbasistree(x, wt)
+xtb = wpt(x, wt, tree)
+xt = dwt(x, wt)
+# estimate sparsity in ell_1 norm
+vecnorm(xtb, 1)  # best basis wpt
+vecnorm(xt, 1)   # regular dwt
+```
+
+Denoising example:
+```julia
+n = 2^11;
+x0 = testfunction(n,"Doppler")
+x = x0 + 0.05*randn(n)
+y = denoise(x,TI=true)
+```
+![Doppler](/example/denoise_doppler.png)
+
+
 Benchmarks
 ---------
 
@@ -162,30 +200,6 @@ dwt (N=32768), 13 levels
 elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
 ```
 
-Denoising and thesholding
----------
-
-The `Wavelets.Threshold` module includes the following utilities
-
-* denoising (VisuShrink, translation invariant (TI))
-* noise estimator
-* matching pursuit
-* hard threshold
-* soft threshold
-* semisoft threshold
-* stein threshold
-* biggest m-term (best m-term) approximation
-* positive and negative thresholds
-
-Example of usage:
-```julia
-n = 2^11;
-x0 = testfunction(n,"Doppler")
-x = x0 + 0.05*randn(n)
-y = denoise(x,TI=true)
-```
-![Doppler](/example/denoise_doppler.png)
-
 To-do list
 ---------
 
@@ -195,7 +209,6 @@ To-do list
 * Boundary orthogonal wavelets
 * Define more lifting schemes
 * Stationary transform
-* best basis algorithm for wpt
 * Continuous wavelets
 * Wavelet scalogram
 
