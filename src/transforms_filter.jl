@@ -195,62 +195,57 @@ end
 # 1-D
 # writes to y
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+    wpt!(y, x, filter, maketree(length(y), L, :full), fw)
+end
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
     si = Array(T, length(filter)-1)
-    ns = ifelse(L > 1, ifelse(fw, length(x)>>1, length(x)), 0)
+    ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
     scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
     
-    wpt!(y, x, filter, L, fw, dcfilter, scfilter, si, snew)
+    wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
     return y
 end
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
     n = length(x)
     J = nscales(n)
     @assert size(x) == size(y)
     @assert isdyadic(y)
-    @assert 0 <= L <= J
-    is(y,x) && error("input vector is output vector")
-    L == 0 && return copy!(y,x) 
+    @assert isvalidtree(y, tree)
+    is(y, x) && error("input vector is output vector")
+    tree[1] || return copy!(y,x) 
     
-    if fw
-        unsafe_dwt1level!(y, x, filter, fw, dcfilter, scfilter, si)
-        if L > 1  # recursion
-            @assert length(snew) >= n>>1
-            nj = detailn(J-1)
-            dx = unsafe_vectorslice(snew, 1, nj)
-            dy = unsafe_vectorslice(y, detailindex(J-1,1), nj)
-            copy!(dx, dy)
-            # detail
-            wpt!(dy, dx, filter, L-1, fw, dcfilter, scfilter, si, snew)
-            dy = unsafe_vectorslice(y, 1, nj)
-            copy!(dx, dy)
-            # scaling
-            wpt!(dy, dx, filter, L-1, fw, dcfilter, scfilter, si, snew)
-        end
-    else
-        if L == 1
-            unsafe_dwt1level!(y, x, filter, fw, dcfilter, scfilter, si)
-        else
-            @assert length(snew) >= n
-            first = true
-            while L > 0
-                ix = 1
-                nj = detailn(tl2level(n, L-1))
-                dx = unsafe_vectorslice(snew, 1, nj)
-                while ix <= n
-                    dy = unsafe_vectorslice(y, ix, nj)
-                    if first
-                        dx = unsafe_vectorslice(x, ix, nj)
-                    else
-                        copy!(dx, dy)
-                    end
-                    unsafe_dwt1level!(dy, dx, filter, fw, dcfilter, scfilter, si)
-                    ix += nj
+    @assert length(snew) >= ifelse(fw, length(x)>>1, length(x))
+    first = true
+    L = J
+    while L > 0
+        ix = 1
+        k = 1
+        fw  && (Lfw = J-L)
+        !fw && (Lfw = L-1)
+        nj = detailn(tl2level(n, Lfw))
+        treeind = 2^(Lfw)-1
+        dx = unsafe_vectorslice(snew, 1, nj)
+        
+        while ix <= n
+            if tree[treeind+k]
+                dy = unsafe_vectorslice(y, ix, nj)
+                if first
+                    dx = unsafe_vectorslice(x, ix, nj)
+                else
+                    copy!(dx, dy)
                 end
-                L -= 1
-                first = false
+                unsafe_dwt1level!(dy, dx, filter, fw, dcfilter, scfilter, si)
+            elseif first
+                dy = unsafe_vectorslice(y, ix, nj)
+                dx = unsafe_vectorslice(x, ix, nj)
+                copy!(dy, dx)
             end
+            ix += nj
+            k += 1
         end
+        L -= 1
+        first = false
     end
     
     return y

@@ -51,16 +51,20 @@ for (Xwt, fw, Xwtip) in ((:dwt, true, :dwt!),
                          (:wpt, true, :wpt!), 
                          (:iwpt, false, :wpt!))
 @eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::FilterWavelet, L::Integer)
+    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer)
         y = Array(T, size(x))
         $Xwtip(y, x, wt, L, $fw)
         return y
     end
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::LSWavelet, L::Integer)
+end
+if Xwt == :wpt || Xwt == :iwpt
+@eval begin
+    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, tree::BitVector)
         y = Array(T, size(x))
-        $Xwtip(y, x, wt, L, $fw)
+        $Xwtip(y, x, wt, tree, $fw)
         return y
     end
+end
 end
 end
 

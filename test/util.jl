@@ -1,6 +1,7 @@
 using Wavelets
 using Base.Test
 
+print("util ...\n")
 
 @test detailn(0) == 1
 @test detailn(1) == 2
