@@ -7,7 +7,16 @@ export
     # denoising functions
     denoise,
     noisest,
+    
+    # basis functions
     matchingpursuit,
+    bestbasistree,
+    
+    # entropy
+    Entropy,
+    ShannonEntropy,
+    LogEnergyEntropy,
+    coefentropy,
     
     thf,
     # threshold with parameter m
@@ -147,6 +156,8 @@ function nspin2circ(nspin::Tuple, i::Int)
 end
 
 
+# BASIS FUNCTIONS
+
 # Matching Pursuit
 # see: Mallat (2009) p.642 "A wavelet tour of signal processing"
 # find sparse vector y such that ||x - f(y)|| < tol approximately
@@ -202,6 +213,124 @@ function findmaxabs(x::AbstractVector)
 end
 
 
+# ENTROPY MEASURES
+
+abstract Entropy
+type ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
+type LogEnergyEntropy <: Entropy end
+
+# Entropy measures: Additive with coefentropy(0) = 0
+# all coefs assumed to be on [-1,1] after normalization with nrm
+# given x and y, where x has "more concentrated energy" than y
+# then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
+
+function coefentropy{T<:FloatingPoint}(x::T, et::ShannonEntropy, nrm::T)
+    s = (x/nrm)^2
+    if s == 0.0
+        return -zero(T)
+    else
+        return -s*log(s)
+    end
+end
+function coefentropy{T<:FloatingPoint}(x::T, et::LogEnergyEntropy, nrm::T)
+    s = (x/nrm)^2
+    if s == 0.0
+        return -zero(T)
+    else
+        return -log(s)
+    end
+end
+function coefentropy{T<:FloatingPoint}(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x))
+    @assert nrm >= 0
+    sum = zero(T)
+    nrm == sum && return sum
+    for i in 1:length(x)
+        @inbounds sum += coefentropy(x[i], et, nrm)
+    end
+    return sum
+end
+
+
+
+function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=nscales(y), et::Entropy=ShannonEntropy())
+    bestbasistree(y, wt, maketree(length(y), L, :full), et)
+end
+function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
+
+    n = length(y)
+    J = nscales(n)
+    @assert isdyadic(y)
+    @assert isvalidtree(y, tree)
+    tree[1] || return besttree      # do nothing
+    
+    besttree = copy(tree)
+    x = copy(y)
+    tmp = Array(T, size(y))
+    entr = Array(T, length(tree)+length(y))
+    nrm = vecnorm(y)
+    
+    L = J
+    k = 1
+    while L > 0
+        ix = 1
+        Lfw = J-L
+        nj = detailn(tl2level(n, Lfw))
+        
+        dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
+        while ix <= n
+            dx = Transforms.unsafe_vectorslice(x, ix, nj)
+            
+            entr[k] = coefentropy(dx, et, nrm)
+            
+            dwt!(dtmp, dx, wt, 1, true)
+            copy!(dx, dtmp)
+            
+            ix += nj
+            k += 1
+        end
+        L -= 1
+    end
+    
+    for i = 1:length(y)
+        entr[k] = coefentropy(y[i], et, nrm)
+        k += 1
+    end
+    
+    # make the best tree
+    for i=1:length(tree)
+        if (i>1 && !besttree[i>>1]) || !tree[i]  # parent is 0 or input tree-node is 0
+            besttree[i] = false
+        else
+            if entr[i] <= bestsubtree(entr, i)
+                besttree[i] = false
+            else
+                besttree[i] = true
+            end
+        end
+    end
+    
+    @assert isvalidtree(y, besttree)
+    return besttree
+end
+
+# the entropy of best subtree
+function bestsubtree(entr::Array, i::Int)
+    n = length(entr)
+    
+    if i<<1+1 > n  # bottom of tree
+        return entr[i]
+    else
+        if (i<<1+1)<<1+1 > n  # above bottom of tree
+            sum = entr[i<<1]
+            sum += entr[i<<1+1]
+        else
+            sum = bestsubtree(entr, i<<1)
+            sum += bestsubtree(entr, i<<1+1)
+        end
+        
+        return min(entr[i], sum)
+    end
+end
 
 
 # WITH 1 PARAMETER t OR m
