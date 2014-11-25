@@ -355,7 +355,7 @@ function biggestterms!(x::AbstractArray, m::Int)
     @assert m >= 0
     n = length(x)
     m > n && (m = n)
-    ind = sortperm(sub(x,1:n), alg=QuickSort, by=abs)
+    ind = sortperm(x, alg=QuickSort, by=abs)
     @inbounds begin
         for i = 1:n-m
             x[ind[i]] = 0
