@@ -2,6 +2,7 @@ module Util
 export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
     mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
     split!, merge!, stridedcopy!,
+    isvalidtree, maketree,
     makewavelet, testfunction
 
 # WAVELET INDEXING AND SIZES 
@@ -316,6 +317,46 @@ function stridedcopy!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer
     return b
 end
 
+# wavelet packet transforms WPT
+# valid if 0 nodes have 0 children and length is correct
+function isvalidtree(x::AbstractVector, b::BitVector)
+    ns = nscales(x)
+    nb = length(b)
+    length(b) == 2^(ns)-1 || return false
+    @assert (2^(ns-1)-1)<<1+1 <= nb
+    
+    for i in 1:2^(ns-1)-1
+        @inbounds if !b[i] && (b[i<<1] || b[i<<1+1])
+            return false
+        end
+    end
+    return true
+end
+# return a tree (BitVector)
+# s=:full, all nodes for first L levels equal 1, others 0
+# s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
+function maketree(n::Int, L::Int, s::Symbol=:full)
+    ns = nscales(n)
+    @assert 0 <= L <= ns
+    nb = 2^(ns)-1
+    b = BitArray(nb)
+    fill!(b, false)
+    @assert (2^(ns-1)-1)<<1+1 <= nb
+    
+    t = true
+    if s == :full
+        for i in 1:2^(L)-1
+            @inbounds b[i] = t
+        end
+    elseif s == :dwt
+        for i in 1:L
+            @inbounds b[2^(i-1)] = t
+        end
+    else
+        error("uknown symbol")
+    end
+    return b
+end
 
 # return scaling and wavelet functions and location vector, made from filter h 
 # iterated with a cascade algorithm with N steps

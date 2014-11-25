@@ -1,6 +1,7 @@
 using Wavelets
 using Base.Test
 
+print("util ...\n")
 
 @test detailn(0) == 1
 @test detailn(1) == 2
@@ -107,6 +108,26 @@ inca = 3
 @test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
 @test merge!(similar(a0), 1, 1, copy(a0), 8)[1:8] ==  merge!(similar(a0), copy(a0), 8)[1:8]
 
+n = 128
+x = randn(n)
+for L = 0:nscales(n)
+    for st in (:full, :dwt)
+        @test isvalidtree(x, maketree(n, L, st))
+    end
+end
+tree = maketree(n, 4)
+tree[5] = false
+@test !isvalidtree(x, tree)
+tree = maketree(n, 4)
+tree[18] = true
+@test isvalidtree(x, tree)
+tree[7] = false
+@test !isvalidtree(x, tree)
+tree[7] = true
+tree[9] = false
+@test !isvalidtree(x, tree)
 
+EE = Exception
+@test_throws EE maketree(n, 4, :foo)
 
 

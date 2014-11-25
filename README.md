@@ -52,10 +52,11 @@ dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
 dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 # WPT (wavelet packet transform)
-wpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-iwpt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
-wpt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
+# Ltree can be L::Integer=nscales(x) or tree::BitVector=maketree(length(y), L, :full)
+wpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
+iwpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
+wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, Ltree, fw::Bool)
+wpt!(y::AbstractArray, scheme::GLS, Ltree, fw::Bool)
 ```
 
 #### Wavelet class information
@@ -194,7 +195,7 @@ To-do list
 * Boundary orthogonal wavelets
 * Define more lifting schemes
 * Stationary transform
-* Wavelet packet tree transform (and best basis algorithm)
+* best basis algorithm for wpt
 * Continuous wavelets
 * Wavelet scalogram
 

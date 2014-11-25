@@ -9,12 +9,21 @@
 for (Xwt) in (:dwt!, :wpt!)
 @eval begin
     # pseudo "out of place" by copying
-    function $Xwt{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, scheme::GLS, L::Integer, fw::Bool)
+    function $Xwt{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, scheme::GLS, L::Union(Integer, BitVector), fw::Bool)
         copy!(y, x)
         $Xwt(y, scheme, L, fw)
         return y
     end
 end
+end
+
+# return scheme parameters adjusted for direction and type
+function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
+    if fw
+        return scheme.step, convert(T, scheme.norm1), convert(T, scheme.norm2)
+    else
+        return reverse(scheme.step), convert(T, 1/scheme.norm1), convert(T, 1/scheme.norm2)
+    end
 end
 
 # 1-D
@@ -31,20 +40,15 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
     
     if fw
         jrange = (J-1):-1:(J-L)
-        stepseq = scheme.step
         ns = n
         half = ns>>1
-        norm1 = convert(T, scheme.norm1)
-        norm2 = convert(T, scheme.norm2)
     else
         jrange = (J-L):(J-1)
-        stepseq = reverse(scheme.step)
         ns = 2^(jrange[1]+1)
         half = ns>>1
-        norm1 = convert(T, 1/scheme.norm1)
-        norm2 = convert(T, 1/scheme.norm2)
     end
     s = y
+    stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
     for j in jrange
         if fw
@@ -150,16 +154,11 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool,
     if fw
         jrange = (J-1):-1:(J-L)
         nsub = n
-        stepseq = scheme.step
-        norm1 = convert(T, scheme.norm1)
-        norm2 = convert(T, scheme.norm2)
     else
         jrange = (J-L):(J-1)
         nsub = int(2^(J-L+1))
-        stepseq = reverse(scheme.step)
-        norm1 = convert(T, 1/scheme.norm1)
-        norm2 = convert(T, 1/scheme.norm2)
     end
+    stepseq, norm1, norm2 = makescheme(T, scheme, fw)
     
     xm = 0
     xs = n
@@ -209,42 +208,37 @@ end
 # WPT
 # 1-D
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+    wpt!(y, scheme, maketree(length(y), L, :full), fw, tmp)
+end
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
     J = nscales(n)
     @assert isdyadic(y)
-    @assert 0 <= L <= J
+    @assert isvalidtree(y, tree)
     @assert length(tmp) >= n>>2
-    L == 0 && return y          # do nothing
+    tree[1] || return y          # do nothing
     
-    if fw
-        stepseq = scheme.step
-        norm1 = convert(T, scheme.norm1)
-        norm2 = convert(T, scheme.norm2)
-    else
-        stepseq = reverse(scheme.step)
-        norm1 = convert(T, 1/scheme.norm1)
-        norm2 = convert(T, 1/scheme.norm2)
-    end
+    stepseq, norm1, norm2 = makescheme(T, scheme, fw)
     
-    if L == 1
-        unsafe_dwt1level!(y, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
-    else
-        L0 = L
-        while L > 0
-            ix = 1
-            if fw
-                nj = detailn(tl2level(n, L0-L))
-            else
-                nj = detailn(tl2level(n, L-1))
-            end
-            while ix <= n
+    L = J
+    while L > 0
+        ix = 1
+        k = 1
+        fw  && (Lfw = J-L)
+        !fw && (Lfw = L-1)
+        nj = detailn(tl2level(n, Lfw))
+        treeind = 2^(Lfw)-1
+        
+        while ix <= n
+            if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
                 unsafe_dwt1level!(dy, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
-                ix += nj
             end
-            L -= 1
+            ix += nj
+            k += 1
         end
+        L -= 1
     end
     
     return y

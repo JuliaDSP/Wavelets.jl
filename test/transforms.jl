@@ -1,5 +1,6 @@
 
 # ============= accuracy tests ================
+print("transforms: accuracy tests ...\n")
 
 # test against data made by data/make_filter_data.m in Octave
 wname = Any["Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"];
@@ -87,6 +88,7 @@ for WT in ("db1","db2")
 end
 
 # ============= transform functionality ================
+print("transforms: transform functionality ...\n")
 
 # column-wise 1-d
 wf = OrthoFilter("db2")
@@ -116,6 +118,7 @@ x = randn(16)
 
 
 # ============= types and sizes ================
+print("transforms: types and sizes ...\n")
 
 function makedwt(ft::Type, n, wf, L)
 	x0 = rand(-5:5, n)
@@ -159,6 +162,7 @@ xs = sub(copy(x), 1:16, 1:16)
 
 
 # ============= error tests ================
+print("transforms: error tests ...\n")
 
 type wunknownt <: DiscreteWavelet end
 uwt = wunknownt()
@@ -170,6 +174,7 @@ EE = Exception
 @test_throws EE waveletfilter("db2", boundary="ppppp")
 
 # ============= WPT ================
+print("transforms: WPT ...\n")
 
 wf = waveletfilter("db2")
 x = randn(16)
@@ -206,6 +211,16 @@ x = randn(128)
 @test_approx_eq wpt(x,wl,2) wpt(x,wf,2)
 @test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
 @test_approx_eq wpt(x,wl) wpt(x,wf)
+
+wl = waveletls("db2")
+n = 128
+x = randn(n)
+for L = 0:nscales(n)
+    @test_approx_eq wpt(x, wl, maketree(n, L, :dwt)) dwt(x, wl, L)
+    @test_approx_eq iwpt(x, wl, maketree(n, L, :dwt)) idwt(x, wl, L)
+    @test_approx_eq wpt(x, wf, maketree(n, L, :dwt)) dwt(x, wf, L)
+    @test_approx_eq iwpt(x, wf, maketree(n, L, :dwt)) idwt(x, wf, L)
+end
 
 # ============= tranform low level functions ================
 
