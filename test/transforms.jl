@@ -21,8 +21,8 @@ for i = 1:length(wname)
         ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
         
         wn = wnum[i][num]
-        wn!=0 && (wt = OrthoFilter(wname[i],wvm[i][num]))
-        wn==0 && (wt = OrthoFilter(lowercase(wname[i][1:4])))
+        wn!=0 && (wt = waveletfilter(wname[i],wvm[i][num]))
+        wn==0 && (wt = waveletfilter(lowercase(wname[i][1:4])))
         # transform data
         y = dwt(data, wt)
         y2 = dwt(data2, wt)
@@ -41,7 +41,7 @@ end
 
 # 1-d and 2-d lifting and filtering comparison
 for WT in ("db1","db2")
-    wf = OrthoFilter(WT)
+    wf = waveletfilter(WT)
     wls = GLS(WT)
     n = 64
     x = randn(n)
@@ -91,7 +91,7 @@ end
 print("transforms: transform functionality ...\n")
 
 # column-wise 1-d
-wf = OrthoFilter("db2")
+wf = waveletfilter("db2")
 x = randn(16,2)
 y = copy(x)
 y[:,1] = dwt(vec(x[:,1]),wf)
@@ -107,7 +107,7 @@ y[:,:,2] = dwt(reshape(x[:,:,2],n,n),wf)
 @test_approx_eq dwtc(x,wf) y
 
 # "inplace" for filter
-wf = OrthoFilter("db2")
+wf = waveletfilter("db2")
 x = randn(16)
 @test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2,true)
 
@@ -128,7 +128,7 @@ function makedwt(ft::Type, n, wf, L)
 end
 
 # 1-d
-n = 8; wf = wavelet("db2", transform="filter"); L = 2
+n = 8; wf = waveletfilter("db2"); L = 2
 sett = (n,wf,L)
 
 ft = Float64; x, y = makedwt(ft, sett...)
@@ -155,7 +155,7 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 # non-Array type
-wt = wavelet("db2", transform="ls")
+wt = waveletls("db2")
 x = randn(16, 16)
 xs = sub(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
@@ -169,9 +169,8 @@ uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
 @test_throws EE dwt(randn(4,4),uwt)
-@test_throws EE wavelet("db2", transform="asdf")
 @test_throws EE waveletfilter("db2asdsad")
-@test_throws EE waveletfilter("db2", boundary="ppppp")
+@test_throws EE waveletfilter("db2", "ppppp")
 
 # ============= WPT ================
 print("transforms: WPT ...\n")

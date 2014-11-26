@@ -7,6 +7,7 @@ export  DiscreteWavelet,
         #
         WaveletBoundary,
         PerBoundary,
+        Periodic,
         #ZPBoundary,
         #CPBoundary,
         #
@@ -45,7 +46,10 @@ immutable PerBoundary <: WaveletBoundary end
 #immutable CPBoundary <: WaveletBoundary end
 # and so on...
 
-const DEF_BOUNDARY = PerBoundary
+const DEF_BOUNDARY = PerBoundary()
+
+const Periodic = PerBoundary()
+
 
 
 # IMPLEMENTATIONS OF FilterWavelet
@@ -55,7 +59,7 @@ immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     name::ASCIIString           # filter short name
     OrthoFilter(qmf, name) = new(qmf, name)
 end
-function OrthoFilter{T<:WaveletBoundary}(name::String, ::Type{T}=DEF_BOUNDARY)
+function OrthoFilter{T<:WaveletBoundary}(name::String, ::T=DEF_BOUNDARY)
     qmf = get(FILTERS, name, nothing)
     qmf == nothing && error("filter not found")
     # make sure it is normalized in l2-norm
@@ -90,7 +94,7 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     name::ASCIIString       # name of scheme
     GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 end
-function GLS{T<:WaveletBoundary}(name::String, ::Type{T}=DEF_BOUNDARY)
+function GLS{T<:WaveletBoundary}(name::String, ::T=DEF_BOUNDARY)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && error("scheme not found")
     return GLS{T}(schemedef..., name)
@@ -127,52 +131,25 @@ function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
 end
 
 
-
 # TRANSFORM TYPE CONSTRUCTORS
 
-function wavelet(name::String; transform::String="filter", boundary::String="per")
-    transform = lowercase(transform)
-    if transform == "filter"
-    	return waveletfilter(name, boundary=boundary)
-    elseif transform == "ls"
-    	return waveletls(name, boundary=boundary)
-   # elseif transform == "continuous"
-   # 	return waveletcontinuous(name, boundary=boundary)
-    else
-    	error("uknown transform type")
-    end
+function wavelet(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
+    return waveletfilter(name, boundary)
 end
-
-function waveletfilter(name::String; boundary::String="per")
-    BT = getboundarytype(boundary)
-    qmf = get(FILTERS, name, nothing)
-    if qmf != nothing 
-    	return OrthoFilter(name, BT)
-    else
-        error("unknown filter")
-    	#return BiOrthoFilter(name, BT)
-    end
+function waveletfilter(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
+    return OrthoFilter(name, boundary)
 end
-
-function waveletls(name::String; boundary::String="per")
-    BT = getboundarytype(boundary)
-	return GLS(name, BT)
-end
-
-function getboundarytype(boundary::String="per")
-    boundary = lowercase(boundary)
-    if boundary == "per"
-        BT = PerBoundary
-    else
-        error("unkown boundary type")
-    end
-    return BT
+#function waveletfilterbo(name::String; boundary::WaveletBoundary=DEF_BOUNDARY)
+#    return BiOrthoFilter(name, boundary)
+#end
+function waveletls(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
+    return GLS(name, boundary)
 end
 
 for f in (:wavelet, :waveletfilter, :waveletls)
 @eval begin
 	# convert to type name
-	($f)(class::String, n::Union(Integer,String); arg...) = ($f)(getname(class,n); arg...)
+	($f)(class::String, n::Union(Integer,String), arg...) = ($f)(getname(class,n), arg...)
 end
 end
 

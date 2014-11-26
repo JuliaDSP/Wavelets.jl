@@ -39,10 +39,10 @@ API
 #### Wavelet transforms and types
 ```julia
 # Type construction,
-# also accept (class::String, n::Union(Integer,String); ...)
-wavelet(name::String; transform::String="filter", boundary::String="per")
-waveletfilter(name::String; boundary::String="per")
-waveletls(name::String; boundary::String="per")
+# also accept (class::String, n::Union(Integer,String), ...)
+wavelet(name::String, boundary::WaveletBoundary=Periodic)  # defaults to filter
+waveletfilter(name::String, boundary::WaveletBoundary=Periodic)
+waveletls(name::String, boundary::WaveletBoundary=Periodic)
 # DWT (discrete wavelet transform)
 dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
@@ -84,7 +84,7 @@ xt = dwt(x, wavelet("db2"))
 
 # the transform type can be more explicitly specified
 # set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
-wt = wavelet("Coiflet", 4, transform="filter", boundary="per")  # or
+wt = wavelet("Coiflet", 4, Periodic)  # or
 wt = waveletfilter("coif4")
 # which is equivalent to 
 wt = OrthoFilter("coif4")
