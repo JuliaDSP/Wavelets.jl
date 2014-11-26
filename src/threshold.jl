@@ -1,53 +1,168 @@
 module Threshold
 using ..Util, ..WaveletTypes, ..Transforms
 export 
-    # denoising types
+    # threshold
+    threshold!,
+    threshold,
+    HardTH,
+    SoftTH,
+    SemiSoftTH,
+    SteinTH,
+    BiggestTH,
+    PosTH,
+    NegTH,
+    # denoising
     DNFT,
     VisuShrink,
-    # denoising functions
     denoise,
     noisest,
-    
     # basis functions
     matchingpursuit,
     bestbasistree,
-    
     # entropy
+    coefentropy,
     Entropy,
     ShannonEntropy,
-    LogEnergyEntropy,
-    coefentropy,
-    
-    thf,
-    # threshold with parameter m
-    biggestterms!,
-    biggestterms,
-    # threshold with parameter t
-    thresholdhard!,
-    thresholdhard,
-    thresholdsoft!,
-    thresholdsoft,
-    thresholdsemisoft!,
-    thresholdsemisoft,
-    thresholdsemistein!,
-    thresholdsemistein,
-    # threshold without parameters
-    thresholdneg!,
-    thresholdneg,
-    thresholdpos!,
-    thresholdpos
+    LogEnergyEntropy
 
-# thresholding and denoising utilities
+
+# THRESHOLD TYPES AND FUNCTIONS
+
+abstract THType
+immutable HardTH     <: THType end
+immutable SoftTH     <: THType end
+immutable SemiSoftTH <: THType end
+immutable SteinTH    <: THType end
+immutable BiggestTH  <: THType end
+immutable PosTH      <: THType end
+immutable NegTH      <: THType end
+
+const DEF_TH = HardTH()
+
+# biggest m-term approximation (best m-term approximation for orthogonal transforms)
+# result is m-sparse
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::BiggestTH, m::Int)
+    @assert m >= 0
+    n = length(x)
+    m > n && (m = n)
+    ind = sortperm(x, alg=QuickSort, by=abs)
+    @inbounds begin
+        for i = 1:n-m
+            x[ind[i]] = 0
+        end
+    end
+    return x
+end
+
+# hard
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::HardTH, t::Real)
+    @assert t >= 0
+    @inbounds begin
+        for i = 1:length(x)
+            if abs(x[i]) <= t
+                x[i] = 0
+            end
+        end
+    end
+    return x
+end
+
+# soft
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::SoftTH, t::Real)
+    @assert t >= 0
+    @inbounds begin
+        for i = 1:length(x)
+            sh = abs(x[i]) - t
+            if sh < 0
+                x[i] = 0
+            else
+                x[i] = sign(x[i])*sh
+            end
+        end
+    end
+    return x
+end
+
+# semisoft
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::SemiSoftTH, t::Real)
+    @assert t >= 0
+    @inbounds begin
+        for i = 1:length(x)
+            if x[i] <= 2*t
+                sh = abs(x[i]) - t
+                if sh < 0
+                    x[i] = 0
+                elseif sh - t < 0
+                    x[i] = sign(x[i])*sh*2
+                end
+            end
+        end
+    end
+    return x
+end
+
+# stein
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::SteinTH, t::Real)
+    @assert t >= 0
+    @inbounds begin
+        for i = 1:length(x)
+            sh = 1 - t*t/(x[i]*x[i])
+            if sh < 0
+                x[i] = 0
+            else
+                x[i] = x[i]*sh
+            end
+        end
+    end
+    return x
+end
+
+# shrink negative elements to 0
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::NegTH)
+    @inbounds begin
+        for i = 1:length(x)
+            if x[i] < 0
+                x[i] = 0
+            end
+        end
+    end
+    return x
+end
+
+# shrink positive elements to 0
+function threshold!{T<:Number}(x::AbstractArray{T}, TH::PosTH)
+    @inbounds begin
+        for i = 1:length(x)
+            if x[i] > 0
+                x[i] = 0
+            end
+        end
+    end
+    return x
+end
+
+# the non inplace functions
+function threshold{T<:Number}(x::AbstractArray{T}, TH::THType, t::Real) 
+    y = Array(T, size(x))
+    return threshold!(copy!(y,x), TH, t)
+end
+function threshold{T<:Number}(x::AbstractArray{T}, TH::THType) 
+    y = Array(T, size(x))
+    return threshold!(copy!(y,x), TH)
+end
+
+
+# DENOISING
 
 abstract DNFT
 
 type VisuShrink <: DNFT
-    f::Function     # thresholding function (inplace)
-    t::Real         # threshold for noise level sigma=1, use sigma*t in application
+    th::THType      # threshold type
+    t::Float64      # threshold for noise level sigma=1, use sigma*t in application
 end
 # define type for signal length n
 function VisuShrink(n::Int)
-    return VisuShrink(thf("hard"), sqrt(2*log(n)))
+    return VisuShrink(DEF_TH, sqrt(2*log(n)))
 end
 
 const DEF_WAVELET = waveletfilter("sym5")    # default wavelet type
@@ -76,7 +191,7 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
                 circshift!(z, x, shift)
                 
                 dwt!(xt, z, wt, L, true)
-                dnt.f(xt, sigma*dnt.t)   # threshold
+                threshold!(xt, dnt.th, sigma*dnt.t)
                 dwt!(z, xt, wt, L, false)
                 
                 circshift!(xt, z, -shift)
@@ -88,7 +203,7 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
                 z = circshift(x, shift)
                 
                 dwt!(xt, z, wt, L, true)
-                dnt.f(xt, sigma*dnt.t)   # threshold
+                threshold!(xt, dnt.th, sigma*dnt.t)
                 dwt!(z, xt, wt, L, false)
                 
                 z = circshift(z, -shift)
@@ -99,11 +214,11 @@ function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;
     else # !TI
         if wt == nothing
             y = copy(x)
-            dnt.f(y, sigma*dnt.t)
+            threshold!(y, dnt.th, sigma*dnt.t)
         else
             L = level2tl(size(x,1),level)
             y = dwt(x, wt, L)
-            dnt.f(y, sigma*dnt.t)   # threshold
+            threshold!(y, dnt.th, sigma*dnt.t)
             dwt!(y, wt, L, false)
         end
     end
@@ -216,8 +331,8 @@ end
 # ENTROPY MEASURES
 
 abstract Entropy
-type ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
-type LogEnergyEntropy <: Entropy end
+immutable ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
+immutable LogEnergyEntropy <: Entropy end
 
 # Entropy measures: Additive with coefentropy(0) = 0
 # all coefs assumed to be on [-1,1] after normalization with nrm
@@ -333,153 +448,6 @@ function bestsubtree(entr::Array, i::Int)
 end
 
 
-# WITH 1 PARAMETER t OR m
-
-# return an inplace threshold function
-function thf(th::String="hard")
-    if th=="hard"
-        return thresholdhard!
-    elseif th=="soft"
-        return thresholdsoft!
-    elseif th=="semisoft"
-        return thresholdsemisoft!
-    elseif th=="stein"
-        return thresholdstein!
-    end
-    error("threshold ", th, " not defined")
-end
-
-# biggest m-term approximation (best m-term approximation for orthogonal transforms)
-# returns a m-sparse array
-function biggestterms!(x::AbstractArray, m::Int)
-    @assert m >= 0
-    n = length(x)
-    m > n && (m = n)
-    ind = sortperm(x, alg=QuickSort, by=abs)
-    @inbounds begin
-        for i = 1:n-m
-            x[ind[i]] = 0
-        end
-    end
-    return x
-end
-
-# hard
-function thresholdhard!(x::AbstractArray, t::Real)
-    @assert t >= 0
-    @inbounds begin
-        for i = 1:length(x)
-            if abs(x[i]) <= t
-                x[i] = 0
-            end
-        end
-    end
-    return x
-end
-
-# soft
-function thresholdsoft!(x::AbstractArray, t::Real)
-    @assert t >= 0
-    @inbounds begin
-        for i = 1:length(x)
-            sh = abs(x[i]) - t
-            if sh < 0
-                x[i] = 0
-            else
-                x[i] = sign(x[i])*sh
-            end
-        end
-    end
-    return x
-end
-
-# semisoft
-function thresholdsemisoft!(x::AbstractArray, t::Real)
-    @assert t >= 0
-    @inbounds begin
-        for i = 1:length(x)
-            if x[i] <= 2*t
-                sh = abs(x[i]) - t
-                if sh < 0
-                    x[i] = 0
-                elseif sh - t < 0
-                    x[i] = sign(x[i])*sh*2
-                end
-            end
-        end
-    end
-    return x
-end
-
-# stein
-function thresholdstein!(x::AbstractArray, t::Real)
-    @assert t >= 0
-    @inbounds begin
-        for i = 1:length(x)
-            sh = 1 - t*t/(x[i]*x[i])
-            if sh < 0
-                x[i] = 0
-            else
-                x[i] = x[i]*sh
-            end
-        end
-    end
-    return x
-end
-
-# the non inplace functions
-for (fn,fn!) in (   (:biggestterms,     :biggestterms!),
-                    (:thresholdhard,    :thresholdhard!),
-                    (:thresholdsoft,    :thresholdsoft!),
-                    (:thresholdsemisoft,:thresholdsemisoft!),
-                    (:thresholdstein,   :thresholdstein!)
-                 )
-@eval begin
-function ($fn){T<:Number}(x::AbstractArray{T}, t::Real) 
-    y = Array(T, size(x))
-    return ($fn!)(copy!(y,x), t)
-end
-end # eval begin
-end #for
-
-
-# WITHOUT PARAMETERS
-
-# shrink negative elements to 0
-function thresholdneg!(x::AbstractArray)
-    @inbounds begin
-        for i = 1:length(x)
-            if x[i] < 0
-                x[i] = 0
-            end
-        end
-    end
-    return x
-end
-
-# shrink positive elements to 0
-function thresholdpos!(x::AbstractArray)
-    @inbounds begin
-        for i = 1:length(x)
-            if x[i] > 0
-                x[i] = 0
-            end
-        end
-    end
-    return x
-end
-
-# the non inplace functions
-for (fn,fn!) in (   (:thresholdneg, :thresholdneg!),
-                    (:thresholdpos, :thresholdpos!)
-                 )
-@eval begin
-function ($fn){T<:Number}(x::AbstractArray{T}) 
-    y = Array(T, size(x))
-    return ($fn!)(copy!(y,x))
-end
-end # eval begin
-end #for
 
 end
 

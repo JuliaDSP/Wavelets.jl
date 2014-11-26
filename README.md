@@ -136,13 +136,52 @@ The `Wavelets.Threshold` module includes the following utilities
 * best basis for WPT
 * noise estimator
 * matching pursuit
-* hard threshold
-* soft threshold
-* semisoft threshold
-* stein threshold
-* biggest m-term (best m-term) approximation
-* positive and negative thresholds
+* threshold functions (see table for types)
 
+#### API
+```julia
+# threshold types with parameter
+threshold!(x::AbstractArray, TH::THType, t::Real)
+threshold(x::AbstractArray, TH::THType, t::Real)
+# without parameter (PosTH, NegTH)
+threshold!(x::AbstractArray, TH::THType)
+threshold(x::AbstractArray, TH::THType)
+# denoising
+denoise(x::AbstractArray;
+        wt=DEF_WAVELET, 
+        level=max(nscales(size(x,1))-6,1),
+        dnt=VisuShrink(size(x,1)),
+        sigma=noisest(x, wt=wt),
+        TI=false,
+        nspin=tuple([8 for i=1:length(size(x))]...) )
+# entropy
+coefentropy(x, et::Entropy, nrm)
+# best basis for WPT limited to active inital tree nodes
+bestbasistree(y::AbstractVector, wt::DiscreteWavelet, 
+        L::Integer=nscales(y), et::Entropy=ShannonEntropy() )
+bestbasistree(y::AbstractVector, wt::DiscreteWavelet, 
+        tree::BitVector, et::Entropy=ShannonEntropy() )
+```
+
+| Type | Details |
+|:------- |:------ |
+| **Thresholding** | ` <: THType` |
+| `HardTH` | hard thresholding |
+| `SoftTH` | soft threshold |
+| `SemiSoftTH` | semisoft thresholding |
+| `SteinTH` | stein thresholding |
+| `PosTH` | positive thresholding |
+| `NegTH` | negative thresholding |
+| `BiggestTH` | biggest m-term (best m-term) approx. |
+| **Denoising** | ` <: DNFT` |
+| `VisuShrink` | VisuShrink denoising |
+| **Entropy** | ` <: Entropy` |
+| `ShannonEntropy` | `-v^2*log(v^2)` (Coifman-Wickerhauser) |
+| `LogEnergyEntropy` | `-log(v^2)` |
+
+
+
+#### Examples
 Find best basis tree for WPT:
 ```julia
 wt = wavelet("db4")
@@ -154,8 +193,7 @@ xt = dwt(x, wt)
 vecnorm(xtb, 1)  # best basis wpt
 vecnorm(xt, 1)   # regular dwt
 ```
-
-Denoising example:
+Denoising:
 ```julia
 n = 2^11;
 x0 = testfunction(n,"Doppler")
