@@ -97,6 +97,7 @@ y = copy(x)
 y[:,1] = dwt(vec(x[:,1]),wf)
 y[:,2] = dwt(vec(x[:,2]),wf)
 @test_approx_eq dwtc(x,wf) y
+@test_approx_eq dwtc(x',wf,nscales(16),1)' y
 
 # column-wise 2-d
 n = 16
@@ -105,6 +106,11 @@ y = copy(x)
 y[:,:,1] = dwt(reshape(x[:,:,1],n,n),wf)
 y[:,:,2] = dwt(reshape(x[:,:,2],n,n),wf)
 @test_approx_eq dwtc(x,wf) y
+x = randn(n,2,n)
+y = copy(x)
+y[:,1,:] = dwt(reshape(x[:,1,:],n,n),wf)
+y[:,2,:] = dwt(reshape(x[:,2,:],n,n),wf)
+@test_approx_eq dwtc(x,wf,nscales(16),2) y
 
 # "inplace" for filter
 wf = waveletfilter("db2")
