@@ -39,18 +39,18 @@ API
 #### Wavelet transforms and types
 ```julia
 # Type construction,
-# also accept (class::String, n::Union(Integer,String); ...)
-wavelet(name::String; transform::String="filter", boundary::String="per")
-waveletfilter(name::String; boundary::String="per")
-waveletls(name::String; boundary::String="per")
+# also accept (class::String, n::Union(Integer,String), ...)
+wavelet(name::String, boundary::WaveletBoundary=Periodic)  # defaults to filter
+waveletfilter(name::String, boundary::WaveletBoundary=Periodic)
+waveletls(name::String, boundary::WaveletBoundary=Periodic)
 # DWT (discrete wavelet transform)
 dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
 dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
-# DWTC (column-wise discrete wavelet transform)
-dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+# DWTC (discrete wavelet transform along dimension td (default is last dim.))
+dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x), td::Integer=ndims(x))
+idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x), td::Integer=ndims(x))
 # WPT (wavelet packet transform)
 # Ltree can be L::Integer=nscales(x) or tree::BitVector=maketree(length(y), L, :full)
 wpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
@@ -84,7 +84,7 @@ xt = dwt(x, wavelet("db2"))
 
 # the transform type can be more explicitly specified
 # set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
-wt = wavelet("Coiflet", 4, transform="filter", boundary="per")  # or
+wt = wavelet("Coiflet", 4, Periodic)  # or
 wt = waveletfilter("coif4")
 # which is equivalent to 
 wt = OrthoFilter("coif4")

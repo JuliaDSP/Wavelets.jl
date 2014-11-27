@@ -68,27 +68,52 @@ end
 end
 end
 
-# column-wise transforms or color images, transform each x[:,...,:,i] separately
-for (Xwtc, Xwt) in ((:dwtc, :dwt), (:idwtc, :idwt))
+# column-wise transforms or color images, transform each x[:,...,:,i] separately (default)
+# or transform each x[:,...,i,:,...] separately at dim td
+for (Xwtc, Xwt, dir) in ((:dwtc, :dwt!, :true), (:idwtc, :dwt!, :false))
 @eval begin
-    function $Xwtc{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer)
+    function $Xwtc{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
         dim = ndims(x)
-        cn = size(x, dim)
-        y = Array(eltype(x), size(x))
+        @assert 1 <= td <= dim
+        sizex = size(x)
+        sizexc = maketfsize(sizex, td)
+        y = Array(T, sizex)
+        xc = Array(T, sizexc)
+        yc = Array(T, sizexc)
         
         ind = Array(Any, dim)
         for i = 1:dim
-            ind[i] = 1:size(x, i)
+            ind[i] = 1:sizex[i]
         end
         
-        for d = 1:cn
-            ind[dim] = d
-            xc = reshape(x[ind...], size(x)[1:end-1]...)
-            y[ind...] = $Xwt(xc, wt, L)
+        for d = 1:sizex[td]
+            ind[td] = d
+            if dim > 2
+                xc[:] = x[ind...]
+                ($Xwt)(yc, xc, wt, L, $dir)
+                y[ind...] = yc
+            else  # fast copy methods in 2-D
+                Util.copygeneral2!(xc, x, ind...)
+                ($Xwt)(yc, xc, wt, L, $dir)
+                Util.copygeneral1!(y, ind..., yc)
+            end
         end
         return y
     end
 end
+end
+
+# for dwtc
+function maketfsize(t::NTuple, td::Integer)
+    s = Array(eltype(t[1]), length(t)-1)
+    k = 1
+    for i=1:length(t)
+        if i != td
+            s[k] = t[i]
+            k += 1
+        end
+    end
+    return tuple(s...)
 end
 
 # Array with shared memory

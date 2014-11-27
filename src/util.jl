@@ -421,5 +421,40 @@ function testfunction(n::Int, ft::String)
     return f
 end
 
+
+function copygeneral2!(y::AbstractArray, x::AbstractMatrix, t::Range, d::Integer)
+    k = 1
+    for i in t
+        @inbounds y[k] = x[i,d]
+        k +=1
+    end
+    return y
 end
+function copygeneral2!(y::AbstractArray, x::AbstractMatrix, d::Integer, t::Range)
+    k = 1
+    for i in t
+        @inbounds y[k] = x[d,i]
+        k +=1
+    end
+    return y
+end
+function copygeneral1!(y::AbstractMatrix, t::Range, d::Integer, x::AbstractArray)
+    k = 1
+    for i in t
+        @inbounds y[i,d] = x[k]
+        k +=1
+    end
+    return y
+end
+function copygeneral1!(y::AbstractMatrix, d::Integer, t::Range, x::AbstractArray)
+    k = 1
+    for i in t
+        @inbounds y[d,i] = x[k]
+        k +=1
+    end
+    return y
+end
+
+
+end # module
 
