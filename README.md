@@ -122,9 +122,7 @@ L = 2
 xts = wplotim(x, L, waveletfilter("db3"))
 ```
 
-![Bumps](/example/transform1d_bumps.png)
-
-![Lena](/example/transform2d_lena.jpg)
+See [Bumps](/example/transform1d_bumps.png) and [Lena](/example/transform2d_lena.jpg) for plot images.
 
 
 Thesholding
@@ -229,14 +227,7 @@ fft (N=1024x1024), (FFTW)
 elapsed time: 0.577537263 seconds (167805888 bytes allocated, 5.53% gc time)
 ```
 
-By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and a little speedup). This is useful when transforming multiple signals.
-```julia
-# 1000 iterations
-dwt! (N=32768), 13 levels
-elapsed time: 5.081105993 seconds (701512 bytes allocated)
-dwt (N=32768), 13 levels
-elapsed time: 5.151621451 seconds (395317512 bytes allocated, 1.62% gc time)
-```
+By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and some speedup). This is useful when transforming multiple times.
 
 To-do list
 ---------
@@ -246,9 +237,10 @@ To-do list
 * Boundary extensions (other than periodic)
 * Boundary orthogonal wavelets
 * Define more lifting schemes
+* WPT in 2-D
 * Stationary transform
 * Continuous wavelets
 * Wavelet scalogram
-
+* DWT in 3-D
 
 
