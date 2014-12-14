@@ -19,7 +19,8 @@ export  DiscreteWavelet,
         scale,
         wavelet,
         waveletfilter,
-        waveletls
+        waveletls,
+        daubechies
 
 using Compat
 
@@ -320,4 +321,83 @@ const SCHEMES=@compat Dict{ASCIIString,NTuple{3}}(
 
 end
 
+
+# ------------------------------------------------------------
+
+# Compute filters from the Daubechies class
+# N is the number of zeros at -1
+function daubechies(N::Int)
+    # Create polynomial
+    C = Array(Int, N)
+    for n = 0:N-1
+        C[N-n] = binomial(N-1+n, n)
+    end
+
+    # Find roots in y domain (truncated binomial series; (1 - y)^{-N})
+    Y = roots(C)
+
+    # Find roots in z domain: 
+    # z + z^{-1} = 2 - 4*y
+    # where y is a root from above
+    D = 2*sqrt( Y.^2 - Y )
+    Z = complex( zeros(2*N-2) )
+    Z[1:N-1] = 1 - 2*Y + D
+    Z[N:end] = 1 - 2*Y - D
+
+    # Retain roots inside unit circle
+    idx = abs(Z) .<= 1 + eps()
+    ZZ = Z[idx]
+
+    # Find coefficients of the polynomial
+    # (1 + z)^N * \prod_i (z - z_i)
+    R = [-ones(N) ; ZZ]
+    HH = vieta( R )
+
+    # Normalize coefficients
+    H = HH / norm(HH)
+
+    return real(H)
+end
+
+
+# Compute roots of polynomial
+# Input is a coefficient vector with highest powers first
+function roots(C::AbstractVector)
+    A = compan(C)
+
+    r = eig( A )[1]
+
+    return r
+end
+
+
+# Create companion matrix for a polynomial
+# Input is a coefficient vector with highest powers first
+function compan(C::AbstractVector)
+    n = length(C)
+
+    A = zeros(n-1, n-1)
+
+    if n > 1
+        A[1,:] = -C[2:end] ./ C[1]
+        A[2:n:end] = 1
+    end
+
+    return A
+end
+
+
+# Vieta-like formula for computing polynomial coefficients from roots
+# See
+# http://www.mathworks.se/help/matlab/ref/poly.html
+function vieta(R::AbstractVector)
+    n = length( R )
+
+    C = complex( [1 ; zeros(n)] )
+    for k = 1:n
+        C[2:k+1] = C[2:k+1] - R[k] * C[1:k]
+    end
+
+    return C
+end
 
