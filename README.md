@@ -67,7 +67,7 @@ The numbers for orthogonal wavelets indicate the number vanishing moments of the
 |:------- |:------ |:----- |:----- |
 | `Haar` | `haar` | Ortho |   |
 | `Coiflet` | `coif` | Ortho | 2:2:8 |
-| `Daubechies` | `db` | Ortho | 1:10 |
+| `Daubechies` | `db` | Ortho | 1:Inf |
 | `Symmlet`/`Symlet` | `sym` | Ortho | 4:10 |
 | `Battle` | `batt` | Ortho | 2:2:6
 | `Beylkin` | `beyl` | Ortho |  |
