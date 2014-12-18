@@ -28,6 +28,14 @@ tl2level(x::Vector, L::Integer) = tl2level(length(x), L)
 # convert maximum level j to number of transformed levels L
 level2tl(arg...) = tl2level(arg...)
 
+# Non-dyadic Wavelet Indexing and sizes
+# detail coef at level l location i (i starting at 1) -> vector index
+detailindex(arraysize::Integer, l::Integer, i::Integer) = int(arraysize/2^l+i)
+# the range of detail coefs at level l
+detailrange(arraysize::Integer, l::Integer) = int((arraysize/2^l+1)):(int(arraysize/2^(l-1)))
+# number of detail coefs at level l
+detailn(arraysize::Integer, l::Integer) = int(arraysize/2^l)
+
 
 # UTILITY FUNCTIONS
 
@@ -74,6 +82,17 @@ function isdyadic(x::AbstractArray)
         n != 2^J && return false
     end
     return true
+end
+
+# To perform a level L transform, the suport of the signal in each dimension must have 
+# 2^L as a factor. Check this:
+function sufficientpowersoftwo(x::AbstractArray, L::Integer)
+	for i = 1:ndims(x)
+		n = size(x,i)
+		fact = 2^L
+		n%fact != 0 && return false
+	end
+	return true
 end
 
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
