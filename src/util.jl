@@ -1,6 +1,6 @@
 module Util
 export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
-    mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
+    mirror, upsample, downsample, iscube, isdyadic, sufficientpowersoftwo, wcount, circshift!,
     split!, merge!, stridedcopy!,
     isvalidtree, maketree,
     makewavelet, testfunction
