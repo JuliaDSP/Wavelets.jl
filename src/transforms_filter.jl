@@ -82,7 +82,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     n = length(x)
-	l = 1 # FIXME: Check this should be 1, not 0, or something else. 
+	l = 1
     filtlen = length(filter)
 
     if fw
