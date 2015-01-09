@@ -32,29 +32,23 @@ end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    #J = nscales(n)
-    #@assert isdyadic(y)
     @assert sufficientpowersoftwo(y,L)
     @assert 0 <= L #<= J
     @assert length(tmp) >= n>>2
     L == 0 && return y          # do nothing
     
     if fw
-        #jrange = (J-1):-1:(J-L)
         lrange = 1:L
         ns = n
         half = ns>>1
     else
-        #jrange = (J-L):(J-1)
         lrange = L:-1:1
-        #ns = 2^(jrange[1]+1)
         ns = div(n,(2^(lrange[1]-1)))
         half = ns>>1
     end
     s = y
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
-    #for j in jrange
     for l in lrange
         if fw
             split!(s, ns, tmp)
@@ -148,9 +142,7 @@ end
 function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
-    #J = nscales(n)
     @assert iscube(y)
-    #@assert isdyadic(y)
     @assert sufficientpowersoftwo(y,L)
     @assert 0 <= L #<= J
     @assert length(tmp) >= n>>2
@@ -158,20 +150,16 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool,
     L == 0 && return y          # do nothing
     
     if fw
-        #jrange = (J-1):-1:(J-L)
         lrange = 1:L
         nsub = n
     else
-        #jrange = (J-L):(J-1)
         lrange = L:-1:1
-        #nsub = int(2^(J-L+1))
         nsub = div(n,2^(L-1))
     end
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
     
     xm = 0
     xs = n
-    #for j in jrange
     for l in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
