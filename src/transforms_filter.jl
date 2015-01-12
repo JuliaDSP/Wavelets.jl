@@ -7,13 +7,13 @@
 ##################################################################################
 
 function makeqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-	scfilter, dcfilter = makereverseqmf(h, fw, T)
+    scfilter, dcfilter = makereverseqmf(h, fw, T)
     return reverse(scfilter), reverse(dcfilter)
 end
 function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-	h = convert(Vector{T}, h)
+    h = convert(Vector{T}, h)
     if fw
-    	scfilter = reverse(h)
+        scfilter = reverse(h)
         dcfilter = mirror(h)
     else
         scfilter = h
@@ -47,7 +47,7 @@ end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
     @assert size(x) == size(y)
-	@assert sufficientpowersoftwo(y, L)
+    @assert sufficientpowersoftwo(y, L)
     @assert 0 <= L 
     is(y,x) && error("input vector is output vector")
     
@@ -57,11 +57,11 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     filtlen = length(filter)
     
     if fw
-		lrange = 1:L
+        lrange = 1:L
     else
-		lrange = L:-1:1
+        lrange = L:-1:1
     end
-	for l in lrange
+    for l in lrange
         if fw
             # detail coefficients
             filtdown!(dcfilter, si, y, detailindex(n,l,1), detailn(n,l), s, 1,-filtlen+1, true)
@@ -82,7 +82,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     n = length(x)
-	l = 1
+    l = 1
     filtlen = length(filter)
 
     if fw
@@ -115,7 +115,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     n = size(x,1)
     @assert size(x) == size(y)
     @assert iscube(y)
-	@assert sufficientpowersoftwo(y, L)
+    @assert sufficientpowersoftwo(y, L)
     @assert 0 <= L 
     @assert length(tmpvec) >= n<<1
     is(y,x) && error("input matrix is output matrix")
@@ -125,22 +125,22 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     #s = x
 
     if fw
-		lrange = 1:L
+        lrange = 1:L
         nsub = n
     else
-		lrange = L:-1:1
-		nsub = div(n,2^(L-1))
+        lrange = L:-1:1
+        nsub = div(n,2^(L-1))
         copy!(y,x)
     end
 
-	for l in lrange
+    for l in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         tmpsub2 = unsafe_vectorslice(tmpvec, nsub+1, nsub)
         if fw
             # rows
             for i=1:nsub
                 xi = i
-				if l != lrange[1]
+                if l != lrange[1]
                     stridedcopy!(tmpsub, y, xi, xs, nsub)
                 else  # use x in first iteration
                     stridedcopy!(tmpsub, x, xi, xs, nsub)
@@ -160,7 +160,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
             for i=1:nsub
                 xi = 1+(i-1)*n
                 ya = unsafe_vectorslice(y, xi, nsub)
-				if l != lrange[1]
+                if l != lrange[1]
                     copy!(tmpsub,1,ya,1,nsub)
                     unsafe_dwt1level!(ya, tmpsub, filter, fw, dcfilter, scfilter, si)
                 else  # use x in first iteration
