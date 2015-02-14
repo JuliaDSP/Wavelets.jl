@@ -1,6 +1,6 @@
 module Util
 export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
-    mirror, upsample, downsample, iscube, isdyadic, wcount, circshift!,
+    mirror, upsample, downsample, iscube, isdyadic, sufficientpowersoftwo, wcount, circshift!,
     split!, merge!, stridedcopy!,
     isvalidtree, maketree,
     makewavelet, testfunction
@@ -27,6 +27,14 @@ tl2level(n::Integer, L::Integer) = nscales(n)-L
 tl2level(x::Vector, L::Integer) = tl2level(length(x), L)
 # convert maximum level j to number of transformed levels L
 level2tl(arg...) = tl2level(arg...)
+
+# Non-dyadic Wavelet Indexing and sizes
+# detail coef at level l location i (i starting at 1) -> vector index
+detailindex(arraysize::Integer, l::Integer, i::Integer) = int(arraysize/2^l+i)
+# the range of detail coefs at level l
+detailrange(arraysize::Integer, l::Integer) = int((arraysize/2^l+1)):(int(arraysize/2^(l-1)))
+# number of detail coefs at level l
+detailn(arraysize::Integer, l::Integer) = int(arraysize/2^l)
 
 
 # UTILITY FUNCTIONS
@@ -72,6 +80,17 @@ function isdyadic(x::AbstractArray)
         n = size(x,i)
         J = nscales(n)
         n != 2^J && return false
+    end
+    return true
+end
+
+# To perform a level L transform, the suport of the signal in each dimension must have 
+# 2^L as a factor. Check this:
+function sufficientpowersoftwo(x::AbstractArray, L::Integer)
+    for i = 1:ndims(x)
+        n = size(x,i)
+        fact = 2^L
+        n%fact != 0 && return false
     end
     return true
 end
@@ -362,19 +381,19 @@ end
 # iterated with a cascade algorithm with N steps
 makewavelet(h, arg...) = makewavelet(h.qmf, arg...)
 function makewavelet(h::AbstractVector, N::Integer=8)
-	@assert N>=0
-	sc = norm(h)
-	h = h*sqrt(2)/sc
-	phi = copy(h)
-	psi = mirror(reverse(h))
+    @assert N>=0
+    sc = norm(h)
+    h = h*sqrt(2)/sc
+    phi = copy(h)
+    psi = mirror(reverse(h))
 
-	for i=1:N
-		phi = conv(upsample(phi), h)
-		psi = conv(upsample(psi), h)
-	end
-	phi = phi[1:end-2^(N)+1]
-	psi = psi[1:end-2^(N)+1]
-	return scale!(phi,sc/sqrt(2)), scale!(psi,sc/sqrt(2)), linspace(0,length(h)-1,length(psi))
+    for i=1:N
+        phi = conv(upsample(phi), h)
+        psi = conv(upsample(psi), h)
+    end
+    phi = phi[1:end-2^(N)+1]
+    psi = psi[1:end-2^(N)+1]
+    return scale!(phi,sc/sqrt(2)), scale!(psi,sc/sqrt(2)), linspace(0,length(h)-1,length(psi))
 end
 
 # return a vector of test function values on [0,1), see

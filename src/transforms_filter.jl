@@ -7,13 +7,13 @@
 ##################################################################################
 
 function makeqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-	scfilter, dcfilter = makereverseqmf(h, fw, T)
+    scfilter, dcfilter = makereverseqmf(h, fw, T)
     return reverse(scfilter), reverse(dcfilter)
 end
 function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-	h = convert(Vector{T}, h)
+    h = convert(Vector{T}, h)
     if fw
-    	scfilter = reverse(h)
+        scfilter = reverse(h)
         dcfilter = mirror(h)
     else
         scfilter = h
@@ -46,10 +46,9 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
-    J = nscales(n)
     @assert size(x) == size(y)
-    @assert isdyadic(y)
-    @assert 0 <= L <= J
+    @assert sufficientpowersoftwo(y, L)
+    @assert 0 <= L 
     is(y,x) && error("input vector is output vector")
     
     L == 0 && return copy!(y,x)     # do nothing
@@ -58,44 +57,44 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     filtlen = length(filter)
     
     if fw
-        jrange = (J-1):-1:(J-L)
+        lrange = 1:L
     else
-        jrange = (J-L):(J-1)
+        lrange = L:-1:1
     end
-    for j in jrange
+    for l in lrange
         if fw
             # detail coefficients
-            filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), s, 1,-filtlen+1, true)
+            filtdown!(dcfilter, si, y, detailindex(n,l,1), detailn(n,l), s, 1,-filtlen+1, true)
             # scaling coefficients
-            filtdown!(scfilter, si, y,                1, detailn(j), s, 1, 0, false)
+            filtdown!(scfilter, si, y,                1, detailn(n,l), s, 1, 0, false)
         else
             # scaling coefficients
-            filtup!(false, scfilter, si, y, 1, detailn(j+1), s, 1, -filtlen+1, false)
+            filtup!(false, scfilter, si, y, 1, detailn(n,l-1), s, 1, -filtlen+1, false)
             # detail coefficients
-            filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, true)
+            filtup!(true,  dcfilter, si, y, 1, detailn(n,l-1), x, detailindex(n,l,1), 0, true)
         end
         # if not final iteration: copy to tmp location
-        fw  && j != jrange[end] && copy!(snew,1,y,1,detailn(j))
-        !fw && j != jrange[end] && copy!(snew,1,y,1,detailn(j+1))
+        fw  && l != lrange[end] && copy!(snew,1,y,1,detailn(n,l))
+        !fw && l != lrange[end] && copy!(snew,1,y,1,detailn(n,l-1))
         L > 1 && (s = snew)
     end
     return y
 end
 function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     n = length(x)
-    j = nscales(n) - 1
+    l = 1
     filtlen = length(filter)
 
     if fw
         # detail coefficients
-        filtdown!(dcfilter, si, y, detailindex(j,1), detailn(j), x, 1,-filtlen+1, true)
+        filtdown!(dcfilter, si, y, detailindex(n,l,1), detailn(n,l), x, 1,-filtlen+1, true)
         # scaling coefficients
-        filtdown!(scfilter, si, y,                1, detailn(j), x, 1, 0, false)
+        filtdown!(scfilter, si, y,                1, detailn(n,l), x, 1, 0, false)
     else
         # scaling coefficients
-        filtup!(false, scfilter, si, y, 1, detailn(j+1), x, 1, -filtlen+1, false)
+        filtup!(false, scfilter, si, y, 1, detailn(n,l-1), x, 1, -filtlen+1, false)
         # detail coefficients
-        filtup!(true,  dcfilter, si, y, 1, detailn(j+1), x, detailindex(j,1), 0, true)
+        filtup!(true,  dcfilter, si, y, 1, detailn(n,l-1), x, detailindex(n,l,1), 0, true)
     end
     return y
 end
@@ -114,11 +113,10 @@ end
 function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
 
     n = size(x,1)
-    J = nscales(n)
     @assert size(x) == size(y)
     @assert iscube(y)
-    @assert isdyadic(y)
-    @assert 0 <= L <= J
+    @assert sufficientpowersoftwo(y, L)
+    @assert 0 <= L 
     @assert length(tmpvec) >= n<<1
     is(y,x) && error("input matrix is output matrix")
     
@@ -127,22 +125,22 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     #s = x
 
     if fw
-        jrange = (J-1):-1:(J-L)
+        lrange = 1:L
         nsub = n
     else
-        jrange = (J-L):(J-1)
-        nsub = int(2^(J-L+1))
+        lrange = L:-1:1
+        nsub = div(n,2^(L-1))
         copy!(y,x)
     end
 
-    for j in jrange
+    for l in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         tmpsub2 = unsafe_vectorslice(tmpvec, nsub+1, nsub)
         if fw
             # rows
             for i=1:nsub
                 xi = i
-                if j != jrange[1]
+                if l != lrange[1]
                     stridedcopy!(tmpsub, y, xi, xs, nsub)
                 else  # use x in first iteration
                     stridedcopy!(tmpsub, x, xi, xs, nsub)
@@ -162,7 +160,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
             for i=1:nsub
                 xi = 1+(i-1)*n
                 ya = unsafe_vectorslice(y, xi, nsub)
-                if j != jrange[1]
+                if l != lrange[1]
                     copy!(tmpsub,1,ya,1,nsub)
                     unsafe_dwt1level!(ya, tmpsub, filter, fw, dcfilter, scfilter, si)
                 else  # use x in first iteration
