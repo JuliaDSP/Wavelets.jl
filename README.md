@@ -38,11 +38,10 @@ API
 
 #### Wavelet transforms and types
 ```julia
-# Type construction,
-# also accept (class::String, n::Union(Integer,String), ...)
-wavelet(name::String, boundary::WaveletBoundary=Periodic)  # defaults to filter
-waveletfilter(name::String, boundary::WaveletBoundary=Periodic)
-waveletls(name::String, boundary::WaveletBoundary=Periodic)
+# Transform Type construction
+wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)  # defaults to filter
+waveletfilter(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
+waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
 # DWT (discrete wavelet transform)
 dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
 idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
@@ -59,38 +58,45 @@ wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, Ltree, fw::Bool)
 wpt!(y::AbstractArray, scheme::GLS, Ltree, fw::Bool)
 ```
 
-#### Wavelet class information
+#### Wavelet classes
 
+The module WT contains the types for wavelet classes. The module defines constants of the form e.g. `WT.coif4` as shortcuts for `WT.Coiflet{4}()`.
 The numbers for orthogonal wavelets indicate the number vanishing moments of the wavelet function. The length of a `wt::OrthoFilter` can be obtained with `length(wt)`.
 
-| Class | Short | Type | Numbers |
+| Class Type | Namebase | Supertype | Numbers |
 |:------- |:------ |:----- |:----- |
-| `Haar` | `haar` | Ortho |   |
-| `Coiflet` | `coif` | Ortho | 2:2:8 |
-| `Daubechies` | `db` | Ortho | 1:Inf |
-| `Symmlet`/`Symlet` | `sym` | Ortho | 4:10 |
-| `Battle` | `batt` | Ortho | 2:2:6
-| `Beylkin` | `beyl` | Ortho |  |
-| `Vaidyanathan` | `vaid` | Ortho |  |
-| `CDF` | `cdf` | BiOrtho | "9/7" |
+| `Haar` | haar | `OrthoWaveletClass` |   |
+| `Coiflet` | coif | `OrthoWaveletClass` | 2:2:8 |
+| `Daubechies` | db | `OrthoWaveletClass` | 1:Inf |
+| `Symlet` | sym | `OrthoWaveletClass` | 4:10 |
+| `Battle` | batt | `OrthoWaveletClass` | 2:2:6
+| `Beylkin` | beyl | `OrthoWaveletClass` |  |
+| `Vaidyanathan` | vaid | `OrthoWaveletClass` |  |
+| `CDF` | cdf | `BiOrthoWaveletClass` | (9,7) |
 
+Class information functions
+```julia
+class(::WaveletClass) ::ASCIIString         # class full name
+name(::WaveletClass) ::ASCIIString          # type short name
+vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
+```
 
 Examples
 ---------
 
 ```julia
 # the simplest way to transform a signal x is
-xt = dwt(x, wavelet("db2"))
+xt = dwt(x, wavelet(WT.db2))
 
 # the transform type can be more explicitly specified
 # set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
-wt = wavelet("Coiflet", 4, Periodic)  # or
-wt = waveletfilter("coif4")
+wt = wavelet(WT.Coiflet{4}(), Periodic)  # or
+wt = waveletfilter(WT.coif4)
 # which is equivalent to 
-wt = OrthoFilter("coif4")
+wt = OrthoFilter(WT.coif4)
 # the object wt determines the transform type 
 # wt now contains instructions for a periodic biorthogonal CDF 9/7 lifting scheme
-wt = waveletls("cdf9/7")
+wt = waveletls(WT.cdf97)
 # xt is a 5 level transform of vector x
 xt = dwt(x, wt, 5)
 # inverse tranform
@@ -112,14 +118,14 @@ y = denoise(x)
 
 # plotting utilities 1-d (see images and code in /example)
 x = testfunction(n, "Bumps")
-y = dwt(x, waveletls("cdf9/7"))
+y = dwt(x, waveletls(WT.cdf97))
 d,l = wplotdots(y, 0.1, n)
 A = wplotim(y)
 # plotting utilities 2-d
 img = imread("lena.png")
 x = permutedims(img.data, [ndims(img.data):-1:1])
 L = 2
-xts = wplotim(x, L, waveletfilter("db3"))
+xts = wplotim(x, L, waveletfilter(WT.db3))
 ```
 
 See [Bumps](/example/transform1d_bumps.png) and [Lena](/example/transform2d_lena.jpg) for plot images.
@@ -146,7 +152,7 @@ threshold!(x::AbstractArray, TH::THType)
 threshold(x::AbstractArray, TH::THType)
 # denoising
 denoise(x::AbstractArray;
-        wt=DEF_WAVELET, 
+        wt=DEFAULT_WAVELET, 
         level=max(nscales(size(x,1))-6,1),
         dnt=VisuShrink(size(x,1)),
         sigma=noisest(x, wt=wt),
@@ -182,7 +188,7 @@ bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
 #### Examples
 Find best basis tree for WPT:
 ```julia
-wt = wavelet("db4")
+wt = wavelet(WT.db4)
 x = sin(4*linspace(0,2*pi-eps(),1024))
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
@@ -232,7 +238,6 @@ By using the low-level function `dwt!` and pre-allocating temporary arrays, sign
 To-do list
 ---------
 
-* Transforms for non-dyadic signals
 * Transforms for non-square 2-D signals
 * Boundary extensions (other than periodic)
 * Boundary orthogonal wavelets

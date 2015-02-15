@@ -165,11 +165,11 @@ function VisuShrink(n::Int)
     return VisuShrink(DEF_TH, sqrt(2*log(n)))
 end
 
-const DEF_WAVELET = waveletfilter("sym5")    # default wavelet type
+const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
 function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;  
-                                    wt::Union(T,Nothing)=DEF_WAVELET, 
+                                    wt::Union(T,Nothing)=DEFAULT_WAVELET, 
                                     level::Int=max(nscales(size(x,1))-6,1),
                                     dnt::S=VisuShrink(size(x,1)),
                                     sigma::Real=noisest(x, wt=wt),
@@ -236,7 +236,7 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest{T<:DiscreteWavelet}(x::AbstractArray; wt::Union(T,Nothing)=DEF_WAVELET)
+function noisest{T<:DiscreteWavelet}(x::AbstractArray; wt::Union(T,Nothing)=DEFAULT_WAVELET)
     if wt == nothing
         y = x
     else
