@@ -157,7 +157,7 @@ denoise(x::AbstractArray,
         dnt=VisuShrink(size(x,1)),
         estnoise::Function=noisest, 
         TI=false,
-        nspin=tuple([8 for i=1:length(size(x))]...) )
+        nspin=tuple([8 for i=1:ndims(x)]...) )
 # entropy
 coefentropy(x, et::Entropy, nrm)
 # best basis for WPT limited to active inital tree nodes

@@ -300,9 +300,9 @@ end
 function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return OrthoFilter(w, boundary)
 end
-function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    error("BiOrtho filters not implemented")
-end
+#function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+#    error("BiOrtho filters not implemented")
+#end
 function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return GLS(w, boundary)
 end

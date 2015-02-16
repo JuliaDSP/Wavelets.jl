@@ -176,7 +176,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
                         dnt::S=VisuShrink(size(x,1)),
                         estnoise::Function=noisest, 
                         TI::Bool=false,
-                        nspin::Union(Int,Tuple)=tuple([8 for i=1:length(size(x))]...) )
+                        nspin::Union(Int,Tuple)=tuple([8 for i=1:ndims(x)]...) )
     @assert iscube(x)
     sigma = estnoise(x, wt)
     
@@ -257,10 +257,10 @@ function mad!(y::AbstractArray)
     end
     return median!(y, checknan=false)
 end
-function mad(x::AbstractArray)
-    y = copy(x)
-    mad!(y)
-end
+#function mad(x::AbstractArray)
+#    y = copy(x)
+#    mad!(y)
+#end
 
 # convert index i to a circshift array starting at 0 shift
 nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)

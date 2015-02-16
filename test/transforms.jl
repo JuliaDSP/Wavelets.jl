@@ -21,13 +21,14 @@ for i = 1:length(wname)
         ye = vec(readdlm(joinpath(dirname(@__FILE__), "data", string(name,"1d_",wname[i],wnum[i][num],".txt")),'\t'))
         ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
         
-        wn = wnum[i][num]
         wtc = wtype[i]
-        if wn != 0 
-            wt = waveletfilter(wtc{wvm[i][num]}())
+        if wnum[i][num] != 0 
+            class = wtc{wvm[i][num]}()
         else
-            wt = waveletfilter(wtc())
+            class = wtc()
         end
+        wt = waveletfilter(class)
+
         # transform data
         y = dwt(data, wt)
         y2 = dwt(data2, wt)
@@ -171,6 +172,17 @@ x = randn(16, 16)
 xs = sub(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
 
+#util functions
+for class in (WT.haar, WT.db2, WT.cdf97)
+    WT.class(class)
+    WT.name(class)
+    WT.vanishingmoments(class)
+end
+class = WT.db1
+wt = waveletfilter(class)
+@test length(wt) == 2
+@test_approx_eq wt.qmf*0.7 scale(wt, 0.7).qmf
+@test OrthoFilter{PerBoundary}(wt.qmf, "db1").qmf == waveletfilter(class).qmf
 
 # ============= error tests ================
 print("transforms: error tests ...\n")

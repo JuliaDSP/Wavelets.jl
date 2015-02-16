@@ -131,3 +131,9 @@ EE = Exception
 @test_throws EE maketree(n, 4, :foo)
 
 
+makewavelet(waveletfilter(WT.db2))
+for tf in ("Blocks", "HeaviSine")
+    testfunction(8, tf)
+end
+EE = Exception
+@test_throws EE testfunction(8, "sksksks")
