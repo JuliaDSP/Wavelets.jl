@@ -151,11 +151,11 @@ threshold(x::AbstractArray, TH::THType, t::Real)
 threshold!(x::AbstractArray, TH::THType)
 threshold(x::AbstractArray, TH::THType)
 # denoising
-denoise(x::AbstractArray;
-        wt=DEFAULT_WAVELET, 
+denoise(x::AbstractArray,
+        wt=DEFAULT_WAVELET;
         level=max(nscales(size(x,1))-6,1),
         dnt=VisuShrink(size(x,1)),
-        sigma=noisest(x, wt=wt),
+        estnoise::Function=noisest, 
         TI=false,
         nspin=tuple([8 for i=1:length(size(x))]...) )
 # entropy

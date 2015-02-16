@@ -24,6 +24,8 @@ end
 
 include("util.jl")
 include("transforms.jl")
+include("threshold.jl")
+include("plot.jl")
 
 print("\ntesting: success\n")
 

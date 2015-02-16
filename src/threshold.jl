@@ -37,7 +37,7 @@ immutable BiggestTH  <: THType end
 immutable PosTH      <: THType end
 immutable NegTH      <: THType end
 
-const DEF_TH = HardTH()
+const DEFAULT_TH = HardTH()
 
 # biggest m-term approximation (best m-term approximation for orthogonal transforms)
 # result is m-sparse
@@ -159,23 +159,26 @@ abstract DNFT
 type VisuShrink <: DNFT
     th::THType      # threshold type
     t::Float64      # threshold for noise level sigma=1, use sigma*t in application
+    VisuShrink(th, t) = new(th, t)
 end
 # define type for signal length n
 function VisuShrink(n::Int)
-    return VisuShrink(DEF_TH, sqrt(2*log(n)))
+    return VisuShrink(DEFAULT_TH, sqrt(2*log(n)))
 end
 
 const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
-function denoise{T<:DiscreteWavelet,S<:DNFT}(x::AbstractArray;  
-                                    wt::Union(T,Nothing)=DEFAULT_WAVELET, 
-                                    level::Int=max(nscales(size(x,1))-6,1),
-                                    dnt::S=VisuShrink(size(x,1)),
-                                    sigma::Real=noisest(x, wt=wt),
-                                    TI::Bool=false,
-                                    nspin::Union(Int,Tuple)=tuple([8 for i=1:length(size(x))]...) )
+# estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
+function denoise{S<:DNFT}(x::AbstractArray,
+                        wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
+                        level::Int=max(nscales(size(x,1))-6,1),
+                        dnt::S=VisuShrink(size(x,1)),
+                        estnoise::Function=noisest, 
+                        TI::Bool=false,
+                        nspin::Union(Int,Tuple)=tuple([8 for i=1:length(size(x))]...) )
     @assert iscube(x)
+    sigma = estnoise(x, wt)
     
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
@@ -236,7 +239,7 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest{T<:DiscreteWavelet}(x::AbstractArray; wt::Union(T,Nothing)=DEFAULT_WAVELET)
+function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET)
     if wt == nothing
         y = x
     else
