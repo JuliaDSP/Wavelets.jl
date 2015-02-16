@@ -4,6 +4,7 @@ print("transforms: accuracy tests ...\n")
 
 # test against data made by data/make_filter_data.m in Octave
 wname = Any["Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"];
+wtype = Any[WT.Daubechies, WT.Coiflet, WT.Haar, WT.Symlet, WT.Battle, WT.Vaidyanathan, WT.Beylkin];
 wnum = Any[[4:2:20],[2:5],[0],[4:10],[1,3,5],[0],[0]];
 wvm = Any[[2:1:10],[4:2:10],[0],[4:10],[2,4,6],[0],[0]];
 
@@ -20,9 +21,14 @@ for i = 1:length(wname)
         ye = vec(readdlm(joinpath(dirname(@__FILE__), "data", string(name,"1d_",wname[i],wnum[i][num],".txt")),'\t'))
         ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
         
-        wn = wnum[i][num]
-        wn!=0 && (wt = waveletfilter(wname[i],wvm[i][num]))
-        wn==0 && (wt = waveletfilter(lowercase(wname[i][1:4])))
+        wtc = wtype[i]
+        if wnum[i][num] != 0 
+            class = wtc{wvm[i][num]}()
+        else
+            class = wtc()
+        end
+        wt = waveletfilter(class)
+
         # transform data
         y = dwt(data, wt)
         y2 = dwt(data2, wt)
@@ -40,9 +46,9 @@ for i = 1:length(wname)
 end
 
 # 1-d and 2-d lifting and filtering comparison
-for WT in ("db1","db2")
-    wf = waveletfilter(WT)
-    wls = GLS(WT)
+for wclass in (WT.db1, WT.db2)
+    wf = waveletfilter(wclass)
+    wls = GLS(wclass)
     n = 64
     x = randn(n)
     stderr = 1e-10*sqrt(n)
@@ -91,7 +97,7 @@ end
 print("transforms: transform functionality ...\n")
 
 # column-wise 1-d
-wf = waveletfilter("db2")
+wf = waveletfilter(WT.db2)
 x = randn(16,2)
 y = copy(x)
 y[:,1] = dwt(vec(x[:,1]),wf)
@@ -113,12 +119,12 @@ y[:,2,:] = dwt(reshape(x[:,2,:],n,n),wf)
 @test_approx_eq dwtc(x,wf,nscales(16),2) y
 
 # "inplace" for filter
-wf = waveletfilter("db2")
+wf = waveletfilter(WT.db2)
 x = randn(16)
 @test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2,true)
 
 # "out of place" for LS
-wt = GLS("db2")
+wt = GLS(WT.db2)
 x = randn(16)
 @test_approx_eq dwt(x,wt,2) dwt!(similar(x),x,wt,2,true)
 
@@ -134,7 +140,7 @@ function makedwt(ft::Type, n, wf, L)
 end
 
 # 1-d
-n = 8; wf = waveletfilter("db2"); L = 2
+n = 8; wf = waveletfilter(WT.db2); L = 2
 sett = (n,wf,L)
 
 ft = Float64; x, y = makedwt(ft, sett...)
@@ -161,11 +167,22 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
 # non-Array type
-wt = waveletls("db2")
+wt = waveletls(WT.db2)
 x = randn(16, 16)
 xs = sub(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
 
+#util functions
+for class in (WT.haar, WT.db2, WT.cdf97)
+    WT.class(class)
+    WT.name(class)
+    WT.vanishingmoments(class)
+end
+class = WT.db1
+wt = waveletfilter(class)
+@test length(wt) == 2
+@test_approx_eq wt.qmf*0.7 scale(wt, 0.7).qmf
+@test OrthoFilter{PerBoundary}(wt.qmf, "db1").qmf == waveletfilter(class).qmf
 
 # ============= error tests ================
 print("transforms: error tests ...\n")
@@ -175,13 +192,14 @@ uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
 @test_throws EE dwt(randn(4,4),uwt)
+@test_throws EE waveletfilter(WT.Coiflet{33}())
 @test_throws EE waveletfilter("db2asdsad")
 @test_throws EE waveletfilter("db2", "ppppp")
 
 # ============= WPT ================
 print("transforms: WPT ...\n")
 
-wf = waveletfilter("db2")
+wf = waveletfilter(WT.db2)
 x = randn(16)
 
 L = 1
@@ -208,7 +226,7 @@ dw = dwt(x,wf,L)
 @test_approx_eq dwt(dw2[13:16],wf,1) wp[13:16]
 @test_approx_eq iwpt(wp,wf,L) x
 
-wl = waveletls("db2")
+wl = waveletls(WT.db2)
 x = randn(128)
 @test_approx_eq iwpt(wpt(x,wf),wf) x
 @test_approx_eq iwpt(wpt(x,wl),wl) x
@@ -217,7 +235,7 @@ x = randn(128)
 @test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
 @test_approx_eq wpt(x,wl) wpt(x,wf)
 
-wl = waveletls("db2")
+wl = waveletls(WT.db2)
 n = 128
 x = randn(n)
 for L = 0:nscales(n)

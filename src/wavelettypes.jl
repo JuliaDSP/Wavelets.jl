@@ -3,7 +3,8 @@ export  DiscreteWavelet,
         ContinuousWavelet,
         FilterWavelet,
         LSWavelet,
-        WaveletType,
+        WaveletTransformType,
+        WT,
         #
         WaveletBoundary,
         PerBoundary,
@@ -20,7 +21,6 @@ export  DiscreteWavelet,
         wavelet,
         waveletfilter,
         waveletls
-        #daubechies
 
 using Compat
 
@@ -33,7 +33,7 @@ abstract FilterWavelet{T} <: DiscreteWavelet{T}
 # discrete transforms via lifting
 abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
-typealias WaveletType Union(DiscreteWavelet, ContinuousWavelet)
+typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
 
 
 # BOUNDARY TYPES
@@ -47,9 +47,83 @@ immutable PerBoundary <: WaveletBoundary end
 #immutable CPBoundary <: WaveletBoundary end
 # and so on...
 
-const DEF_BOUNDARY = PerBoundary()
+const DEFAULT_BOUNDARY = PerBoundary()
 
 const Periodic = PerBoundary()
+
+
+# CLASSES
+
+module WT
+    #=export  WaveletClass,
+            class,
+            name, 
+            vanishingmoments, 
+            DaubechiesWavelet=#
+
+    abstract WaveletClass
+    abstract OrthoWaveletClass <: WaveletClass
+    abstract BiOrthoWaveletClass <: WaveletClass
+
+    # Single classes
+    for (TYPE, CLASSNAME, NAMEBASE, MOMENTS, SUPERCLASS) in (
+            (:Haar,         "Haar", "haar", 1,        :OrthoWaveletClass),
+            (:Beylkin,      "Beylkin", "beyl", -1,    :OrthoWaveletClass), # TODO moments
+            (:Vaidyanathan, "Vaidyanathan", "vaid",-1,:OrthoWaveletClass), # TODO moments
+            )
+        @eval begin
+            immutable $TYPE <: $SUPERCLASS end
+            class(::$TYPE) = string($CLASSNAME)::ASCIIString
+            name(::$TYPE) = string($NAMEBASE)::ASCIIString
+            vanishingmoments(::$TYPE) = $MOMENTS
+        end
+        CONSTNAME = symbol(NAMEBASE)
+        @eval begin
+            const $CONSTNAME = $TYPE()                  # type shortcut
+        end
+    end
+
+    # Parameterized classes
+    for (TYPE, CLASSNAME, NAMEBASE, RANGE, SUPERCLASS) in (
+            (:Daubechies, "Daubechies", "db", 1:10, :OrthoWaveletClass),
+            (:Coiflet,    "Coiflet", "coif", 2:2:8, :OrthoWaveletClass),
+            (:Symlet,     "Symlet", "sym", 4:10,    :OrthoWaveletClass),
+            (:Battle,     "Battle", "batt", 2:2:6,  :OrthoWaveletClass),
+            )
+        @eval begin
+            immutable $TYPE{N} <: $SUPERCLASS end
+            class(::$TYPE) = string($CLASSNAME)::ASCIIString
+            name{N}(::$TYPE{N}) = string($NAMEBASE,N)::ASCIIString
+            vanishingmoments{N}(::$TYPE{N}) = N
+        end
+        for NUM in RANGE
+            CONSTNAME = symbol(string(NAMEBASE, NUM))
+            @eval begin
+                const $CONSTNAME = $TYPE{$NUM}()        # type shortcut
+            end
+        end
+    end
+
+    # Parameterized BiOrtho classes
+    for (TYPE, CLASSNAME, NAMEBASE, RANGE1, RANGE2, SUPERCLASS) in (
+            (:CDF,    "CDF", "cdf", [9], [7], :BiOrthoWaveletClass),
+            )
+        @eval begin
+            immutable $TYPE{N1, N2} <: $SUPERCLASS end
+            class(::$TYPE) = string($CLASSNAME)::ASCIIString
+            name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)::ASCIIString
+            vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
+        end
+        for i in length(RANGE1)
+            CONSTNAME = symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
+            @eval begin
+                const $CONSTNAME = $TYPE{$RANGE1[$i],$RANGE2[$i]}()        # type shortcut
+            end
+        end
+    end
+
+end # module
+
 
 
 # ------------------------------------------------------------
@@ -149,6 +223,8 @@ function vieta(R::AbstractVector)
 end
 
 
+
+
 # IMPLEMENTATIONS OF FilterWavelet
 
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
@@ -156,14 +232,11 @@ immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     name::ASCIIString           # filter short name
     OrthoFilter(qmf, name) = new(qmf, name)
 end
-function OrthoFilter{T<:WaveletBoundary}(name::String, ::T=DEF_BOUNDARY)
-    if name[1:2] == "db"
-        d = name[3:end]
-        if isdigit(d)
-            qmf = daubechies(int(d))
-        else
-            error("filter not found")
-        end
+
+function OrthoFilter{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
+    if WC <: WT.Daubechies
+        qmf = daubechies(WT.vanishingmoments(w))
     else
         qmf = get(FILTERS, name, nothing)
         qmf == nothing && error("filter not found")
@@ -171,6 +244,7 @@ function OrthoFilter{T<:WaveletBoundary}(name::String, ::T=DEF_BOUNDARY)
     # make sure it is normalized in l2-norm
     return OrthoFilter{T}(qmf./norm(qmf), name)
 end
+
 Base.length(f::OrthoFilter) = length(f.qmf)
 
 #immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
@@ -180,6 +254,10 @@ Base.length(f::OrthoFilter) = length(f.qmf)
 #    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
 #end
 
+# scale filter by scalar
+function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
+    return OrthoFilter{T}(f.qmf.*a, f.name)
+end
 
 # IMPLEMENTATIONS OF LSWavelet
 
@@ -192,6 +270,7 @@ immutable LSstep
         return new(stept,coef,shift)
     end
 end
+
 # general lifting scheme
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step::Vector{LSstep}    # steps to be taken
@@ -200,7 +279,9 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     name::ASCIIString       # name of scheme
     GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 end
-function GLS{T<:WaveletBoundary}(name::String, ::T=DEF_BOUNDARY)
+
+function GLS{WC<:WT.WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && error("scheme not found")
     return GLS{T}(schemedef..., name)
@@ -211,67 +292,20 @@ end
 
 # ...
 
-
-# CLASSES
-
-# convert class and number to name
-function getname(class::String, n::Union(Integer,String))
-    namebase = get(FILTERC2N, class, nothing)
-    namebase == nothing && error("wavelet type not found")
-    return string(namebase,n)
-end
-
-for f in (:OrthoFilter, :GLS)
-@eval begin
-	# convert class and number to wavelet name
-	($f)(class::String, n::Union(Integer,String), args...) = ($f)(getname(class, n), args...)
-end
-end
-
-
-# UTIL
-
-# scale filter by scalar
-function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
-    return OrthoFilter{T}(f.qmf.*a, f.name)
-end
-
-
 # TRANSFORM TYPE CONSTRUCTORS
 
-function wavelet(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
-    return waveletfilter(name, boundary)
+function wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return waveletfilter(w, boundary)
 end
-function waveletfilter(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
-    return OrthoFilter(name, boundary)
+function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return OrthoFilter(w, boundary)
 end
-#function waveletfilterbo(name::String; boundary::WaveletBoundary=DEF_BOUNDARY)
-#    return BiOrthoFilter(name, boundary)
+#function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+#    error("BiOrtho filters not implemented")
 #end
-function waveletls(name::String, boundary::WaveletBoundary=DEF_BOUNDARY)
-    return GLS(name, boundary)
+function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return GLS(w, boundary)
 end
-
-for f in (:wavelet, :waveletfilter, :waveletls)
-@eval begin
-	# convert to type name
-	($f)(class::String, n::Union(Integer,String), arg...) = ($f)(getname(class,n), arg...)
-end
-end
-
-
-# class => namebase
-const FILTERC2N=@compat Dict{ASCIIString,ASCIIString}(
-"Haar" => "haar",
-"Coiflet" => "coif",
-"Daubechies" => "db",
-"Symmlet" => "sym",
-"Symlet" => "sym",
-"Battle" => "batt",
-"Beylkin" => "beyl",
-"Vaidyanathan" => "vaid",
-"CDF" => "cdf"
-)
 
 
 # scaling filters h (low pass)
@@ -283,41 +317,12 @@ const FILTERC2N=@compat Dict{ASCIIString,ASCIIString}(
 ### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
 # name => qmf
 const FILTERS=@compat Dict{ASCIIString,Vector{Float64}}(
-# Haar filter, same as db1
+# Haar filter
 "haar" =>
 [0.7071067811865475,0.7071067811865475]
 ,
-# Daubechies filters
-"db1" =>
-[0.7071067811865475,0.7071067811865475]
-,
-"db2" =>
-[0.4829629131445341,0.8365163037378077,0.2241438680420134,-0.1294095225512603]
-,
-"db3" =>
-[0.3326705529500827,0.8068915093110928,0.4598775021184915,-0.1350110200102546,-0.0854412738820267,0.0352262918857096]
-,
-"db4" =>
-[0.2303778133074431,0.7148465705484058,0.6308807679358788,-0.0279837694166834,-0.1870348117179132,0.0308413818353661,0.0328830116666778,-0.0105974017850021]
-,
-"db5" =>
-[0.1601023979741930,0.6038292697971898,0.7243085284377729,0.1384281459013204,-0.2422948870663824,-0.0322448695846381,0.0775714938400459,-0.0062414902127983,-0.0125807519990820,0.0033357252854738]
-,
-"db6" =>
-[0.1115407433501094,0.4946238903984530,0.7511339080210954,0.3152503517091980,-0.2262646939654399,-0.1297668675672624,0.0975016055873224,0.0275228655303053,-0.0315820393174862,0.0005538422011614,0.0047772575109455,-0.0010773010853085]
-,
-"db7" =>
-[0.0778520540850081,0.3965393194819136,0.7291320908462368,0.4697822874052154,-0.1439060039285293,-0.2240361849938538,0.0713092192668312,0.0806126091510820,-0.0380299369350125,-0.0165745416306664,0.0125509985560993,0.0004295779729214,-0.0018016407040474,0.0003537137999745]
-,
-"db8" =>
-[0.0544158422431049,0.3128715909143031,0.6756307362972904,0.5853546836541907,-0.0158291052563816,-0.2840155429615702,0.0004724845739124,0.1287474266204837,-0.0173693010018083,-0.0440882539307952,0.0139810279173995,0.0087460940474061,-0.0048703529934518,-0.0003917403733770,0.0006754494064506,-0.0001174767841248]
-,
-"db9" =>
-[0.0380779473638791,0.2438346746125939,0.6048231236901156,0.6572880780512955,0.1331973858249927,-0.2932737832791761,-0.0968407832229524,0.1485407493381306,0.0307256814793395,-0.0676328290613302,0.0002509471148340,0.0223616621236805,-0.0047232047577520,-0.0042815036824636,0.0018476468830564,0.0002303857635232,-0.0002519631889427,0.0000393473203163]
-,
-"db10" =>
-[0.0266700579005546,0.1881768000776863,0.5272011889317202,0.6884590394536250,0.2811723436606485,-0.2498464243272283,-0.1959462743773399,0.1273693403357890,0.0930573646035802,-0.0713941471663697,-0.0294575368218480,0.0332126740593703,0.0036065535669880,-0.0107331754833036,0.0013953517470692,0.0019924052951930,-0.0006858566949566,-0.0001164668551285,0.0000935886703202,-0.0000132642028945]
-,
+# Daubechies filters, see daubechies()
+
 # Coiflet filters
 "coif2" =>
 [-0.072732619513,0.337897662458,0.852572020212,0.384864846864,-0.072732619513,-0.015655728135]

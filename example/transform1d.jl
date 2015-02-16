@@ -5,7 +5,7 @@ using PyPlot
 J = 11
 n = 2^J
 x = testfunction(n,"Bumps")
-y = dwt(x, waveletls("cdf9/7"))
+y = dwt(x, waveletls(WT.cdf97))
 d,l = wplotdots(y, 0.1, n)
 A = wplotim(y)
 
