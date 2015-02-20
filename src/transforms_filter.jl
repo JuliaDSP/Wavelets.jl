@@ -206,7 +206,6 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
     n = length(x)
-    J = ndyadicscales(n)
     @assert size(x) == size(y)
     @assert isdyadic(y)
     @assert isvalidtree(y, tree)
@@ -215,11 +214,12 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     
     @assert length(snew) >= ifelse(fw, length(x)>>1, length(x))
     first = true
-    L = J
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = J-L)
+        fw  && (Lfw = Lmax-L)
         !fw && (Lfw = L-1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1

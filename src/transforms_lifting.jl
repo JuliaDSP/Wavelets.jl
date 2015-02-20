@@ -211,7 +211,6 @@ end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    J = ndyadicscales(n)
     @assert isdyadic(y)
     @assert isvalidtree(y, tree)
     @assert length(tmp) >= n>>2
@@ -219,11 +218,12 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVect
     
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
     
-    L = J
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = J-L)
+        fw  && (Lfw = Lmax-L)
         !fw && (Lfw = L-1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1

@@ -11,7 +11,7 @@ export  dyadicdetailindex,
         detailindex, 
         detailrange, 
         detailn, 
-        maxtranformlevels, 
+        maxtransformlevels, 
         #
         mirror, 
         upsample, 
@@ -62,8 +62,8 @@ detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
 detailn(arraysize::Integer, l::Integer) = int(arraysize/2^l)
 detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
 # max levels to transform
-maxtranformlevels(x::AbstractArray) = maxtranformlevels(size(x,1))
-function maxtranformlevels(arraysize::Integer)
+maxtransformlevels(x::AbstractArray) = maxtransformlevels(size(x,1))
+function maxtransformlevels(arraysize::Integer)
     arraysize > 1 || return 0
     tl = 0
     while (sufficientpoweroftwo(arraysize, tl))
@@ -390,11 +390,12 @@ end
 # s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
 function maketree(n::Int, L::Int, s::Symbol=:full)
     ns = ndyadicscales(n)
-    @assert 0 <= L <= ns
     nb = 2^(ns)-1
+    @assert 0 <= L <= ns
+    @assert (2^(ns-1)-1)<<1+1 <= nb
+
     b = BitArray(nb)
     fill!(b, false)
-    @assert (2^(ns-1)-1)<<1+1 <= nb
     
     t = true
     if s == :full

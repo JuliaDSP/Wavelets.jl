@@ -172,7 +172,7 @@ const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
 # estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
 function denoise{S<:DNFT}(x::AbstractArray,
                         wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
-                        L::Int=min(maxtranformlevels(x),6),
+                        L::Int=min(maxtransformlevels(x),6),
                         dnt::S=VisuShrink(size(x,1)),
                         estnoise::Function=noisest, 
                         TI::Bool=false,

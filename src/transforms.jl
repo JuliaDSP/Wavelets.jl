@@ -39,7 +39,7 @@ export  dwt, idwt, dwt!,
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
 @eval begin
     # assume full transform
-    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, maxtranformlevels(x))
+    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, maxtransformlevels(x))
     # int -> float
     $Xwt{T<:Integer}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer) = $Xwt(float(x), wt, L)
 end
