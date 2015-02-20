@@ -153,7 +153,7 @@ threshold(x::AbstractArray, TH::THType)
 # denoising
 denoise(x::AbstractArray,
         wt=DEFAULT_WAVELET;
-        level=max(nscales(size(x,1))-6,1),
+        L::Int=min(maxtranformlevels(x),6),
         dnt=VisuShrink(size(x,1)),
         estnoise::Function=noisest, 
         TI=false,

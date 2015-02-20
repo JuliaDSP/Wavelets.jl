@@ -3,23 +3,30 @@ using Base.Test
 
 print("util ...\n")
 
-@test detailn(0) == 1
-@test detailn(1) == 2
-@test detailindex(0,1) == 2
+@test dyadicdetailn(0) == 1
+@test dyadicdetailn(1) == 2
+@test dyadicdetailindex(0,1) == 2
 
 j = 5
-@test detailn(j)+1 == detailrange(j)[1]
-@test detailindex(j,3) == detailrange(j)[3]
+@test dyadicdetailn(j)+1 == dyadicdetailrange(j)[1]
+@test dyadicdetailindex(j,3) == dyadicdetailrange(j)[3]
 J = 7
-@test nscales(2^J) == J
-@test detailn(maxlevel(2^J)) == 2^(J-1)
-@test nscales(rand(2^J)) == J
-@test maxlevel(rand(2^J)) == J-1
+@test ndyadicscales(2^J) == J
+@test dyadicdetailn(maxdyadiclevel(2^J)) == 2^(J-1)
+@test ndyadicscales(rand(2^J)) == J
+@test maxdyadiclevel(rand(2^J)) == J-1
 
-@test tl2level(512,1) == 8
-@test level2tl(512,9) == 0
-@test tl2level(rand(2^9),1) == 8
-@test level2tl(rand(2^9),9) == 0
+@test tl2dyadiclevel(512,1) == 8
+@test dyadiclevel2tl(512,9) == 0
+@test tl2dyadiclevel(rand(2^9),1) == 8
+@test dyadiclevel2tl(rand(2^9),9) == 0
+
+n = 64
+L = 2
+@test maxtranformlevels(n) == ndyadicscales(n)
+@test detailindex(n, L, 3) == dyadicdetailindex(tl2dyadiclevel(n,L), 3)
+@test detailrange(n, L) == dyadicdetailrange(tl2dyadiclevel(n,L))
+@test detailn(n, L) == dyadicdetailn(tl2dyadiclevel(n,L))
 
 
 # UTILITY FUNCTIONS
@@ -110,7 +117,7 @@ inca = 3
 
 n = 128
 x = randn(n)
-for L = 0:nscales(n)
+for L = 0:ndyadicscales(n)
     for st in (:full, :dwt)
         @test isvalidtree(x, maketree(n, L, st))
     end

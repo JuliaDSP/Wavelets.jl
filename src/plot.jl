@@ -7,6 +7,7 @@ export wplotdots, wplotim
 # return levels and detail coefficient centers on the interval [0,r) above (>=) threshold t
 # as tuple (d,l)
 function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
+    @assert isdyadic(x)
 	n = length(x)
 	c = wcount(x, t, level=0)
     d = Array(Float64, c)
@@ -14,13 +15,13 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     range = 0:1/n:1-eps()
     range *= r
     
-    J = nscales(n)
+    J = ndyadicscales(n)
     k = 1
     @inbounds begin
         for j = 0:J-1
             rind = 2^(J-1-j):2^(J-j):n
-            for i in 1:detailn(j)
-                if abs(x[detailindex(j,i)]) >= t
+            for i in 1:dyadicdetailn(j)
+                if abs(x[dyadicdetailindex(j,i)]) >= t
                     d[k] = range[rind[i]]
                     l[k] = j
                     k += 1
@@ -33,13 +34,14 @@ end
 
 # return a matrix of detail coefficient values where row j+1 is level j
 function wplotim(x::AbstractVector)
+    @assert isdyadic(x)
     n = length(x)
-    J = nscales(n)
+    J = ndyadicscales(n)
     A = zeros(Float64, J, n)
 
     @inbounds begin
         for j = 0:J-1
-	        dr = detailrange(j)
+	        dr = dyadicdetailrange(j)
 	        m = 2^(J-j)
 	        for i = 1:length(dr)
 		        A[j+1,1+(i-1)*m:i*m] = x[dr[i]]
@@ -51,14 +53,16 @@ end
 
 # return an array of scaled detail coefficients and unscaled scaling coefficients
 # ready to be plotted as an image
-function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing; wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
+function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing; 
+                wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
+    @assert isdyadic(x)
     dim = ndims(x)
     (dim == 2 || dim == 3) || error("dimension ",dim," not supported")
     n = size(x,1)
     @assert n == size(x,2)
     cn = size(x,3)  # color dimension
     (cn == 1 || cn == 3) || error("third dimension ",cn,"  not supported")
-    J = nscales(n)
+    J = ndyadicscales(n)
     nsc = 2^(J-L)
         
     # do wavelet transform

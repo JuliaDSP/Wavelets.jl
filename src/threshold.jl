@@ -172,7 +172,7 @@ const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
 # estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
 function denoise{S<:DNFT}(x::AbstractArray,
                         wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
-                        level::Int=max(nscales(size(x,1))-6,1),
+                        L::Int=min(maxtranformlevels(x),6),
                         dnt::S=VisuShrink(size(x,1)),
                         estnoise::Function=noisest, 
                         TI::Bool=false,
@@ -184,7 +184,6 @@ function denoise{S<:DNFT}(x::AbstractArray,
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
         xt = Array(eltype(x), size(x))
-        L = level2tl(size(x,1), level)
         pns = prod(nspin)
         
         if ndims(x) == 1
@@ -219,7 +218,6 @@ function denoise{S<:DNFT}(x::AbstractArray,
             y = copy(x)
             threshold!(y, dnt.th, sigma*dnt.t)
         else
-            L = level2tl(size(x,1),level)
             y = dwt(x, wt, L)
             threshold!(y, dnt.th, sigma*dnt.t)
             dwt!(y, wt, L, false)
@@ -239,14 +237,13 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET)
+function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET, L::Integer = 1)
     if wt == nothing
         y = x
     else
-        y = dwt(x, wt, 1)
+        y = dwt(x, wt, L)
     end
-    ind = detailrange(maxlevel(size(y,1)))
-    dr = y[ind]
+    dr = y[detailrange(y, L)]
     return mad!(dr)/0.6745
 end
 # Median absolute deviation
@@ -370,13 +367,14 @@ end
 
 
 
-function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=nscales(y), et::Entropy=ShannonEntropy())
+function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=ndyadicscales(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
+    @assert isdyadic(y)
     n = length(y)
-    J = nscales(n)
+    J = ndyadicscales(n)
     @assert isdyadic(y)
     @assert isvalidtree(y, tree)
     tree[1] || return besttree      # do nothing
@@ -392,7 +390,7 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
     while L > 0
         ix = 1
         Lfw = J-L
-        nj = detailn(tl2level(n, Lfw))
+        nj = dyadicdetailn(tl2dyadiclevel(n, Lfw))
         
         dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
         while ix <= n

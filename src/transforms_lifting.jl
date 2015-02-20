@@ -2,7 +2,7 @@
 ##################################################################################
 #
 #  LIFTING TRANSFORMS 
-#  Periodic boundaries, dyadic length (powers of 2)
+#  Periodic boundaries
 #
 ##################################################################################
 
@@ -32,7 +32,7 @@ end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    @assert sufficientpowersoftwo(y,L)
+    @assert sufficientpoweroftwo(y,L)
     @assert 0 <= L #<= J
     @assert length(tmp) >= n>>2
     L == 0 && return y          # do nothing
@@ -143,7 +143,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool,
 
     n = size(y,1)
     @assert iscube(y)
-    @assert sufficientpowersoftwo(y,L)
+    @assert sufficientpoweroftwo(y,L)
     @assert 0 <= L #<= J
     @assert length(tmp) >= n>>2
     @assert length(tmpvec) >= n
@@ -211,7 +211,7 @@ end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    J = nscales(n)
+    J = ndyadicscales(n)
     @assert isdyadic(y)
     @assert isvalidtree(y, tree)
     @assert length(tmp) >= n>>2
@@ -225,7 +225,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVect
         k = 1
         fw  && (Lfw = J-L)
         !fw && (Lfw = L-1)
-        nj = detailn(tl2level(n, Lfw))
+        nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         
         while ix <= n

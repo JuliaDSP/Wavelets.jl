@@ -2,7 +2,7 @@
 ##################################################################################
 #
 #  ORTHOFILTER TRANSFORMS 
-#  Periodic boundaries, Orthogonal, dyadic length (powers of 2)
+#  Periodic boundaries, Orthogonal
 #
 ##################################################################################
 
@@ -47,7 +47,7 @@ end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
     @assert size(x) == size(y)
-    @assert sufficientpowersoftwo(y, L)
+    @assert sufficientpoweroftwo(y, L)
     @assert 0 <= L 
     is(y,x) && error("input vector is output vector")
     
@@ -115,7 +115,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     n = size(x,1)
     @assert size(x) == size(y)
     @assert iscube(y)
-    @assert sufficientpowersoftwo(y, L)
+    @assert sufficientpoweroftwo(y, L)
     @assert 0 <= L 
     @assert length(tmpvec) >= n<<1
     is(y,x) && error("input matrix is output matrix")
@@ -206,7 +206,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
     n = length(x)
-    J = nscales(n)
+    J = ndyadicscales(n)
     @assert size(x) == size(y)
     @assert isdyadic(y)
     @assert isvalidtree(y, tree)
@@ -221,7 +221,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
         k = 1
         fw  && (Lfw = J-L)
         !fw && (Lfw = L-1)
-        nj = detailn(tl2level(n, Lfw))
+        nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         dx = unsafe_vectorslice(snew, 1, nj)
         
