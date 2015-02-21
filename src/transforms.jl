@@ -39,7 +39,7 @@ export  dwt, idwt, dwt!,
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
 @eval begin
     # assume full transform
-    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, nscales(size(x,1)))
+    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, maxtransformlevels(x))
     # int -> float
     $Xwt{T<:Integer}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer) = $Xwt(float(x), wt, L)
 end
@@ -74,7 +74,7 @@ for (Xwtc, Xwt, dir) in ((:dwtc, :dwt!, :true), (:idwtc, :dwt!, :false))
 @eval begin
     function $Xwtc{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
         dim = ndims(x)
-        @assert 1 <= td <= dim
+        (1 <= td <= dim) || throw(BoundsError())
         sizex = size(x)
         sizexc = maketfsize(sizex, td)
         y = Array(T, sizex)

@@ -172,19 +172,18 @@ const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
 # estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
 function denoise{S<:DNFT}(x::AbstractArray,
                         wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
-                        level::Int=max(nscales(size(x,1))-6,1),
+                        L::Int=min(maxtransformlevels(x),6),
                         dnt::S=VisuShrink(size(x,1)),
                         estnoise::Function=noisest, 
                         TI::Bool=false,
                         nspin::Union(Int,Tuple)=tuple([8 for i=1:ndims(x)]...) )
-    @assert iscube(x)
+    iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
     
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
         xt = Array(eltype(x), size(x))
-        L = level2tl(size(x,1), level)
         pns = prod(nspin)
         
         if ndims(x) == 1
@@ -219,7 +218,6 @@ function denoise{S<:DNFT}(x::AbstractArray,
             y = copy(x)
             threshold!(y, dnt.th, sigma*dnt.t)
         else
-            L = level2tl(size(x,1),level)
             y = dwt(x, wt, L)
             threshold!(y, dnt.th, sigma*dnt.t)
             dwt!(y, wt, L, false)
@@ -230,7 +228,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
 end
 # add z to y
 function arrayadd!(y::AbstractArray, z::AbstractArray)
-    @assert length(y) == length(z)
+    length(y) == length(z) || throw(DimensionMismatch("lengths must be equal"))
     for i = 1:length(y)
         @inbounds y[i] += z[i]
     end
@@ -239,14 +237,13 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET)
+function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET, L::Integer = 1)
     if wt == nothing
         y = x
     else
-        y = dwt(x, wt, 1)
+        y = dwt(x, wt, L)
     end
-    ind = detailrange(maxlevel(size(y,1)))
-    dr = y[ind]
+    dr = y[detailrange(y, L)]
     return mad!(dr)/0.6745
 end
 # Median absolute deviation
@@ -370,15 +367,15 @@ end
 
 
 
-function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=nscales(y), et::Entropy=ShannonEntropy())
+function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
+    # TODO relax condition, note: causes segmentation fault
+    isdyadic(y) || throw(ArgumentError("array must be of dyadic size"))
+    isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
     n = length(y)
-    J = nscales(n)
-    @assert isdyadic(y)
-    @assert isvalidtree(y, tree)
     tree[1] || return besttree      # do nothing
     
     besttree = copy(tree)
@@ -387,12 +384,13 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
     entr = Array(T, length(tree)+length(y))
     nrm = vecnorm(y)
     
-    L = J
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     k = 1
     while L > 0
         ix = 1
-        Lfw = J-L
-        nj = detailn(tl2level(n, Lfw))
+        Lfw = Lmax-L
+        nj = detailn(n, Lfw)
         
         dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
         while ix <= n
@@ -438,7 +436,7 @@ function bestsubtree(entr::Array, i::Int)
     if i<<1+1 > n  # bottom of tree
         return entr[i]
     else
-        if (i<<1+1)<<1+1 > n  # above bottom of tree
+        if (i<<1+1)<<1+1 > n  # 1 above bottom of tree
             sum = entr[i<<1]
             sum += entr[i<<1+1]
         else

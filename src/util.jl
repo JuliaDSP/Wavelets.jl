@@ -1,41 +1,76 @@
 module Util
-export detailindex, detailrange, scalingrange, detailn, nscales, maxlevel, tl2level, level2tl, 
-    mirror, upsample, downsample, iscube, isdyadic, sufficientpowersoftwo, wcount, circshift!,
-    split!, merge!, stridedcopy!,
-    isvalidtree, maketree,
-    makewavelet, testfunction
+export  dyadicdetailindex, 
+        dyadicdetailrange, 
+        dyadicscalingrange, 
+        dyadicdetailn, 
+        ndyadicscales, 
+        maxdyadiclevel, 
+        tl2dyadiclevel, 
+        dyadiclevel2tl, 
+        # non-dyadic
+        detailindex, 
+        detailrange, 
+        detailn, 
+        maxtransformlevels, 
+        #
+        mirror, 
+        upsample, 
+        downsample, 
+        iscube, 
+        isdyadic, 
+        sufficientpoweroftwo, 
+        wcount, 
+        circshift!,
+        split!, 
+        merge!, 
+        stridedcopy!,
+        isvalidtree, 
+        maketree,
+        makewavelet, 
+        testfunction
 
 # WAVELET INDEXING AND SIZES 
 
 # detail coef at level j location i (i starting at 1) -> vector index
-detailindex(j::Integer,i::Integer) = 2^j+i
+dyadicdetailindex(j::Integer,i::Integer) = 2^j+i
 # the range of detail coefs at level j
-detailrange(j::Integer) = (2^j+1):(2^(j+1))
+dyadicdetailrange(j::Integer) = (2^j+1):(2^(j+1))
 # the range of scaling coefs at level j
-scalingrange(j::Integer) = 1:2^j
+dyadicscalingrange(j::Integer) = 1:2^j
 # number of detail coefs at level j
-detailn(j::Integer) = 2^j
+dyadicdetailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
-nscales(n::Integer) = int(log2(n))
-nscales(x::Vector) = nscales(length(x))
-nscales(x::Array) = nscales(size(x,1))
+ndyadicscales(n::Integer) = int(log2(n))
+ndyadicscales(x::AbstractArray) = ndyadicscales(size(x,1))
 # the largest detail level
-maxlevel(n::Integer) = nscales(n)-1
-maxlevel(x::Vector) = maxlevel(length(x))
+maxdyadiclevel(n::Integer) = ndyadicscales(n)-1
+maxdyadiclevel(x::AbstractArray) = maxdyadiclevel(size(x,1))
 # convert number of transformed levels L to minimum level j
-tl2level(n::Integer, L::Integer) = nscales(n)-L
-tl2level(x::Vector, L::Integer) = tl2level(length(x), L)
+tl2dyadiclevel(n::Integer, L::Integer) = ndyadicscales(n)-L
+tl2dyadiclevel(x::AbstractVector, L::Integer) = tl2dyadiclevel(length(x), L)
 # convert maximum level j to number of transformed levels L
-level2tl(arg...) = tl2level(arg...)
+dyadiclevel2tl(arg...) = tl2dyadiclevel(arg...)
 
 # Non-dyadic Wavelet Indexing and sizes
 # detail coef at level l location i (i starting at 1) -> vector index
 detailindex(arraysize::Integer, l::Integer, i::Integer) = int(arraysize/2^l+i)
+detailindex(x::AbstractArray, l::Integer, i::Integer) = detailindex(size(x,1), l ,i)
 # the range of detail coefs at level l
-detailrange(arraysize::Integer, l::Integer) = int((arraysize/2^l+1)):(int(arraysize/2^(l-1)))
+detailrange(arraysize::Integer, l::Integer) = int((arraysize/2^l+1)):int(arraysize/2^(l-1))
+detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
 # number of detail coefs at level l
 detailn(arraysize::Integer, l::Integer) = int(arraysize/2^l)
-
+detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
+# max levels to transform
+maxtransformlevels(x::AbstractArray) = maxtransformlevels(size(x,1))
+function maxtransformlevels(arraysize::Integer)
+    arraysize > 1 || return 0
+    tl = 0
+    while (sufficientpoweroftwo(arraysize, tl))
+        tl += 1
+    end
+    return tl - 1
+end
 
 # UTILITY FUNCTIONS
 
@@ -78,22 +113,21 @@ end
 function isdyadic(x::AbstractArray)
     for i = 1:ndims(x)
         n = size(x,i)
-        J = nscales(n)
+        J = ndyadicscales(n)
         n != 2^J && return false
     end
     return true
 end
 
-# To perform a level L transform, the suport of the signal in each dimension must have 
-# 2^L as a factor. Check this:
-function sufficientpowersoftwo(x::AbstractArray, L::Integer)
+# To perform a level L transform, the size of the signal in each dimension 
+# must have 2^L as a factor.
+function sufficientpoweroftwo(x::AbstractArray, L::Integer)
     for i = 1:ndims(x)
-        n = size(x,i)
-        fact = 2^L
-        n%fact != 0 && return false
+        sufficientpoweroftwo(size(x,i), L) || return false
     end
     return true
 end
+sufficientpoweroftwo(n::Integer, L::Integer) = (n%(2^L) == 0)
 
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
@@ -339,7 +373,7 @@ end
 # wavelet packet transforms WPT
 # valid if 0 nodes have 0 children and length is correct
 function isvalidtree(x::AbstractVector, b::BitVector)
-    ns = nscales(x)
+    ns = maxtransformlevels(x)
     nb = length(b)
     length(b) == 2^(ns)-1 || return false
     @assert (2^(ns-1)-1)<<1+1 <= nb
@@ -355,12 +389,13 @@ end
 # s=:full, all nodes for first L levels equal 1, others 0
 # s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
 function maketree(n::Int, L::Int, s::Symbol=:full)
-    ns = nscales(n)
-    @assert 0 <= L <= ns
+    ns = maxtransformlevels(n)
     nb = 2^(ns)-1
+    @assert 0 <= L <= ns
+    @assert (2^(ns-1)-1)<<1+1 <= nb
+
     b = BitArray(nb)
     fill!(b, false)
-    @assert (2^(ns-1)-1)<<1+1 <= nb
     
     t = true
     if s == :full

@@ -2,7 +2,7 @@
 ##################################################################################
 #
 #  ORTHOFILTER TRANSFORMS 
-#  Periodic boundaries, Orthogonal, dyadic length (powers of 2)
+#  Periodic boundaries, Orthogonal
 #
 ##################################################################################
 
@@ -46,13 +46,15 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
 end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
-    @assert size(x) == size(y)
-    @assert sufficientpowersoftwo(y, L)
+    size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
+    sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
+    is(y,x) && throw(ArgumentError("in array is out array"))
+    L > 1 && length(snew) != n>>1 && throw(ArgumentError("length of snew incorrect"))
     @assert 0 <= L 
-    is(y,x) && error("input vector is output vector")
     
-    L == 0 && return copy!(y,x)     # do nothing
-    L > 1 && length(snew) != n>>1 && error("length of snew incorrect")
+    if L == 0
+        return copy!(y,x)
+    end
     s = x                           # s is currect scaling coefs location
     filtlen = length(filter)
     
@@ -113,14 +115,16 @@ end
 function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
 
     n = size(x,1)
-    @assert size(x) == size(y)
-    @assert iscube(y)
-    @assert sufficientpowersoftwo(y, L)
+    size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
+    iscube(x) || throw(ArgumentError("array must be square/cube"))
+    sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
+    is(y,x) && throw(ArgumentError("in array is out array"))
+    (length(tmpvec) >= n<<1) || throw(ArgumentError("length of tmpvec incorrect"))
     @assert 0 <= L 
-    @assert length(tmpvec) >= n<<1
-    is(y,x) && error("input matrix is output matrix")
     
-    L == 0 && return copy!(y,x)        # do nothing
+    if L == 0
+        return copy!(y,x)
+    end
     xs = n
     #s = x
 
@@ -205,23 +209,28 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     return y
 end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
-    n = length(x)
-    J = nscales(n)
-    @assert size(x) == size(y)
-    @assert isdyadic(y)
-    @assert isvalidtree(y, tree)
-    is(y, x) && error("input vector is output vector")
-    tree[1] || return copy!(y,x) 
+
+    size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
+    is(y,x) && throw(ArgumentError("in array is out array"))
+    isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
+    if tree[1] && length(snew) < ifelse(fw, length(x)>>1, length(x))
+        throw(ArgumentError("length of snew incorrect"))
+    end
+
+    if !tree[1]
+        return copy!(y,x)
+    end
     
-    @assert length(snew) >= ifelse(fw, length(x)>>1, length(x))
     first = true
-    L = J
+    n = length(x)
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = J-L)
+        fw  && (Lfw = Lmax-L)
         !fw && (Lfw = L-1)
-        nj = detailn(tl2level(n, Lfw))
+        nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         dx = unsafe_vectorslice(snew, 1, nj)
         

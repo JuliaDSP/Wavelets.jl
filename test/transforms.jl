@@ -57,7 +57,7 @@ for wclass in (WT.db1, WT.db2)
     x2 = copy(x)
     tmp = zeros(n)
     
-    for L in (nscales(n),0,1,2)
+    for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
         dwt!(x2, wls, L, true, tmp)
@@ -77,7 +77,7 @@ for wclass in (WT.db1, WT.db2)
     
     x = randn(n,n)
     x2 = copy(x)
-    for L in (nscales(n),0,1,2)
+    for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
         
@@ -103,7 +103,7 @@ y = copy(x)
 y[:,1] = dwt(vec(x[:,1]),wf)
 y[:,2] = dwt(vec(x[:,2]),wf)
 @test_approx_eq dwtc(x,wf) y
-@test_approx_eq dwtc(x',wf,nscales(16),1)' y
+@test_approx_eq dwtc(x',wf,ndyadicscales(16),1)' y
 
 # column-wise 2-d
 n = 16
@@ -116,7 +116,7 @@ x = randn(n,2,n)
 y = copy(x)
 y[:,1,:] = dwt(reshape(x[:,1,:],n,n),wf)
 y[:,2,:] = dwt(reshape(x[:,2,:],n,n),wf)
-@test_approx_eq dwtc(x,wf,nscales(16),2) y
+@test_approx_eq dwtc(x,wf,ndyadicscales(16),2) y
 
 # "inplace" for filter
 wf = waveletfilter(WT.db2)
@@ -238,12 +238,24 @@ x = randn(128)
 wl = waveletls(WT.db2)
 n = 128
 x = randn(n)
-for L = 0:nscales(n)
+for L = 0:ndyadicscales(n)
     @test_approx_eq wpt(x, wl, maketree(n, L, :dwt)) dwt(x, wl, L)
     @test_approx_eq iwpt(x, wl, maketree(n, L, :dwt)) idwt(x, wl, L)
     @test_approx_eq wpt(x, wf, maketree(n, L, :dwt)) dwt(x, wf, L)
     @test_approx_eq iwpt(x, wf, maketree(n, L, :dwt)) idwt(x, wf, L)
 end
+
+# non-dyadic tests
+wt = waveletfilter(WT.db2)
+n = 5*8
+x = randn(n)
+for L in 0:maxtransformlevels(n)
+    for wt in (waveletfilter(WT.db2), waveletls(WT.db2))
+        @test_approx_eq wpt(x, wt, maketree(n, L, :dwt)) dwt(x, wt, L)
+        @test_approx_eq iwpt(x, wt, maketree(n, L, :dwt)) idwt(x, wt, L)
+    end
+end
+
 
 # ============= tranform low level functions ================
 

@@ -43,15 +43,15 @@ wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)  # defaults to f
 waveletfilter(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
 waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
 # DWT (discrete wavelet transform)
-dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
-idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x))
+dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
+idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
 dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
 dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
 # DWTC (discrete wavelet transform along dimension td (default is last dim.))
-dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x), td::Integer=ndims(x))
-idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=nscales(x), td::Integer=ndims(x))
+dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x), td::Integer=ndims(x))
+idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x), td::Integer=ndims(x))
 # WPT (wavelet packet transform)
-# Ltree can be L::Integer=nscales(x) or tree::BitVector=maketree(length(y), L, :full)
+# Ltree can be L::Integer=maxtransformlevels(x) or tree::BitVector=maketree(length(y), L, :full)
 wpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
 iwpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
 wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, Ltree, fw::Bool)
@@ -153,7 +153,7 @@ threshold(x::AbstractArray, TH::THType)
 # denoising
 denoise(x::AbstractArray,
         wt=DEFAULT_WAVELET;
-        level=max(nscales(size(x,1))-6,1),
+        L::Int=min(maxtransformlevels(x),6),
         dnt=VisuShrink(size(x,1)),
         estnoise::Function=noisest, 
         TI=false,
@@ -186,17 +186,28 @@ bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
 
 
 #### Examples
-Find best basis tree for WPT:
+Find best basis tree for `wpt`, and compare to `dwt` using biggest m-term approximations.
 ```julia
 wt = wavelet(WT.db4)
 x = sin(4*linspace(0,2*pi-eps(),1024))
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
 xt = dwt(x, wt)
-# estimate sparsity in ell_1 norm
-vecnorm(xtb, 1)  # best basis wpt
-vecnorm(xt, 1)   # regular dwt
+# get biggest m-term approximations
+m = 50
+threshold!(xtb, BiggestTH(), m)
+threshold!(xt, BiggestTH(), m)
+# compare sparse approximations in ell_2 norm
+vecnorm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
+vecnorm(x - idwt(xt, wt), 2)   		# regular dwt
 ```
+```
+julia> vecnorm(x - iwpt(xtb, wt, tree), 2)
+0.009579533847678158
+julia> vecnorm(x - idwt(xt, wt), 2)
+0.05964431178940861
+```
+
 Denoising:
 ```julia
 n = 2^11;

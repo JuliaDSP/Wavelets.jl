@@ -2,7 +2,7 @@
 ##################################################################################
 #
 #  LIFTING TRANSFORMS 
-#  Periodic boundaries, dyadic length (powers of 2)
+#  Periodic boundaries
 #
 ##################################################################################
 
@@ -32,20 +32,22 @@ end
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    @assert sufficientpowersoftwo(y,L)
-    @assert 0 <= L #<= J
-    @assert length(tmp) >= n>>2
-    L == 0 && return y          # do nothing
+    sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
+    length(tmp) >= n>>2 || throw(ArgumentError("length of tmp incorrect"))
+    @assert 0 <= L 
+
+    if L == 0
+        return y
+    end
     
     if fw
         lrange = 1:L
         ns = n
-        half = ns>>1
     else
         lrange = L:-1:1
-        ns = div(n,(2^(lrange[1]-1)))
-        half = ns>>1
+        ns = detailn(n, L-1)
     end
+    half = ns>>1
     s = y
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
@@ -142,12 +144,15 @@ end
 function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
-    @assert iscube(y)
-    @assert sufficientpowersoftwo(y,L)
-    @assert 0 <= L #<= J
-    @assert length(tmp) >= n>>2
-    @assert length(tmpvec) >= n
-    L == 0 && return y          # do nothing
+    iscube(y) || throw(ArgumentError("array must be square/cube"))
+    sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
+    (length(tmp) >= n>>2) || throw(ArgumentError("length of tmp incorrect"))
+    (length(tmpvec) >= n) || throw(ArgumentError("length of tmpvec incorrect"))
+    @assert 0 <= L 
+
+    if L == 0
+        return y
+    end
     
     if fw
         lrange = 1:L
@@ -211,21 +216,23 @@ end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    J = nscales(n)
-    @assert isdyadic(y)
-    @assert isvalidtree(y, tree)
-    @assert length(tmp) >= n>>2
-    tree[1] || return y          # do nothing
+    isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
+    length(tmp) >= n>>2 || throw(ArgumentError("length of tmp incorrect"))
+
+    if !tree[1]
+        return y
+    end
     
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
     
-    L = J
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = J-L)
+        fw  && (Lfw = Lmax-L)
         !fw && (Lfw = L-1)
-        nj = detailn(tl2level(n, Lfw))
+        nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         
         while ix <= n
