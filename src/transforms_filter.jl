@@ -207,7 +207,6 @@ end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
     n = length(x)
     @assert size(x) == size(y)
-    @assert isdyadic(y)
     @assert isvalidtree(y, tree)
     is(y, x) && error("input vector is output vector")
     tree[1] || return copy!(y,x) 

@@ -186,17 +186,28 @@ bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
 
 
 #### Examples
-Find best basis tree for WPT:
+Find best basis tree for `wpt`, and compare to `dwt` using biggest m-term approximations.
 ```julia
 wt = wavelet(WT.db4)
 x = sin(4*linspace(0,2*pi-eps(),1024))
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
 xt = dwt(x, wt)
-# estimate sparsity in ell_1 norm
-vecnorm(xtb, 1)  # best basis wpt
-vecnorm(xt, 1)   # regular dwt
+# get biggest m-term approximations
+m = 50
+threshold!(xtb, BiggestTH(), m)
+threshold!(xt, BiggestTH(), m)
+# compare sparse approximations in ell_2 norm
+vecnorm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
+vecnorm(x - idwt(xt, wt), 2)   		# regular dwt
 ```
+```
+julia> vecnorm(x - iwpt(xtb, wt, tree), 2)
+0.009579533847678158
+julia> vecnorm(x - idwt(xt, wt), 2)
+0.05964431178940861
+```
+
 Denoising:
 ```julia
 n = 2^11;

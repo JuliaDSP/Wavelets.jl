@@ -373,7 +373,7 @@ end
 # wavelet packet transforms WPT
 # valid if 0 nodes have 0 children and length is correct
 function isvalidtree(x::AbstractVector, b::BitVector)
-    ns = ndyadicscales(x)
+    ns = maxtransformlevels(x)
     nb = length(b)
     length(b) == 2^(ns)-1 || return false
     @assert (2^(ns-1)-1)<<1+1 <= nb
@@ -389,7 +389,7 @@ end
 # s=:full, all nodes for first L levels equal 1, others 0
 # s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
 function maketree(n::Int, L::Int, s::Symbol=:full)
-    ns = ndyadicscales(n)
+    ns = maxtransformlevels(n)
     nb = 2^(ns)-1
     @assert 0 <= L <= ns
     @assert (2^(ns-1)-1)<<1+1 <= nb

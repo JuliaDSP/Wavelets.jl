@@ -211,7 +211,6 @@ end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
 
     n = length(y)
-    @assert isdyadic(y)
     @assert isvalidtree(y, tree)
     @assert length(tmp) >= n>>2
     tree[1] || return y          # do nothing

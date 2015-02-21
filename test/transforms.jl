@@ -245,6 +245,18 @@ for L = 0:ndyadicscales(n)
     @test_approx_eq iwpt(x, wf, maketree(n, L, :dwt)) idwt(x, wf, L)
 end
 
+# non-dyadic tests
+wt = waveletfilter(WT.db2)
+n = 5*8
+x = randn(n)
+for L in 0:maxtransformlevels(n)
+    for wt in (waveletfilter(WT.db2), waveletls(WT.db2))
+        @test_approx_eq wpt(x, wt, maketree(n, L, :dwt)) dwt(x, wt, L)
+        @test_approx_eq iwpt(x, wt, maketree(n, L, :dwt)) idwt(x, wt, L)
+    end
+end
+
+
 # ============= tranform low level functions ================
 
 #...

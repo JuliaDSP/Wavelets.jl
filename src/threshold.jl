@@ -367,16 +367,14 @@ end
 
 
 
-function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=ndyadicscales(y), et::Entropy=ShannonEntropy())
+function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
-    @assert isdyadic(y)
-    n = length(y)
-    J = ndyadicscales(n)
-    @assert isdyadic(y)
+    @assert isdyadic(y) # TODO relax condition, note: causes segmentation fault
     @assert isvalidtree(y, tree)
+    n = length(y)
     tree[1] || return besttree      # do nothing
     
     besttree = copy(tree)
@@ -385,12 +383,13 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
     entr = Array(T, length(tree)+length(y))
     nrm = vecnorm(y)
     
-    L = J
+    Lmax = maxtransformlevels(n)
+    L = Lmax
     k = 1
     while L > 0
         ix = 1
-        Lfw = J-L
-        nj = dyadicdetailn(tl2dyadiclevel(n, Lfw))
+        Lfw = Lmax-L
+        nj = detailn(n, Lfw)
         
         dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
         while ix <= n
@@ -436,7 +435,7 @@ function bestsubtree(entr::Array, i::Int)
     if i<<1+1 > n  # bottom of tree
         return entr[i]
     else
-        if (i<<1+1)<<1+1 > n  # above bottom of tree
+        if (i<<1+1)<<1+1 > n  # 1 above bottom of tree
             sum = entr[i<<1]
             sum += entr[i<<1+1]
         else
