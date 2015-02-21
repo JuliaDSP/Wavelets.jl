@@ -177,7 +177,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
                         estnoise::Function=noisest, 
                         TI::Bool=false,
                         nspin::Union(Int,Tuple)=tuple([8 for i=1:ndims(x)]...) )
-    @assert iscube(x)
+    iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
     
     if TI
@@ -228,7 +228,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
 end
 # add z to y
 function arrayadd!(y::AbstractArray, z::AbstractArray)
-    @assert length(y) == length(z)
+    length(y) == length(z) || throw(DimensionMismatch("lengths must be equal"))
     for i = 1:length(y)
         @inbounds y[i] += z[i]
     end
@@ -372,8 +372,9 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
 end
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
-    @assert isdyadic(y) # TODO relax condition, note: causes segmentation fault
-    @assert isvalidtree(y, tree)
+    # TODO relax condition, note: causes segmentation fault
+    isdyadic(y) || throw(ArgumentError("array must be of dyadic size"))
+    isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
     n = length(y)
     tree[1] || return besttree      # do nothing
     

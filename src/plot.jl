@@ -7,7 +7,7 @@ export wplotdots, wplotim
 # return levels and detail coefficient centers on the interval [0,r) above (>=) threshold t
 # as tuple (d,l)
 function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
-    @assert isdyadic(x)
+    isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
 	n = length(x)
 	c = wcount(x, t, level=0)
     d = Array(Float64, c)
@@ -34,7 +34,7 @@ end
 
 # return a matrix of detail coefficient values where row j+1 is level j
 function wplotim(x::AbstractVector)
-    @assert isdyadic(x)
+    isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     n = length(x)
     J = ndyadicscales(n)
     A = zeros(Float64, J, n)
@@ -55,13 +55,13 @@ end
 # ready to be plotted as an image
 function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing; 
                 wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
-    @assert isdyadic(x)
+    isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     dim = ndims(x)
-    (dim == 2 || dim == 3) || error("dimension ",dim," not supported")
+    (dim == 2 || dim == 3) || throw(ArgumentError("dimension $(dim) not supported"))
     n = size(x,1)
-    @assert n == size(x,2)
     cn = size(x,3)  # color dimension
-    (cn == 1 || cn == 3) || error("third dimension ",cn,"  not supported")
+    n == size(x,2) || throw(ArgumentError("array must be square"))
+    (cn == 1 || cn == 3) || throw(ArgumentError("third dimension $(cn)  not supported"))
     J = ndyadicscales(n)
     nsc = 2^(J-L)
         

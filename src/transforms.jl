@@ -74,7 +74,7 @@ for (Xwtc, Xwt, dir) in ((:dwtc, :dwt!, :true), (:idwtc, :dwt!, :false))
 @eval begin
     function $Xwtc{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
         dim = ndims(x)
-        @assert 1 <= td <= dim
+        (1 <= td <= dim) || throw(BoundsError())
         sizex = size(x)
         sizexc = maketfsize(sizex, td)
         y = Array(T, sizex)
