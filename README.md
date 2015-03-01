@@ -203,7 +203,7 @@ vecnorm(x - idwt(xt, wt), 2)   		# regular dwt
 ```
 ```
 julia> vecnorm(x - iwpt(xtb, wt, tree), 2)
-0.009579533847678158
+0.008941070750964843
 julia> vecnorm(x - idwt(xt, wt), 2)
 0.05964431178940861
 ```

@@ -366,22 +366,22 @@ function coefentropy{T<:FloatingPoint}(x::AbstractArray{T}, et::Entropy, nrm::T=
 end
 
 
-
+# find the best tree that is a subset of the input tree (use :full to find the best tree)
+# for wpt 
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
-    # TODO relax condition, note: causes segmentation fault
-    isdyadic(y) || throw(ArgumentError("array must be of dyadic size"))
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
-    n = length(y)
-    tree[1] || return besttree      # do nothing
+
+    tree[1] || copy(tree)      # do nothing
     
-    besttree = copy(tree)
     x = copy(y)
-    tmp = Array(T, size(y))
-    entr = Array(T, length(tree)+length(y))
+    n = length(y)
+    tmp = Array(T, n)
+    ntree = length(tree)
+    entr_bf = Array(T, ntree)
     nrm = vecnorm(y)
     
     Lmax = maxtransformlevels(n)
@@ -392,11 +392,13 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
         Lfw = Lmax-L
         nj = detailn(n, Lfw)
         
+        @assert nj <= n
         dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
         while ix <= n
+            @assert nj+ix-1 <= n
             dx = Transforms.unsafe_vectorslice(x, ix, nj)
             
-            entr[k] = coefentropy(dx, et, nrm)
+            entr_bf[k] = coefentropy(dx, et, nrm)
             
             dwt!(dtmp, dx, wt, 1, true)
             copy!(dx, dtmp)
@@ -407,17 +409,22 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
         L -= 1
     end
     
-    for i = 1:length(y)
-        entr[k] = coefentropy(y[i], et, nrm)
-        k += 1
+    # entropy of fully transformed signal (end nodes)
+    n_af = 2^(Lmax-1)
+    entr_af = Array(T, n_af)
+    n_coef_af = div(n, n_af)
+    for i in 1:n_af
+        range = (i-1)*n_coef_af+1 : i*n_coef_af
+        entr_af[i] = coefentropy(x[range], et, nrm)
     end
     
     # make the best tree
-    for i=1:length(tree)
+    besttree = copy(tree)
+    for i in 1:ntree
         if (i>1 && !besttree[i>>1]) || !tree[i]  # parent is 0 or input tree-node is 0
             besttree[i] = false
         else
-            if entr[i] <= bestsubtree(entr, i)
+            if entr_bf[i] <= bestsubtree_entropy(entr_bf, entr_af, i)
                 besttree[i] = false
             else
                 besttree[i] = true
@@ -426,29 +433,27 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
     end
     
     @assert isvalidtree(y, besttree)
-    return besttree
+    return besttree::BitVector
 end
 
 # the entropy of best subtree
-function bestsubtree(entr::Array, i::Int)
-    n = length(entr)
+function bestsubtree_entropy(entr_bf::Array, entr_af::Array, i::Int)
+    n = length(entr_bf)
+    n_af = length(entr_af)
+    @assert isdyadic(n+1)
+    @assert isdyadic(n_af)
+    @assert n + 1 == n_af<<1
     
-    if i<<1+1 > n  # bottom of tree
-        return entr[i]
+    if n < (i<<1)  # bottom of tree
+        sum  = entr_af[i - n_af + 1]
     else
-        if (i<<1+1)<<1+1 > n  # 1 above bottom of tree
-            sum = entr[i<<1]
-            sum += entr[i<<1+1]
-        else
-            sum = bestsubtree(entr, i<<1)
-            sum += bestsubtree(entr, i<<1+1)
-        end
-        
-        return min(entr[i], sum)
+        sum  = bestsubtree_entropy(entr_bf, entr_af, i<<1)
+        sum += bestsubtree_entropy(entr_bf, entr_af, i<<1+1)
     end
+
+    lowestentropy = min(entr_bf[i], sum)
+    return lowestentropy
 end
 
 
-
-end
-
+end # module
