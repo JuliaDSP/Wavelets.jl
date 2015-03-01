@@ -28,6 +28,11 @@ tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
 @test_approx_eq iwpt(xtb, wt, tree) x
 
+x = sin(4*linspace(0,2*pi-eps(),5*64)) # non-dyadic
+tree = bestbasistree(x, wt)
+xtb = wpt(x, wt, tree)
+@test_approx_eq iwpt(xtb, wt, tree) x
+
 #matching pursuit
 N = 128
 M = 64

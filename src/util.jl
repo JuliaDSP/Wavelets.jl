@@ -66,13 +66,39 @@ maxtransformlevels(x::AbstractArray) = maxtransformlevels(size(x,1))
 function maxtransformlevels(arraysize::Integer)
     arraysize > 1 || return 0
     tl = 0
-    while (sufficientpoweroftwo(arraysize, tl))
+    while sufficientpoweroftwo(arraysize, tl)
         tl += 1
     end
     return tl - 1
 end
 
 # UTILITY FUNCTIONS
+
+# are all dimensions equal length?
+function iscube(x::AbstractArray)
+    for i = 1:ndims(x)
+        size(x,1)!=size(x,i) && return false
+    end
+    return true
+end
+# are all dimensions dyadic length?
+function isdyadic(x::AbstractArray)
+    for i = 1:ndims(x)
+        isdyadic(size(x,i)) || return false
+    end
+    return true
+end
+isdyadic(n::Integer) = (n == 2^(ndyadicscales(n)))
+
+# To perform a level L transform, the size of the signal in each dimension 
+# must have 2^L as a factor.
+function sufficientpoweroftwo(x::AbstractArray, L::Integer)
+    for i = 1:ndims(x)
+        sufficientpoweroftwo(size(x,i), L) || return false
+    end
+    return true
+end
+sufficientpoweroftwo(n::Integer, L::Integer) = (n%(2^L) == 0)
 
 # mirror of filter
 mirror{T<:Number}(f::AbstractVector{T}) = f.*(-1).^(0:length(f)-1)
@@ -101,33 +127,6 @@ function downsample(x::AbstractVector, sw::Int=0)
     end
     return y
 end
-
-# are all dimensions equal length?
-function iscube(x::AbstractArray)
-    for i = 1:ndims(x)
-        size(x,1)!=size(x,i) && return false
-    end
-    return true
-end
-# are all dimensions dyadic length?
-function isdyadic(x::AbstractArray)
-    for i = 1:ndims(x)
-        n = size(x,i)
-        J = ndyadicscales(n)
-        n != 2^J && return false
-    end
-    return true
-end
-
-# To perform a level L transform, the size of the signal in each dimension 
-# must have 2^L as a factor.
-function sufficientpoweroftwo(x::AbstractArray, L::Integer)
-    for i = 1:ndims(x)
-        sufficientpoweroftwo(size(x,i), L) || return false
-    end
-    return true
-end
-sufficientpoweroftwo(n::Integer, L::Integer) = (n%(2^L) == 0)
 
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
@@ -371,11 +370,12 @@ function stridedcopy!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer
 end
 
 # wavelet packet transforms WPT
-# valid if 0 nodes have 0 children and length is correct
+# valid if 0 nodes have 0 children and length+1 is dyadic
+# and has a nodes corresponding every transform level
 function isvalidtree(x::AbstractVector, b::BitVector)
     ns = maxtransformlevels(x)
     nb = length(b)
-    length(b) == 2^(ns)-1 || return false
+    nb == 2^(ns)-1 || return false
     @assert (2^(ns-1)-1)<<1+1 <= nb
     
     for i in 1:2^(ns-1)-1
