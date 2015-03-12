@@ -13,6 +13,10 @@ export  DiscreteWavelet,
         #CPBoundary,
         #
         OrthoFilter,
+        qmf,
+        name,
+        makereverseqmfpair,
+        makeqmfpair,
         #BiOrthoFilter,
         LSstep,
         GLS,
@@ -22,6 +26,7 @@ export  DiscreteWavelet,
         waveletfilter,
         waveletls
 
+using ..Util
 using Compat
 
 # TYPE HIERARCHY
@@ -228,8 +233,8 @@ end
 # IMPLEMENTATIONS OF FilterWavelet
 
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
-    qmf::Vector{Float64}        # quadrature mirror filter
-    name::ASCIIString           # filter short name
+    qmf     ::Vector{Float64}        # quadrature mirror filter
+    name    ::ASCIIString            # filter short name
     OrthoFilter(qmf, name) = new(qmf, name)
 end
 
@@ -246,6 +251,32 @@ function OrthoFilter{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DE
 end
 
 Base.length(f::OrthoFilter) = length(f.qmf)
+qmf(f::OrthoFilter) = f.qmf
+name(f::OrthoFilter) = f.name
+
+# scale filter by scalar
+function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
+    return OrthoFilter{T}(f.qmf.*a, f.name)
+end
+
+# quadrature mirror filter pair
+function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+    scfilter, dcfilter = makereverseqmfpair(f, fw, T)
+    return reverse(scfilter), reverse(dcfilter)
+end
+
+# reversed quadrature mirror filter pair
+function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+    h = convert(Vector{T}, qmf(f))
+    if fw
+        scfilter = reverse(h)
+        dcfilter = mirror(h)
+    else
+        scfilter = h
+        dcfilter = reverse(mirror(h))
+    end
+    return scfilter, dcfilter
+end
 
 #immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
 #    qmf1::Vector{Float64}       # quadrature mirror filter 1
@@ -254,17 +285,12 @@ Base.length(f::OrthoFilter) = length(f.qmf)
 #    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
 #end
 
-# scale filter by scalar
-function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
-    return OrthoFilter{T}(f.qmf.*a, f.name)
-end
-
 # IMPLEMENTATIONS OF LSWavelet
 
 immutable LSstep
-    stept::Char             # step type: 'p' for predict, 'u' for update
-    coef::Vector{Float64}   # lifting coefficients
-    shift::Int              # + left shift, - right shift
+    stept   ::Char              # step type: 'p' for predict, 'u' for update
+    coef    ::Vector{Float64}   # lifting coefficients
+    shift   ::Int               # + left shift, - right shift
     function LSstep(stept,coef,shift)
         @assert stept=='p' || stept=='u'
         return new(stept,coef,shift)
@@ -273,10 +299,10 @@ end
 
 # general lifting scheme
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
-    step::Vector{LSstep}    # steps to be taken
-    norm1::Float64          # normalization of scaling coefs.
-    norm2::Float64          # normalization of detail coefs.
-    name::ASCIIString       # name of scheme
+    step    ::Vector{LSstep}    # steps to be taken
+    norm1   ::Float64           # normalization of scaling coefs.
+    norm2   ::Float64           # normalization of detail coefs.
+    name    ::ASCIIString       # name of scheme
     GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 end
 
@@ -286,6 +312,8 @@ function GLS{WC<:WT.WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDAR
     schemedef == nothing && error("scheme not found")
     return GLS{T}(schemedef..., name)
 end
+
+name(s::GLS) = s.name
 
 
 # IMPLEMENTATIONS OF ContinuousWavelet

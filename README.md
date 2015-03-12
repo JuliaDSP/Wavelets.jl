@@ -42,6 +42,7 @@ API
 wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)  # defaults to filter
 waveletfilter(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
 waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
+
 # DWT (discrete wavelet transform)
 dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
 idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
@@ -74,11 +75,20 @@ The numbers for orthogonal wavelets indicate the number vanishing moments of the
 | `Vaidyanathan` | vaid | `OrthoWaveletClass` |  |
 | `CDF` | cdf | `BiOrthoWaveletClass` | (9,7) |
 
-Class information functions
+Class information
 ```julia
 class(::WaveletClass) ::ASCIIString         # class full name
 name(::WaveletClass) ::ASCIIString          # type short name
 vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
+```
+Transform type information
+```julia
+length(f::OrthoFilter)						# length of filter
+qmf(f::OrthoFilter)							# quadrature mirror filter
+name(f::OrthoFilter)
+makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+name(s::GLS)
 ```
 
 Examples

@@ -6,22 +6,6 @@
 #
 ##################################################################################
 
-function makeqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-    scfilter, dcfilter = makereverseqmf(h, fw, T)
-    return reverse(scfilter), reverse(dcfilter)
-end
-function makereverseqmf(h::AbstractVector, fw::Bool, T::Type=eltype(h))
-    h = convert(Vector{T}, h)
-    if fw
-        scfilter = reverse(h)
-        dcfilter = mirror(h)
-    else
-        scfilter = h
-        dcfilter = reverse(mirror(h))
-    end
-    return scfilter, dcfilter
-end
-
 for (Xwt) in (:dwt!, :wpt!)
 @eval begin
     # pseudo "inplace" by copying
@@ -39,7 +23,7 @@ end
 # writes to y
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
-    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
+    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
     return y
@@ -68,7 +52,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
             # detail coefficients
             filtdown!(dcfilter, si, y, detailindex(n,l,1), detailn(n,l), s, 1,-filtlen+1, true)
             # scaling coefficients
-            filtdown!(scfilter, si, y,                1, detailn(n,l), s, 1, 0, false)
+            filtdown!(scfilter, si, y, 1, detailn(n,l), s, 1, 0, false)
         else
             # scaling coefficients
             filtup!(false, scfilter, si, y, 1, detailn(n,l-1), s, 1, -filtlen+1, false)
@@ -91,7 +75,7 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVe
         # detail coefficients
         filtdown!(dcfilter, si, y, detailindex(n,l,1), detailn(n,l), x, 1,-filtlen+1, true)
         # scaling coefficients
-        filtdown!(scfilter, si, y,                1, detailn(n,l), x, 1, 0, false)
+        filtdown!(scfilter, si, y, 1, detailn(n,l), x, 1, 0, false)
     else
         # scaling coefficients
         filtup!(false, scfilter, si, y, 1, detailn(n,l-1), x, 1, -filtlen+1, false)
@@ -107,7 +91,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
     tmpvec = Array(T,n<<1)             # tmp storage vector
-    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
+    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpvec)
     return y
@@ -203,7 +187,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     si = Array(T, length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
-    scfilter, dcfilter = makereverseqmf(filter.qmf, fw, T)
+    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
     
     wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
     return y

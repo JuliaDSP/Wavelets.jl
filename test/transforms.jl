@@ -262,4 +262,13 @@ end
 #...
 
 
+# ============= wavelet types ================
+print("transforms: wavelet types ...\n")
 
+wt = waveletfilter(WT.db2)
+@test length(wt) == 4
+same = Wavelets.name(wt) == "db2"
+@test same
+
+wt = waveletls(WT.db2)
+@test Wavelets.name(wt) == "db2"
