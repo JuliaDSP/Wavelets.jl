@@ -248,7 +248,7 @@ macro filtermainloop(si, silen, b, val)
         @inbounds for j=2:$(esc(silen))
             $(esc(si))[j-1] = $(esc(si))[j] + $(esc(b))[j]*$(esc(val))
         end
-        @inbounds si[$(esc(silen))] = $(esc(b))[$(esc(silen))+1]*$(esc(val))
+        @inbounds $(esc(si))[$(esc(silen))] = $(esc(b))[$(esc(silen))+1]*$(esc(val))
     end
 end
 macro filtermainloopzero(si, silen)
@@ -256,7 +256,7 @@ macro filtermainloopzero(si, silen)
         @inbounds for j=2:$(esc(silen))
             $(esc(si))[j-1] = $(esc(si))[j]
         end
-        @inbounds si[$(esc(silen))] = 0.0
+        @inbounds $(esc(si))[$(esc(silen))] = 0.0
     end
 end
 

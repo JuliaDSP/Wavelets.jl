@@ -26,10 +26,12 @@ function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
     end
 end
 
+reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
+
 # 1-D
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
@@ -141,7 +143,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,size(y,1)>>2), tmpvec::Vector{T}=Array(T,size(y,1)))
+function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
@@ -210,7 +212,7 @@ end
 
 # WPT
 # 1-D
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
     wpt!(y, scheme, maketree(length(y), L, :full), fw, tmp)
 end
 function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
