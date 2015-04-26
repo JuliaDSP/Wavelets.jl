@@ -30,6 +30,7 @@ export  DiscreteWavelet,
 
 using ..Util
 using Compat
+VERSION < v"0.4-" && using Docile
 
 # TYPE HIERARCHY
 
@@ -41,7 +42,6 @@ abstract FilterWavelet{T} <: DiscreteWavelet{T}
 abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
 typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
-
 
 # BOUNDARY TYPES
 
@@ -58,9 +58,26 @@ const Periodic = PerBoundary()
 const DEFAULT_BOUNDARY = PerBoundary()
 
 
-# CLASSES
-
 module WT
+    immutable FilterTransform end
+    immutable LiftingTransform end
+    const Filter = FilterTransform()
+    const Lifting = LiftingTransform()
+
+    @doc """
+    The `WaveletClass` type has subtypes `OrthoWaveletClass`
+    and `BiOrthoWaveletClass`.
+
+    The `WT` module has for convenience constants defined named
+    as the class short name and optionally amended with a number
+    specifing the number of vanishing moments.
+
+    A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
+
+    **Example**: `WT.db2`, `WT.haar`, `WT.cdf97`
+
+    **See also:** `WT.class`, `WT.name`, `WT.vanishingmoments`
+    """ ->
     abstract WaveletClass
     abstract OrthoWaveletClass <: WaveletClass
     abstract BiOrthoWaveletClass <: WaveletClass
@@ -123,7 +140,7 @@ module WT
     end
 
 end # module
-
+@doc "Transform types and classes for `wavelet` constructor" WT
 
 
 # IMPLEMENTATIONS OF FilterWavelet
@@ -227,21 +244,43 @@ name(s::GLS) = s.name
 
 # TRANSFORM TYPE CONSTRUCTORS
 
-function wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return waveletfilter(w, boundary)
+
+function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return waveletfilter(c, boundary)
 end
+function wavelet(c::WT.WaveletClass, t::WT.FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return waveletfilter(c, boundary)
+end
+function wavelet(c::WT.WaveletClass, t::WT.LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return waveletfilter(c, boundary)
+end
+
 function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return OrthoFilter(w, boundary)
 end
 #function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
 #    error("BiOrtho filters not implemented")
 #end
+
 function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return GLS(w, boundary)
 end
 
+@doc """
+`wavelet(c[, t=WT.Filter][, boundary=Periodic])`
 
+Construct wavelet type where `c` is a wavelet class,
+t is the transformation type (`WT.Filter` or `WT.Lifting`),
+and boundary is the type of boundary treatment.
 
+**Example:**
+```julia
+wavelet(WT.coif6)
+wavelet(WT.db1, WT.Lifting)
+```
+
+**See also:** `WT.WaveletClass`
+""" wavelet
 
 # ------------------------------------------------------------
 

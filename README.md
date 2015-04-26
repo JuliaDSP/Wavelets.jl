@@ -17,8 +17,6 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * Plotting/visualization utilities for 1-D and 2-D signals.
 
-Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
-
 See license (MIT) in LICENSE.md.
 
 

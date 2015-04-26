@@ -1,3 +1,4 @@
+julia 0.3.7
 Reexport
-julia 0.3-
 Compat
+Docile 4.11
