@@ -18,7 +18,9 @@ export  DiscreteWavelet,
         makereverseqmfpair,
         makeqmfpair,
         #BiOrthoFilter,
-        LSstep,
+        StepType,
+        LSStep,
+        LSStepParam,
         GLS,
         #
         scale,
@@ -52,20 +54,13 @@ immutable PerBoundary <: WaveletBoundary end
 #immutable CPBoundary <: WaveletBoundary end
 # and so on...
 
-const DEFAULT_BOUNDARY = PerBoundary()
-
 const Periodic = PerBoundary()
+const DEFAULT_BOUNDARY = PerBoundary()
 
 
 # CLASSES
 
 module WT
-    #=export  WaveletClass,
-            class,
-            name, 
-            vanishingmoments, 
-            DaubechiesWavelet=#
-
     abstract WaveletClass
     abstract OrthoWaveletClass <: WaveletClass
     abstract BiOrthoWaveletClass <: WaveletClass
@@ -128,6 +123,123 @@ module WT
     end
 
 end # module
+
+
+
+# IMPLEMENTATIONS OF FilterWavelet
+
+immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+    qmf     ::Vector{Float64}        # quadrature mirror filter
+    name    ::ASCIIString            # filter short name
+    OrthoFilter(qmf, name) = new(qmf, name)
+end
+
+function OrthoFilter{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
+    if WC <: WT.Daubechies
+        qmf = daubechies(WT.vanishingmoments(w))
+    else
+        qmf = get(FILTERS, name, nothing)
+        qmf == nothing && error("filter not found")
+    end
+    # make sure it is normalized in l2-norm
+    return OrthoFilter{T}(qmf./norm(qmf), name)
+end
+
+Base.length(f::OrthoFilter) = length(f.qmf)
+qmf(f::OrthoFilter) = f.qmf
+name(f::OrthoFilter) = f.name
+
+# scale filter by scalar
+function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
+    return OrthoFilter{T}(f.qmf.*a, f.name)
+end
+
+# quadrature mirror filter pair
+function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+    scfilter, dcfilter = makereverseqmfpair(f, fw, T)
+    return reverse(scfilter), reverse(dcfilter)
+end
+
+# reversed quadrature mirror filter pair
+function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+    h = convert(Vector{T}, qmf(f))
+    if fw
+        scfilter = reverse(h)
+        dcfilter = mirror(h)
+    else
+        scfilter = h
+        dcfilter = reverse(mirror(h))
+    end
+    return scfilter, dcfilter
+end
+
+#immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+#    qmf1::Vector{Float64}       # quadrature mirror filter 1
+#    qmf2::Vector{Float64}       # quadrature mirror filter 2
+#    name::ASCIIString           # filter short name
+#    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
+#end
+
+
+# IMPLEMENTATIONS OF LSWavelet
+
+immutable StepType{T} end
+const Predict = StepType{:predict}()
+const Update = StepType{:update}()
+
+immutable LSStepParam{T<:Number}
+    coef    ::Vector{T}        # lifting coefficients
+    shift   ::Int              # + left shift, - right shift
+    LSStepParam(coef, shift) = new(coef, shift)
+end
+#LSstep{T}(st::StepType{:predict}, coef::Vector{T}, shift::Int) = PredictStep(coef, shift)
+immutable LSStep{T<:Number}
+    param::LSStepParam{T}
+    steptype::StepType
+    LSStep(param, steptype) = new(param, steptype)
+end
+LSStep{T}(st::StepType, coef::Vector{T}, shift::Int) = LSStep{T}(LSStepParam{T}(coef, shift), st)
+Base.length(s::LSStep) = length(s.param)
+Base.length(s::LSStepParam) = length(s.coef)
+
+# general lifting scheme
+immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
+    step    ::Vector{LSStep{Float64}}    # steps to be taken
+    norm1   ::Float64           # normalization of scaling coefs.
+    norm2   ::Float64           # normalization of detail coefs.
+    name    ::ASCIIString       # name of scheme
+    GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
+end
+
+function GLS{WC<:WT.WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
+    schemedef = get(SCHEMES, name, nothing)
+    schemedef == nothing && error("scheme not found")
+    return GLS{T}(schemedef..., name)
+end
+
+name(s::GLS) = s.name
+
+# IMPLEMENTATIONS OF ContinuousWavelet
+
+# ...
+
+# TRANSFORM TYPE CONSTRUCTORS
+
+function wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return waveletfilter(w, boundary)
+end
+function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return OrthoFilter(w, boundary)
+end
+#function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+#    error("BiOrtho filters not implemented")
+#end
+function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return GLS(w, boundary)
+end
+
 
 
 
@@ -228,114 +340,6 @@ function vieta(R::AbstractVector)
 end
 
 
-
-
-# IMPLEMENTATIONS OF FilterWavelet
-
-immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
-    qmf     ::Vector{Float64}        # quadrature mirror filter
-    name    ::ASCIIString            # filter short name
-    OrthoFilter(qmf, name) = new(qmf, name)
-end
-
-function OrthoFilter{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
-    name = WT.name(w)
-    if WC <: WT.Daubechies
-        qmf = daubechies(WT.vanishingmoments(w))
-    else
-        qmf = get(FILTERS, name, nothing)
-        qmf == nothing && error("filter not found")
-    end
-    # make sure it is normalized in l2-norm
-    return OrthoFilter{T}(qmf./norm(qmf), name)
-end
-
-Base.length(f::OrthoFilter) = length(f.qmf)
-qmf(f::OrthoFilter) = f.qmf
-name(f::OrthoFilter) = f.name
-
-# scale filter by scalar
-function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
-    return OrthoFilter{T}(f.qmf.*a, f.name)
-end
-
-# quadrature mirror filter pair
-function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-    scfilter, dcfilter = makereverseqmfpair(f, fw, T)
-    return reverse(scfilter), reverse(dcfilter)
-end
-
-# reversed quadrature mirror filter pair
-function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-    h = convert(Vector{T}, qmf(f))
-    if fw
-        scfilter = reverse(h)
-        dcfilter = mirror(h)
-    else
-        scfilter = h
-        dcfilter = reverse(mirror(h))
-    end
-    return scfilter, dcfilter
-end
-
-#immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
-#    qmf1::Vector{Float64}       # quadrature mirror filter 1
-#    qmf2::Vector{Float64}       # quadrature mirror filter 2
-#    name::ASCIIString           # filter short name
-#    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
-#end
-
-# IMPLEMENTATIONS OF LSWavelet
-
-immutable LSstep
-    stept   ::Char              # step type: 'p' for predict, 'u' for update
-    coef    ::Vector{Float64}   # lifting coefficients
-    shift   ::Int               # + left shift, - right shift
-    function LSstep(stept,coef,shift)
-        @assert stept=='p' || stept=='u'
-        return new(stept,coef,shift)
-    end
-end
-
-# general lifting scheme
-immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
-    step    ::Vector{LSstep}    # steps to be taken
-    norm1   ::Float64           # normalization of scaling coefs.
-    norm2   ::Float64           # normalization of detail coefs.
-    name    ::ASCIIString       # name of scheme
-    GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
-end
-
-function GLS{WC<:WT.WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
-    name = WT.name(w)
-    schemedef = get(SCHEMES, name, nothing)
-    schemedef == nothing && error("scheme not found")
-    return GLS{T}(schemedef..., name)
-end
-
-name(s::GLS) = s.name
-
-
-# IMPLEMENTATIONS OF ContinuousWavelet
-
-# ...
-
-# TRANSFORM TYPE CONSTRUCTORS
-
-function wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return waveletfilter(w, boundary)
-end
-function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return OrthoFilter(w, boundary)
-end
-#function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-#    error("BiOrtho filters not implemented")
-#end
-function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return GLS(w, boundary)
-end
-
-
 # scaling filters h (low pass)
 # the number at end of a filter name is the 
 # number of vanishing moments of the mother wavelet function
@@ -413,7 +417,7 @@ const FILTERS=@compat Dict{ASCIIString,Vector{Float64}}(
 
 # biortho filters
 # name => (qmf1,qmf2)
-const BIFILTERS=@compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
+const BIFILTERS = @compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
 # test
 "test" =>
 ([0.7071067811865475,0.7071067811865475],
@@ -422,33 +426,33 @@ const BIFILTERS=@compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
 )
 
 
-# in matlab (d,p) -> (p,u)
-const SCHEMES=@compat Dict{ASCIIString,NTuple{3}}(
+# in matlab (d,p) -> (predict, update)
+const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
-"cdf9/7" => ([ LSstep('u',1.5861343420604  *[1.0,1.0],0),
-			LSstep('p',0.05298011857291494 *[1.0,1.0],1),
-			LSstep('u',-0.882911075531393  *[1.0,1.0],0),
-            LSstep('p',-0.44350685204384654*[1.0,1.0],1)],
-            1.1496043988603355,
-            0.8698644516247099)
+"cdf9/7" => ([  LSStep(Update,  [1.0,1.0]*1.5861343420604, 0),
+    			LSStep(Predict, [1.0,1.0]*0.05298011857291494, 1),
+    			LSStep(Update,  [1.0,1.0]*-0.882911075531393, 0),
+                LSStep(Predict, [1.0,1.0]*-0.44350685204384654, 1)],
+                1.1496043988603355,
+                0.8698644516247099)
 ,
 
 # Haar, same as db1
-"haar" => ([ LSstep('p',[-1.0],0),
-            LSstep('u',[0.5],0)],
+"haar" => ([LSStep(Predict, [-1.0], 0),
+            LSStep(Update,  [0.5], 0)],
             0.7071067811865475,
             1.4142135623730951)
 ,
 # Daubechies
-"db1" => ([ LSstep('p',[-1.0],0),
-            LSstep('u',[0.5],0)],
+"db1" => ([ LSStep(Predict, [-1.0], 0),
+            LSStep(Update,  [0.5], 0)],
             0.7071067811865475,
             1.4142135623730951)
 ,
-"db2" => ([ LSstep('p',[-1.7320508075688772],0),
-            LSstep('u',[-0.0669872981077807,0.4330127018922193],1),
-            LSstep('p',[1.0],-1)],
+"db2" => ([ LSStep(Predict, [-1.7320508075688772], 0),
+            LSStep(Update,  [-0.0669872981077807,0.4330127018922193], 1),
+            LSStep(Predict, [1.0], -1)],
             0.5176380902050414,
             1.9318516525781364)
 

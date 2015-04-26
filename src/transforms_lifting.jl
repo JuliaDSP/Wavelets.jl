@@ -19,11 +19,20 @@ end
 
 # return scheme parameters adjusted for direction and type
 function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
+	n = length(scheme.step)
+	stepseq = Array(LSStep{T}, n)
+	for i = 1:n
+		j = fw ? i : n+1-i
+	    stepseq[i] = LSStep(scheme.step[j].steptype, 
+	    					convert(Vector{T}, scheme.step[j].param.coef), 
+	    					scheme.step[j].param.shift)
+	end
     if fw
-        return scheme.step, convert(T, scheme.norm1), convert(T, scheme.norm2)
+        norm1, norm2 = convert(T, scheme.norm1), convert(T, scheme.norm2)
     else
-        return reverse(scheme.step), convert(T, 1/scheme.norm1), convert(T, 1/scheme.norm2)
+        norm1, norm2 = convert(T, 1/scheme.norm1), convert(T, 1/scheme.norm2)
     end
+    return stepseq, norm1, norm2
 end
 
 reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
@@ -57,12 +66,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
         if fw
             split!(s, ns, tmp)
             for step in stepseq
-                stepcoef = convert(Array{T}, step.coef)
-                if step.stept == 'p'
-                    predictfw!(s, half, stepcoef, step.shift)
-                elseif step.stept == 'u'
-                    updatefw!(s, half, stepcoef, step.shift)
-                end
+                liftfw!(s, half, step.param, step.steptype)
             end
             normalize!(s, half, ns, norm1, norm2)
             ns = ns>>1 
@@ -70,12 +74,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
         else
             normalize!(s, half, ns, norm1, norm2)
             for step in stepseq
-                stepcoef = convert(Array{T}, step.coef)
-                if step.stept == 'p'
-                    predictbw!(s, half, stepcoef, step.shift)
-                elseif step.stept == 'u'
-                    updatebw!(s, half, stepcoef, step.shift)
-                end
+                liftbw!(s, half, step.param, step.steptype)
             end
             merge!(s, ns, tmp)        # inverse split
             ns = ns<<1 
@@ -103,12 +102,7 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, i
             split!(oopv, ns, tmp)
         end
         for step in stepseq
-            stepcoef = convert(Vector{T}, step.coef)
-            if step.stept == 'p'
-                predictfw!(oopv, half, stepcoef, step.shift)
-            else # 'u'
-                updatefw!(oopv, half, stepcoef, step.shift)
-            end
+            liftfw!(oopv, half, step.param, step.steptype)
         end
         if oopc
             normalize!(y, iy, incy, oopv, half, ns, norm1, norm2)
@@ -122,12 +116,7 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, i
             normalize!(oopv, half, ns, norm1, norm2)
         end
         for step in stepseq
-            stepcoef = convert(Vector{T}, step.coef)
-            if step.stept == 'p'
-                predictbw!(oopv, half, stepcoef, step.shift)
-            else # 'u'
-                updatebw!(oopv, half, stepcoef, step.shift)
-            end
+            liftbw!(oopv, half, step.param, step.steptype)
         end
         if oopc
             merge!(y, iy, incy, oopv, ns)
@@ -293,31 +282,31 @@ end
 
 
 # predict and update lifting steps inplace on x, forward and backward
-# half: half of the length under consideration, shift: shift to left, c: lift coefs
+# half: half of the length under consideration
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
-for (fname,lift_inb,lift_bound,pred) in (
-                        (:predictfw!,:lift_inboundsfw!, :liftp_perboundaryfw!, true),
-                        (:predictbw!,:lift_inboundsbw!, :liftp_perboundarybw!, true),
-                        (:updatefw!, :lift_inboundsfw!, :liftu_perboundaryfw!, false),
-                        (:updatebw!, :lift_inboundsbw!, :liftu_perboundarybw!, false) )
+for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!), 
+										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ), 
+    step_type in (StepType{:predict}, StepType{:update})
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, c::Vector{T}, shift::Int)
-    lhsr, irange, rhsr, rhsis = getliftranges(half, length(c), shift, $pred)
-    
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
+                                    param::LSStepParam{T}, steptype::$step_type)
+    lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
+    coefs = param.coef
     # left boundary
-    ($lift_bound)(x, half, c, lhsr, rhsis)
+    ($lift_bound)(x, half, coefs, lhsr, rhsis, steptype)
     # main loop
-    ($lift_inb)(x, c, irange, rhsis)
+    ($lift_inb)(x, coefs, irange, rhsis)
     # right boundary
-    ($lift_bound)(x, half, c, rhsr, rhsis)
+    ($lift_bound)(x, half, coefs, rhsr, rhsis, steptype)
     return x
 end
 end # eval begin
 end # for
 
-function getliftranges(half::Int, nc::Int, shift::Int, pred::Bool)
+function getliftranges(half::Int, nc::Int, shift::Int, steptype::StepType)
     # define index shift rhsis
+    pred = isa(steptype, typeof(WaveletTypes.Predict))
     if pred
         rhsis = -shift+half
     else
@@ -344,7 +333,7 @@ function getliftranges(half::Int, nc::Int, shift::Int, pred::Bool)
         lhsr = 1:irmin-1
         rhsr = irmax+1:half
     end
-    if !(pred)  # shift ranges for update
+    if !pred  # shift ranges for update
         irange += half
         lhsr += half
         rhsr += half
@@ -353,13 +342,12 @@ function getliftranges(half::Int, nc::Int, shift::Int, pred::Bool)
 end
 
 # periodic boundary
-for (fname,op,puxind) in (  (:liftp_perboundaryfw!,:-,:(mod1(i+k-1+rhsis-half,half)+half)),
-                            (:liftp_perboundarybw!,:+,:(mod1(i+k-1+rhsis-half,half)+half)),
-                            (:liftu_perboundaryfw!, :-,:(mod1(i+k-1+rhsis,half))),
-                            (:liftu_perboundarybw!, :+,:(mod1(i+k-1+rhsis,half)))
-                            )
+for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ), 
+	(step_type, puxind) in ((StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
+                            (StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, c::Vector{T}, irange::Range, rhsis::Int)
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
+									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
     nc = length(c)
     for i in irange
         for k = 1:nc  
