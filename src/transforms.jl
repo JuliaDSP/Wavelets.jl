@@ -3,6 +3,7 @@ using ..Util, ..WaveletTypes
 export  dwt, idwt, dwt!, 
         dwtc, idwtc, wpt, 
         iwpt, wpt!
+typealias WT WaveletTypes
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 

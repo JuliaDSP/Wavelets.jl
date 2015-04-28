@@ -25,7 +25,6 @@ export
     ShannonEntropy,
     LogEnergyEntropy
 
-
 # THRESHOLD TYPES AND FUNCTIONS
 
 abstract THType
@@ -166,7 +165,7 @@ function VisuShrink(n::Int)
     return VisuShrink(DEFAULT_TH, sqrt(2*log(n)))
 end
 
-const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
+const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
 # estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))

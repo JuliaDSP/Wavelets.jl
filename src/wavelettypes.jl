@@ -1,32 +1,20 @@
 module WaveletTypes
 export  DiscreteWavelet,
-        ContinuousWavelet,
         FilterWavelet,
         LSWavelet,
-        WaveletTransformType,
         WT,
         #
-        WaveletBoundary,
-        PerBoundary,
         Periodic,
-        #ZPBoundary,
-        #CPBoundary,
         #
         OrthoFilter,
+        scale,
         qmf,
         name,
         makereverseqmfpair,
         makeqmfpair,
-        #BiOrthoFilter,
-        StepType,
-        LSStep,
-        LSStepParam,
         GLS,
         #
-        scale,
-        wavelet,
-        waveletfilter,
-        waveletls
+        wavelet
 
 using ..Util
 using Compat
@@ -35,13 +23,13 @@ VERSION < v"0.4-" && using Docile
 # TYPE HIERARCHY
 
 abstract DiscreteWavelet{T}
-abstract ContinuousWavelet{T}
+#abstract ContinuousWavelet{T}
 # discrete transforms via filtering
 abstract FilterWavelet{T} <: DiscreteWavelet{T}
 # discrete transforms via lifting
 abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
-typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
+#typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
 
 # BOUNDARY TYPES
 
@@ -59,6 +47,7 @@ const DEFAULT_BOUNDARY = PerBoundary()
 
 
 module WT
+    VERSION < v"0.4-" && using Docile
     immutable FilterTransform end
     immutable LiftingTransform end
     const Filter = FilterTransform()
@@ -140,11 +129,16 @@ module WT
     end
 
 end # module
-@doc "Transform types and classes for `wavelet` constructor" WT
+@doc "Transform types and classes for the `wavelet` constructor" -> WT
 
 
 # IMPLEMENTATIONS OF FilterWavelet
 
+@doc """
+Wavelet type for discrete orthogonal transforms by filtering.
+
+**See also:** `GLS`, `wavelet`
+""" -> 
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
     name    ::ASCIIString            # filter short name
@@ -220,7 +214,12 @@ LSStep{T}(st::StepType, coef::Vector{T}, shift::Int) = LSStep{T}(LSStepParam{T}(
 Base.length(s::LSStep) = length(s.param)
 Base.length(s::LSStepParam) = length(s.coef)
 
-# general lifting scheme
+@doc """
+Wavelet type for discrete general (bi)orthogonal transforms 
+by using a lifting scheme.
+
+**See also:** `OrthoFilter`, `wavelet`
+""" -> 
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
@@ -246,24 +245,13 @@ name(s::GLS) = s.name
 
 
 function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return waveletfilter(c, boundary)
+    return wavelet(c, Filter, boundary)
 end
-function wavelet(c::WT.WaveletClass, t::WT.FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return waveletfilter(c, boundary)
+function wavelet(c::WT.OrthoWaveletClass, t::WT.FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+    return OrthoFilter(c, boundary)
 end
 function wavelet(c::WT.WaveletClass, t::WT.LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return waveletfilter(c, boundary)
-end
-
-function waveletfilter(w::WT.OrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return OrthoFilter(w, boundary)
-end
-#function waveletfilter(w::WT.BiOrthoWaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-#    error("BiOrtho filters not implemented")
-#end
-
-function waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return GLS(w, boundary)
+    return GLS(c, boundary)
 end
 
 @doc """
@@ -280,7 +268,7 @@ wavelet(WT.db1, WT.Lifting)
 ```
 
 **See also:** `WT.WaveletClass`
-""" wavelet
+""" -> wavelet
 
 # ------------------------------------------------------------
 
@@ -387,7 +375,7 @@ end
 # http://www.mathworks.com/matlabcentral/fileexchange/5502-filter-coefficients-to-popular-wavelets
 ### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
 # name => qmf
-const FILTERS=@compat Dict{ASCIIString,Vector{Float64}}(
+const FILTERS = @compat Dict{ASCIIString,Vector{Float64}}(
 # Haar filter
 "haar" =>
 [0.7071067811865475,0.7071067811865475]

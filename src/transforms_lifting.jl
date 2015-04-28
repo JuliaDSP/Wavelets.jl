@@ -287,10 +287,10 @@ end
 # For update : writes to range half+1:2*half, reads from 1:2*half
 for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!), 
 										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ), 
-    step_type in (StepType{:predict}, StepType{:update})
+    step_type in (WT.StepType{:predict}, WT.StepType{:update})
 @eval begin
 function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
-                                    param::LSStepParam{T}, steptype::$step_type)
+                                    param::WT.LSStepParam{T}, steptype::$step_type)
     lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
     coefs = param.coef
     # left boundary
@@ -304,7 +304,7 @@ end
 end # eval begin
 end # for
 
-function getliftranges(half::Int, nc::Int, shift::Int, steptype::StepType)
+function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
     # define index shift rhsis
     pred = isa(steptype, typeof(WaveletTypes.Predict))
     if pred
@@ -343,8 +343,8 @@ end
 
 # periodic boundary
 for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ), 
-	(step_type, puxind) in ((StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
-                            (StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
+	(step_type, puxind) in ((WT.StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
+                            (WT.StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
 function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
 									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
