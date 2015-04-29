@@ -3,17 +3,9 @@ export  DiscreteWavelet,
         FilterWavelet,
         LSWavelet,
         WT,
-        #
         Periodic,
-        #
         OrthoFilter,
-        scale,
-        qmf,
-        name,
-        makereverseqmfpair,
-        makeqmfpair,
         GLS,
-        #
         wavelet
 
 using ..Util
@@ -245,7 +237,7 @@ name(s::GLS) = s.name
 
 
 function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return wavelet(c, Filter, boundary)
+    return wavelet(c, WT.Filter, boundary)
 end
 function wavelet(c::WT.OrthoWaveletClass, t::WT.FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return OrthoFilter(c, boundary)

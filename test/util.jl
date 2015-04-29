@@ -67,53 +67,53 @@ n = 32
 x = randn(n)
 y = randn(n)
 for sh in (-43, -5, 0, 1, 28, 41)
-    @test circshift(x,sh) == circshift!(copy(x),sh)
-    @test circshift(x,-sh) == circshift!(copy(x),-sh)
-    @test x == circshift!(circshift!(copy(x),sh),-sh)
-    @test circshift(x,sh) == circshift!(similar(x),x,sh)
-    @test circshift(x,-sh) == circshift!(similar(x),x,-sh)
+    @test circshift(x,sh) == Util.circshift!(copy(x),sh)
+    @test circshift(x,-sh) == Util.circshift!(copy(x),-sh)
+    @test x == Util.circshift!(Util.circshift!(copy(x),sh),-sh)
+    @test circshift(x,sh) == Util.circshift!(similar(x),x,sh)
+    @test circshift(x,-sh) == Util.circshift!(similar(x),x,-sh)
 end
 
 a0 = [1,2]
 exp = [1,2]
 n = 2
-@test split!(copy(a0)) == exp
-@test split!(copy(a0), n, similar(a0)) == exp
-@test split!(similar(a0), copy(a0), n) == exp
-@test merge!(copy(a0)) == exp
-@test merge!(copy(a0), n, similar(a0)) == exp
-@test merge!(similar(a0), copy(a0), n) == exp
+@test Util.split!(copy(a0)) == exp
+@test Util.split!(copy(a0), n, similar(a0)) == exp
+@test Util.split!(similar(a0), copy(a0), n) == exp
+@test Util.merge!(copy(a0)) == exp
+@test Util.merge!(copy(a0), n, similar(a0)) == exp
+@test Util.merge!(similar(a0), copy(a0), n) == exp
 
 a0 = [-1,2,3.3,4]
 exp = [-1,3.3,2,4]
 n = 4
-@test split!(copy(a0)) == exp
-@test split!(copy(a0), n, similar(a0)) == exp
-@test split!(similar(a0), copy(a0), n) == exp
+@test Util.split!(copy(a0)) == exp
+@test Util.split!(copy(a0), n, similar(a0)) == exp
+@test Util.split!(similar(a0), copy(a0), n) == exp
 a0 = [-1,3.3,2,4]
 exp = [-1,2,3.3,4]
-@test merge!(copy(a0)) == exp
-@test merge!(copy(a0), n, similar(a0)) == exp
-@test merge!(similar(a0), copy(a0), n) == exp
+@test Util.merge!(copy(a0)) == exp
+@test Util.merge!(copy(a0), n, similar(a0)) == exp
+@test Util.merge!(similar(a0), copy(a0), n) == exp
 
 a0 = randn(128)
-@test a0 == merge!(split!(a0))
+@test a0 == Util.merge!(Util.split!(a0))
 
 # with strides
 a0 = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
 ia = 3
 inca = 2
-@test split!(similar(a0), copy(a0), ia, inca, 2)[1:2] == [3,5]
-@test split!(similar(a0), copy(a0), ia, inca, 4)[1:4] == [3,7,5,9]
-@test split!(similar(a0), copy(a0), 1, 3, 4)[1:4] == [1,7,4,10]
-@test split!(similar(a0), copy(a0), 1, 1, 8)[1:8] ==  split!(similar(a0), copy(a0), 8)[1:8]
+@test Util.split!(similar(a0), copy(a0), ia, inca, 2)[1:2] == [3,5]
+@test Util.split!(similar(a0), copy(a0), ia, inca, 4)[1:4] == [3,7,5,9]
+@test Util.split!(similar(a0), copy(a0), 1, 3, 4)[1:4] == [1,7,4,10]
+@test Util.split!(similar(a0), copy(a0), 1, 1, 8)[1:8] ==  Util.split!(similar(a0), copy(a0), 8)[1:8]
 
-@test merge!(similar(a0), ia, inca, copy(a0), 2)[ia:inca:ia+(2-1)*inca] == [1,2]
-@test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
+@test Util.merge!(similar(a0), ia, inca, copy(a0), 2)[ia:inca:ia+(2-1)*inca] == [1,2]
+@test Util.merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
 ia = 1
 inca = 3
-@test merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
-@test merge!(similar(a0), 1, 1, copy(a0), 8)[1:8] ==  merge!(similar(a0), copy(a0), 8)[1:8]
+@test Util.merge!(similar(a0), ia, inca, copy(a0), 4)[ia:inca:ia+(4-1)*inca] == [1,3,2,4]
+@test Util.merge!(similar(a0), 1, 1, copy(a0), 8)[1:8] ==  Util.merge!(similar(a0), copy(a0), 8)[1:8]
 
 n = 128
 x = randn(n)
@@ -138,7 +138,7 @@ EE = Exception
 @test_throws EE maketree(n, 4, :foo)
 
 
-makewavelet(waveletfilter(WT.db2))
+makewavelet(wavelet(WT.db2, WT.Filter))
 for tf in ("Blocks", "HeaviSine")
     testfunction(8, tf)
 end

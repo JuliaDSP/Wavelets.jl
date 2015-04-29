@@ -20,10 +20,10 @@ end
 # return scheme parameters adjusted for direction and type
 function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
 	n = length(scheme.step)
-	stepseq = Array(LSStep{T}, n)
+	stepseq = Array(WT.LSStep{T}, n)
 	for i = 1:n
 		j = fw ? i : n+1-i
-	    stepseq[i] = LSStep(scheme.step[j].steptype, 
+	    stepseq[i] = WT.LSStep(scheme.step[j].steptype, 
 	    					convert(Vector{T}, scheme.step[j].param.coef), 
 	    					scheme.step[j].param.shift)
 	end
@@ -64,7 +64,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
 
     for l in lrange
         if fw
-            split!(s, ns, tmp)
+            Util.split!(s, ns, tmp)
             for step in stepseq
                 liftfw!(s, half, step.param, step.steptype)
             end
@@ -76,7 +76,7 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, f
             for step in stepseq
                 liftbw!(s, half, step.param, step.steptype)
             end
-            merge!(s, ns, tmp)        # inverse split
+            Util.merge!(s, ns, tmp)        # inverse split
             ns = ns<<1 
             half = half<<1
         end
@@ -97,9 +97,9 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, i
 
     if fw
         if oopc
-            split!(oopv, y, iy, incy, ns)
+            Util.split!(oopv, y, iy, incy, ns)
         else
-            split!(oopv, ns, tmp)
+            Util.split!(oopv, ns, tmp)
         end
         for step in stepseq
             liftfw!(oopv, half, step.param, step.steptype)
@@ -119,9 +119,9 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, i
             liftbw!(oopv, half, step.param, step.steptype)
         end
         if oopc
-            merge!(y, iy, incy, oopv, ns)
+            Util.merge!(y, iy, incy, oopv, ns)
         else
-            merge!(oopv, ns, tmp)
+            Util.merge!(oopv, ns, tmp)
         end
     end
 

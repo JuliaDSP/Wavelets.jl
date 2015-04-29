@@ -1,7 +1,7 @@
 
 using Wavelets
 
-wf = waveletfilter(WT.db6)
+wf = wavelet(WT.db6, WT.Filter)
 N = 1024*32;
 x0 = rand(N);
 L = int(log2(N)-2)

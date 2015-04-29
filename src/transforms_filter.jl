@@ -23,7 +23,7 @@ end
 # writes to y
 function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
     return y
@@ -91,7 +91,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
     tmpvec = Array(T,n<<1)             # tmp storage vector
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     
     dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpvec)
     return y
@@ -187,7 +187,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     si = Array(T, length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     
     wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
     return y
@@ -281,8 +281,8 @@ function filtdown!{T<:FloatingPoint}(f::Vector{T}, si::Vector{T},
     @assert shift <= 0
 
     fill!(si,0.0)
-    istart = flen + int(ss)
-    dsshift = (flen%2 + int(ss))%2  # is flen odd, and shift downsampling
+    istart = @compat flen + Int(ss)
+    dsshift = @compat (flen%2 + Int(ss))%2  # is flen odd, and shift downsampling
     
     rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
     @inbounds begin
@@ -361,7 +361,7 @@ function filtup!{T<:FloatingPoint}(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     fill!(si,0.0)
     istart = flen - shift%2
-    dsshift = int(ss)%2  # shift upsampling
+    dsshift = @compat Int(ss)%2  # shift upsampling
     
     rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin

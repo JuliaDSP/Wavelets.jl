@@ -189,13 +189,13 @@ function denoise{S<:DNFT}(x::AbstractArray,
             z = Array(eltype(x), size(x))
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
-                circshift!(z, x, shift)
+                Util.circshift!(z, x, shift)
                 
                 dwt!(xt, z, wt, L, true)
                 threshold!(xt, dnt.th, sigma*dnt.t)
                 dwt!(z, xt, wt, L, false)
                 
-                circshift!(xt, z, -shift)
+                Util.circshift!(xt, z, -shift)
                 arrayadd!(y, xt)
             end
         else # ndims > 1
@@ -251,7 +251,7 @@ function mad!(y::AbstractArray)
     for i in 1:length(y)
         y[i] = abs(y[i]-m)
     end
-    return median!(y, checknan=false)
+    return median!(y)
 end
 #function mad(x::AbstractArray)
 #    y = copy(x)

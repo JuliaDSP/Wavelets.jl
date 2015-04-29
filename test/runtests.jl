@@ -21,7 +21,6 @@ macro test_vecnorm_eq_eps(a, b, c)
 end
 
 
-
 include("util.jl")
 include("transforms.jl")
 include("threshold.jl")

@@ -1,5 +1,6 @@
 module Transforms
 using ..Util, ..WaveletTypes
+using Compat
 export  dwt, idwt, dwt!, 
         dwtc, idwtc, wpt, 
         iwpt, wpt!
