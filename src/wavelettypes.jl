@@ -262,6 +262,9 @@ wavelet(WT.db1, WT.Lifting)
 **See also:** `WT.WaveletClass`
 """ -> wavelet
 
+@deprecate waveletfilter(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Filter, boundary)
+@deprecate waveletls(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Lifting, boundary)
+
 # ------------------------------------------------------------
 
 # Compute filters from the Daubechies class
