@@ -1,5 +1,5 @@
 module Threshold
-using ..Util, ..WaveletTypes, ..Transforms
+using ..Util, ..WT, ..Transforms
 export 
     # threshold
     threshold!,

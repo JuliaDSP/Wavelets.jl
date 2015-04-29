@@ -306,7 +306,7 @@ end # for
 
 function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
     # define index shift rhsis
-    pred = isa(steptype, typeof(WaveletTypes.Predict))
+    pred = isa(steptype, typeof(WT.Predict))
     if pred
         rhsis = -shift+half
     else

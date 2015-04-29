@@ -181,7 +181,7 @@ end
 class = WT.db1
 wt = wavelet(class, WT.Filter)
 @test length(wt) == 2
-@test_approx_eq wt.qmf*0.7 WaveletTypes.scale(wt, 0.7).qmf
+@test_approx_eq wt.qmf*0.7 WT.scale(wt, 0.7).qmf
 
 # ============= error tests ================
 print("transforms: error tests ...\n")
@@ -266,8 +266,8 @@ print("transforms: wavelet types ...\n")
 
 wt = wavelet(WT.db2, WT.Filter)
 @test length(wt) == 4
-same = WaveletTypes.name(wt) == "db2"
+same = WT.name(wt) == "db2"
 @test same
 
 wt = wavelet(WT.db2, WT.Lifting)
-@test WaveletTypes.name(wt) == "db2"
+@test WT.name(wt) == "db2"

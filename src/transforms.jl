@@ -1,10 +1,9 @@
 module Transforms
-using ..Util, ..WaveletTypes
+using ..Util, ..WT
 using Compat
 export  dwt, idwt, dwt!, 
         dwtc, idwtc, wpt, 
         iwpt, wpt!
-typealias WT WaveletTypes
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 

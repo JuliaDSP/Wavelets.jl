@@ -1,8 +1,7 @@
-module WaveletTypes
+module WT
 export  DiscreteWavelet,
         FilterWavelet,
         LSWavelet,
-        WT,
         Periodic,
         OrthoFilter,
         GLS,
@@ -11,6 +10,7 @@ export  DiscreteWavelet,
 using ..Util
 using Compat
 VERSION < v"0.4-" && using Docile
+
 
 # TYPE HIERARCHY
 
@@ -22,6 +22,12 @@ abstract FilterWavelet{T} <: DiscreteWavelet{T}
 abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
 #typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
+
+immutable FilterTransform end
+immutable LiftingTransform end
+const Filter = FilterTransform()
+const Lifting = LiftingTransform()
+
 
 # BOUNDARY TYPES
 
@@ -38,90 +44,83 @@ const Periodic = PerBoundary()
 const DEFAULT_BOUNDARY = PerBoundary()
 
 
-module WT
-    VERSION < v"0.4-" && using Docile
-    immutable FilterTransform end
-    immutable LiftingTransform end
-    const Filter = FilterTransform()
-    const Lifting = LiftingTransform()
+# WAVELET CLASSES
 
-    @doc """
-    The `WaveletClass` type has subtypes `OrthoWaveletClass`
-    and `BiOrthoWaveletClass`.
+@doc """
+The `WaveletClass` type has subtypes `OrthoWaveletClass`
+and `BiOrthoWaveletClass`.
 
-    The `WT` module has for convenience constants defined named
-    as the class short name and optionally amended with a number
-    specifing the number of vanishing moments.
+The `WT` module has for convenience constants defined named
+as the class short name and optionally amended with a number
+specifing the number of vanishing moments.
 
-    A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
+A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
 
-    **Example**: `WT.db2`, `WT.haar`, `WT.cdf97`
+**Example**: `WT.db2`, `WT.haar`, `WT.cdf97`
 
-    **See also:** `WT.class`, `WT.name`, `WT.vanishingmoments`
-    """ ->
-    abstract WaveletClass
-    abstract OrthoWaveletClass <: WaveletClass
-    abstract BiOrthoWaveletClass <: WaveletClass
+**See also:** `WT.class`, `WT.name`, `WT.vanishingmoments`
+""" ->
+abstract WaveletClass
+abstract OrthoWaveletClass <: WaveletClass
+abstract BiOrthoWaveletClass <: WaveletClass
 
-    # Single classes
-    for (TYPE, CLASSNAME, NAMEBASE, MOMENTS, SUPERCLASS) in (
-            (:Haar,         "Haar", "haar", 1,        :OrthoWaveletClass),
-            (:Beylkin,      "Beylkin", "beyl", -1,    :OrthoWaveletClass), # TODO moments
-            (:Vaidyanathan, "Vaidyanathan", "vaid",-1,:OrthoWaveletClass), # TODO moments
-            )
+# Single classes
+for (TYPE, CLASSNAME, NAMEBASE, MOMENTS, SUPERCLASS) in (
+        (:Haar,         "Haar", "haar", 1,        :OrthoWaveletClass),
+        (:Beylkin,      "Beylkin", "beyl", -1,    :OrthoWaveletClass), # TODO moments
+        (:Vaidyanathan, "Vaidyanathan", "vaid",-1,:OrthoWaveletClass), # TODO moments
+        )
+    @eval begin
+        immutable $TYPE <: $SUPERCLASS end
+        class(::$TYPE) = string($CLASSNAME)::ASCIIString
+        name(::$TYPE) = string($NAMEBASE)::ASCIIString
+        vanishingmoments(::$TYPE) = $MOMENTS
+    end
+    CONSTNAME = symbol(NAMEBASE)
+    @eval begin
+        const $CONSTNAME = $TYPE()                  # type shortcut
+    end
+end
+
+# Parameterized classes
+for (TYPE, CLASSNAME, NAMEBASE, RANGE, SUPERCLASS) in (
+        (:Daubechies, "Daubechies", "db", 1:10, :OrthoWaveletClass),
+        (:Coiflet,    "Coiflet", "coif", 2:2:8, :OrthoWaveletClass),
+        (:Symlet,     "Symlet", "sym", 4:10,    :OrthoWaveletClass),
+        (:Battle,     "Battle", "batt", 2:2:6,  :OrthoWaveletClass),
+        )
+    @eval begin
+        immutable $TYPE{N} <: $SUPERCLASS end
+        class(::$TYPE) = string($CLASSNAME)::ASCIIString
+        name{N}(::$TYPE{N}) = string($NAMEBASE,N)::ASCIIString
+        vanishingmoments{N}(::$TYPE{N}) = N
+    end
+    for NUM in RANGE
+        CONSTNAME = symbol(string(NAMEBASE, NUM))
         @eval begin
-            immutable $TYPE <: $SUPERCLASS end
-            class(::$TYPE) = string($CLASSNAME)::ASCIIString
-            name(::$TYPE) = string($NAMEBASE)::ASCIIString
-            vanishingmoments(::$TYPE) = $MOMENTS
-        end
-        CONSTNAME = symbol(NAMEBASE)
-        @eval begin
-            const $CONSTNAME = $TYPE()                  # type shortcut
+            const $CONSTNAME = $TYPE{$NUM}()        # type shortcut
         end
     end
+end
 
-    # Parameterized classes
-    for (TYPE, CLASSNAME, NAMEBASE, RANGE, SUPERCLASS) in (
-            (:Daubechies, "Daubechies", "db", 1:10, :OrthoWaveletClass),
-            (:Coiflet,    "Coiflet", "coif", 2:2:8, :OrthoWaveletClass),
-            (:Symlet,     "Symlet", "sym", 4:10,    :OrthoWaveletClass),
-            (:Battle,     "Battle", "batt", 2:2:6,  :OrthoWaveletClass),
-            )
+# Parameterized BiOrtho classes
+for (TYPE, CLASSNAME, NAMEBASE, RANGE1, RANGE2, SUPERCLASS) in (
+        (:CDF,    "CDF", "cdf", [9], [7], :BiOrthoWaveletClass),
+        )
+    @eval begin
+        immutable $TYPE{N1, N2} <: $SUPERCLASS end
+        class(::$TYPE) = string($CLASSNAME)::ASCIIString
+        name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)::ASCIIString
+        vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
+    end
+    for i in length(RANGE1)
+        CONSTNAME = symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
         @eval begin
-            immutable $TYPE{N} <: $SUPERCLASS end
-            class(::$TYPE) = string($CLASSNAME)::ASCIIString
-            name{N}(::$TYPE{N}) = string($NAMEBASE,N)::ASCIIString
-            vanishingmoments{N}(::$TYPE{N}) = N
-        end
-        for NUM in RANGE
-            CONSTNAME = symbol(string(NAMEBASE, NUM))
-            @eval begin
-                const $CONSTNAME = $TYPE{$NUM}()        # type shortcut
-            end
+            const $CONSTNAME = $TYPE{$RANGE1[$i],$RANGE2[$i]}()        # type shortcut
         end
     end
+end
 
-    # Parameterized BiOrtho classes
-    for (TYPE, CLASSNAME, NAMEBASE, RANGE1, RANGE2, SUPERCLASS) in (
-            (:CDF,    "CDF", "cdf", [9], [7], :BiOrthoWaveletClass),
-            )
-        @eval begin
-            immutable $TYPE{N1, N2} <: $SUPERCLASS end
-            class(::$TYPE) = string($CLASSNAME)::ASCIIString
-            name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)::ASCIIString
-            vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
-        end
-        for i in length(RANGE1)
-            CONSTNAME = symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
-            @eval begin
-                const $CONSTNAME = $TYPE{$RANGE1[$i],$RANGE2[$i]}()        # type shortcut
-            end
-        end
-    end
-
-end # module
-@doc "Transform types and classes for the `wavelet` constructor" -> WT
 
 
 # IMPLEMENTATIONS OF FilterWavelet
