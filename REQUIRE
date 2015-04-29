@@ -1,4 +1,4 @@
 julia 0.3.7
 Reexport
 Compat
-Docile 4.11
+Docile 0.4.11

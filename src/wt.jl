@@ -452,8 +452,8 @@ const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([  LSStep(Update,  [1.0,1.0]*1.5861343420604, 0),
-    			LSStep(Predict, [1.0,1.0]*0.05298011857291494, 1),
-    			LSStep(Update,  [1.0,1.0]*-0.882911075531393, 0),
+                LSStep(Predict, [1.0,1.0]*0.05298011857291494, 1),
+                LSStep(Update,  [1.0,1.0]*-0.882911075531393, 0),
                 LSStep(Predict, [1.0,1.0]*-0.44350685204384654, 1)],
                 1.1496043988603355,
                 0.8698644516247099)
