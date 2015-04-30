@@ -1,7 +1,7 @@
 
 dwt by filtering (N=1024x1024), 10 levels
-elapsed time: 0.773281141 seconds (85813504 bytes allocated, 2.87% gc time)
+elapsed time: 0.816053876 seconds (85813424 bytes allocated, 1.77% gc time)
 dwt by lifting (N=1024x1024), 10 levels
-elapsed time: 0.317705928 seconds (88765424 bytes allocated, 3.44% gc time)
+elapsed time: 0.41193094 seconds (89424144 bytes allocated, 3.40% gc time)
 fft (N=1024x1024), (FFTW)
-elapsed time: 0.577537263 seconds (167805888 bytes allocated, 5.53% gc time)
+elapsed time: 0.583925703 seconds (167806176 bytes allocated, 9.77% gc time)

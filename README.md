@@ -43,14 +43,14 @@ dwt(x, wt, L=maxtransformlevels(x))
 idwt(x, wt, L=maxtransformlevels(x))
 dwt!(y, x, filter, L=maxtransformlevels(x), fw=true)
 dwt!(y, scheme, L=maxtransformlevels(x), fw=true)
-# DWTC
-dwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
-idwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
 # WPT (Ltree can be L::Integer or tree::BitVector, see maketree())
 wpt(x, wt, Ltree)
 iwpt(x, wt, Ltree)
 wpt!(y, x, filter, Ltree, fw=true)
 wpt!(y, scheme, Ltree, fw=true)
+# DWTC
+dwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
+idwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
 ```
 
 #### Wavelet Types
