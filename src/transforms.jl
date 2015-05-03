@@ -1,17 +1,150 @@
 module Transforms
 using ..Util, ..WT
 using Compat
-export  dwt, idwt, dwt!, 
-        dwtc, idwtc, wpt, 
-        iwpt, wpt!
+export  dwt, idwt, dwt!, idwt!, 
+        wpt, iwpt, wpt!, iwpt!, 
+        dwtc, idwtc
+VERSION < v"0.4-" && using Docile
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
+typealias DWTArray AbstractArray
+typealias WPTArray AbstractVector
 
-## API
 
 # DWT (discrete wavelet transform)
-#dwt(::AbstractVector, ::DiscreteWavelet)
-#idwt(::AbstractVector, ::DiscreteWavelet)
+
+for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true), 
+                                (:idwt, :idwt!, :_dwt!, false))
+@eval begin
+    # filter
+    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    L::Integer=maxtransformlevels(x))
+        y = Array(T, size(x))
+        return ($_Xwt!)(y, x, filter, L, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($_Xwt!)(y, x, filter, L, $fw)
+    end
+    # lifting
+    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T}, 
+                                    scheme::GLS, 
+                                    L::Integer=maxtransformlevels(x))
+        y = Array(T, size(x))
+        copy!(y, x)
+        return ($_Xwt!)(y, scheme, L, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T}, 
+                                    scheme::GLS, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($_Xwt!)(y, scheme, L, $fw)
+    end
+end # begin
+end # for
+
+@doc """
+`dwt(x, wt[, L=maxtransformlevels(x)])`
+
+Perform a discrete wavelet transform of the array `x`.
+The wavelet type `wt` determines the transform type
+(filter or lifting) and the wavelet class, see `wavelet`.
+
+The number of transformation levels `L` can be any non-negative
+integer such that the size of `x` is divisible by `L`.
+Performs the identity transformation if `L==0`.
+
+**Example:**
+```julia
+dwt(x, wavelet(WT.coif6))
+```
+
+**See also:** `idwt`, `dwt!`, `wavelet`
+""" -> dwt
+
+@doc """
+`idwt(x, wt[, L=maxtransformlevels(x)])`
+
+Perform an inverse discrete wavelet transform of the array `x`,
+the inverse of `dwt(x, wt, L)`.
+
+**See also:** `dwt`, `idwt!`
+""" -> idwt
+
+@doc """
+`dwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+
+`dwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+
+Same as `dwt` but without array allocation.
+Perform "out of place" transform with a filter, or
+a inplace transform with a lifting scheme. The difference
+between the filter and lifting methods is due to the
+structure of the transform algorithms.
+
+**See also:** `idwt!`
+""" -> dwt!
+
+@doc """
+`idwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+
+`idwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+
+The inverse of `dwt!`.
+
+**See also:** `dwt!`
+""" -> idwt!
+
+
+# WPT (wavelet packet transform)
+
+for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true), 
+                                (:iwpt, :iwpt!, :_wpt!, false))
+@eval begin
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
+                                    wt::DiscreteWavelet, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($Xwt)(x, wt, maketree(length(x), L, :full))
+    end
+    # filter
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    tree::BitVector=maketree(x, :full))
+        y = Array(T, size(x))
+        return ($_Xwt!)(y, x, filter, tree, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    tree::BitVector=maketree(x, :full))
+        return ($_Xwt!)(y, x, filter, tree, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($Xwt!)(y, x, filter, maketree(length(x), L, :full))
+    end
+    # lifting
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
+                                    scheme::GLS, 
+                                    tree::BitVector=maketree(x, :full))
+        y = Array(T, size(x))
+        copy!(y, x)
+        return ($_Xwt!)(y, scheme, tree, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, 
+                                    scheme::GLS, 
+                                    tree::BitVector=maketree(y, :full))
+        return ($_Xwt!)(y, scheme, tree, $fw)
+    end
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, 
+                                    scheme::GLS, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($Xwt!)(y, scheme, maketree(length(x), L, :full))
+    end
+end # begin
+end # for
+
 
 # DWTC (column-wise discrete wavelet transform)
 #dwtc(::AbstractArray, ::DiscreteWavelet)
@@ -20,10 +153,6 @@ export  dwt, idwt, dwt!,
 # SWT (stationary wavelet transform)
 #swt(::AbstractVector, ::DiscreteWavelet)
 #iswt(::AbstractVector, ::DiscreteWavelet)
-
-# WPT (wavelet packet transform)
-#wpt(::AbstractVector, ::DiscreteWavelet)
-#iwpt(::AbstractVector, ::DiscreteWavelet)
 
 # CWT (continuous wavelet transform)
 #cwt(::AbstractVector, ::ContinuousWavelet)
@@ -34,44 +163,37 @@ export  dwt, idwt, dwt!,
 #icwtft(::AbstractVector, ::ContinuousWavelet)
 
 
-## GENERAL TRANSFORM FUNCTIONS
-
-# general functions for all types and dimensions
+# Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
 @eval begin
-    # assume full transform
-    $Xwt(x::AbstractArray, wt::DiscreteWavelet) = $Xwt(x, wt, maxtransformlevels(x))
-    # int -> float
-    $Xwt{T<:Integer}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer) = $Xwt(float(x), wt, L)
+    ($Xwt){T<:Integer}(x::AbstractArray{T}, args...) = ($Xwt)(float(x), args...)
 end
 end
 
-# DWT, WPT methods with Array allocation
-for (Xwt, fw, Xwtip) in ((:dwt, true, :dwt!), 
-                         (:idwt, false, :dwt!), 
-                         (:wpt, true, :wpt!), 
-                         (:iwpt, false, :wpt!))
+# non-exported "out of place" functions
+for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
 @eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer)
-        y = Array(T, size(x))
-        $Xwtip(y, x, wt, L, $fw)
-        return y
+    # filter
+    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
+                                    filter::OrthoFilter, 
+                                    L::Integer=maxtransformlevels(x))
+        return ($Xwt!)(y, x, filter, L)
     end
-end
-if Xwt == :wpt || Xwt == :iwpt
-@eval begin
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, tree::BitVector)
-        y = Array(T, size(x))
-        $Xwtip(y, x, wt, tree, $fw)
-        return y
+    # lifting
+    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
+                                    scheme::GLS, 
+                                    L::Integer=maxtransformlevels(x))
+        copy!(y, x)
+        return ($Xwt!)(y, scheme, L)
     end
-end
-end
-end
+end # begin
+end # for
+
+
 
 # column-wise transforms or color images, transform each x[:,...,:,i] separately (default)
 # or transform each x[:,...,i,:,...] separately at dim td
-for (Xwtc, Xwt, dir) in ((:dwtc, :dwt!, :true), (:idwtc, :dwt!, :false))
+for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!))
 @eval begin
     function $Xwtc{T<:FloatingPoint}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
         dim = ndims(x)
@@ -91,11 +213,11 @@ for (Xwtc, Xwt, dir) in ((:dwtc, :dwt!, :true), (:idwtc, :dwt!, :false))
             ind[td] = d
             if dim > 2
                 xc[:] = x[ind...]
-                ($Xwt)(yc, xc, wt, L, $dir)
+                ($Xwt)(yc, xc, wt, L)
                 y[ind...] = yc
             else  # fast copy methods in 2-D
                 Util.copygeneral2!(xc, x, ind...)
-                ($Xwt)(yc, xc, wt, L, $dir)
+                ($Xwt)(yc, xc, wt, L)
                 Util.copygeneral1!(y, ind..., yc)
             end
         end

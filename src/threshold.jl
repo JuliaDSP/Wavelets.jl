@@ -191,9 +191,9 @@ function denoise{S<:DNFT}(x::AbstractArray,
                 shift = nspin2circ(nspin, i)[1]
                 Util.circshift!(z, x, shift)
                 
-                dwt!(xt, z, wt, L, true)
+                Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
-                dwt!(z, xt, wt, L, false)
+                Transforms.idwt_oop!(z, xt, wt, L)
                 
                 Util.circshift!(xt, z, -shift)
                 arrayadd!(y, xt)
@@ -203,9 +203,9 @@ function denoise{S<:DNFT}(x::AbstractArray,
                 shift = nspin2circ(nspin, i)
                 z = circshift(x, shift)
                 
-                dwt!(xt, z, wt, L, true)
+                Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
-                dwt!(z, xt, wt, L, false)
+                Transforms.idwt_oop!(z, xt, wt, L)
                 
                 z = circshift(z, -shift)
                 arrayadd!(y, z)
@@ -219,7 +219,12 @@ function denoise{S<:DNFT}(x::AbstractArray,
         else
             y = dwt(x, wt, L)
             threshold!(y, dnt.th, sigma*dnt.t)
-            dwt!(y, wt, L, false)
+            if isa(wt, GLS)
+                idwt!(y, wt, L)
+            else
+                y2 = idwt(y, wt, L)
+                y = y2
+            end
         end
     end
     
@@ -399,7 +404,7 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
             
             entr_bf[k] = coefentropy(dx, et, nrm)
             
-            dwt!(dtmp, dx, wt, 1, true)
+            dwt!(dtmp, dx, wt, 1)
             copy!(dx, dtmp)
             
             ix += nj

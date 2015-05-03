@@ -1,7 +1,5 @@
 <img src="wavelets.png" alt="Wavelets">
 
----------
-
 [![Build Status](https://travis-ci.org/JuliaDSP/Wavelets.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/Wavelets.jl)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master)](https://coveralls.io/r/JuliaDSP/Wavelets.jl?branch=master)
 
@@ -41,23 +39,23 @@ DWT (discrete wavelet transform), WPT (wavelet packet transform), and DWTC (disc
 # DWT
 dwt(x, wt, L=maxtransformlevels(x))
 idwt(x, wt, L=maxtransformlevels(x))
-dwt!(y, x, filter, L=maxtransformlevels(x), fw=true)
-dwt!(y, scheme, L=maxtransformlevels(x), fw=true)
-# WPT (Ltree can be L::Integer or tree::BitVector, see maketree())
-wpt(x, wt, Ltree)
-iwpt(x, wt, Ltree)
-wpt!(y, x, filter, Ltree, fw=true)
-wpt!(y, scheme, Ltree, fw=true)
+dwt!(y, x, filter, L=maxtransformlevels(x))
+idwt!(y, scheme, L=maxtransformlevels(x))
+# WPT (tree can also be an integer, equivalent to maketree(length(x), L, :full))
+wpt(x, wt, tree::BitVector=maketree(x, :full))
+iwpt(x, wt, tree::BitVector=maketree(x, :full))
+wpt!(y, x, filter, tree::BitVector=maketree(x, :full))
+iwpt!(y, scheme, tree::BitVector=maketree(y, :full))
 # DWTC
-dwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
-idwtc(x, wt, L=maxtransformlevels(x), td=ndims(x))
+dwtc(x, wt, L, td)
+idwtc(x, wt, L, td)
 ```
 
 #### Wavelet Types
 The function `wavelet` is a type contructor for the transform functions. The transform type `t` can be either `WT.Filter` or `WT.Lifting`.
 
 ```julia
-wavelet(c, t=WT.Filter, boundary=Periodic)
+wavelet(c, t=WT.Filter, boundary=WT.Periodic)
 ```
 
 #### Wavelet Classes
@@ -78,17 +76,17 @@ The numbers for orthogonal wavelets indicate the number vanishing moments of the
 
 Class information
 ```julia
-class(::WaveletClass) ::ASCIIString         # class full name
-name(::WaveletClass) ::ASCIIString          # type short name
-vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
+WT.class(::WaveletClass) ::ASCIIString         # class full name
+WT.name(::WaveletClass) ::ASCIIString          # type short name
+WT.vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
 ```
 Transform type information
 ```julia
-name(wt)									# type short name
-length(f::OrthoFilter)						# length of filter
-qmf(f::OrthoFilter)							# quadrature mirror filter
-makeqmfpair(f::OrthoFilter, fw=true)
-makereverseqmfpair(f::OrthoFilter, fw=true)
+WT.name(wt)                                     # type short name
+WT.length(f::OrthoFilter)                       # length of filter
+WT.qmf(f::OrthoFilter)                          # quadrature mirror filter
+WT.makeqmfpair(f::OrthoFilter, fw=true)
+WT.makereverseqmfpair(f::OrthoFilter, fw=true)
 ```
 
 Examples
@@ -101,7 +99,7 @@ xt = dwt(x, wavelet(WT.db2))
 
 The transform type can be more explicitly specified (filter, Periodic, Orthogonal, 4 vanishing moments)
 ```julia
-wt = wavelet(WT.Coiflet{4}(), WT.Filter, Periodic)
+wt = wavelet(WT.Coiflet{4}(), WT.Filter, WT.Periodic)
 ```
 
 For a periodic biorthogonal CDF 9/7 lifting scheme:
@@ -126,8 +124,8 @@ wt = wavelet(WT.haar)
 wt = WT.scale(wt, 1/sqrt(2))
 # signals can be transformed inplace with a low-level command
 # requiring very little memory allocation (especially for L=1 for filters)
-dwt!(x, wt, L, true)      # inplace (lifting)
-dwt!(xt, x, wt, L, true)  # write to xt (filter)
+dwt!(x, wt, L)      # inplace (lifting)
+dwt!(xt, x, wt, L)  # write to xt (filter)
 
 # denoising with default parameters (VisuShrink hard thresholding)
 x0 = testfunction(128, "HeaviSine")
@@ -217,7 +215,7 @@ threshold!(xtb, BiggestTH(), m)
 threshold!(xt, BiggestTH(), m)
 # compare sparse approximations in ell_2 norm
 vecnorm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
-vecnorm(x - idwt(xt, wt), 2)   		# regular dwt
+vecnorm(x - idwt(xt, wt), 2)        # regular dwt
 ```
 ```
 julia> vecnorm(x - iwpt(xtb, wt, tree), 2)

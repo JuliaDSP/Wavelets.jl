@@ -2,7 +2,6 @@ module WT
 export  DiscreteWavelet,
         FilterWavelet,
         LSWavelet,
-        Periodic,
         OrthoFilter,
         GLS,
         wavelet
@@ -246,7 +245,7 @@ function wavelet(c::WT.WaveletClass, t::WT.LiftingTransform, boundary::WaveletBo
 end
 
 @doc """
-`wavelet(c[, t=WT.Filter][, boundary=Periodic])`
+`wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])`
 
 Construct wavelet type where `c` is a wavelet class,
 t is the transformation type (`WT.Filter` or `WT.Lifting`),

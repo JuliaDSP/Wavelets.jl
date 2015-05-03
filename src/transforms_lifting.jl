@@ -6,41 +6,28 @@
 #
 ##################################################################################
 
-for (Xwt) in (:dwt!, :wpt!)
-@eval begin
-    # pseudo "out of place" by copying
-    function $Xwt{T<:FloatingPoint}(y::AbstractArray{T}, x::AbstractArray{T}, scheme::GLS, L::Union(Integer, BitVector), fw::Bool)
-        copy!(y, x)
-        $Xwt(y, scheme, L, fw)
-        return y
-    end
-end
-end
+# for split and merge
+reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
 
 # return scheme parameters adjusted for direction and type
 function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
-	n = length(scheme.step)
-	stepseq = Array(WT.LSStep{T}, n)
-	for i = 1:n
-		j = fw ? i : n+1-i
-	    stepseq[i] = WT.LSStep(scheme.step[j].steptype, 
-	    					convert(Vector{T}, scheme.step[j].param.coef), 
-	    					scheme.step[j].param.shift)
-	end
-    if fw
-        norm1, norm2 = convert(T, scheme.norm1), convert(T, scheme.norm2)
-    else
-        norm1, norm2 = convert(T, 1/scheme.norm1), convert(T, 1/scheme.norm2)
+    n = length(scheme.step)
+    stepseq = Array(WT.LSStep{T}, n)
+    for i = 1:n
+        j = fw ? i : n+1-i
+        stepseq[i] = WT.LSStep(scheme.step[j].steptype, 
+                            convert(Vector{T}, scheme.step[j].param.coef), 
+                            scheme.step[j].param.shift)
     end
+    norm1, norm2 =  convert(T, fw ? scheme.norm1 : 1/scheme.norm1), 
+                    convert(T, fw ? scheme.norm2 : 1/scheme.norm2)
     return stepseq, norm1, norm2
 end
 
-reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
 
 # 1-D
 # inplace transform of y, no vector allocation
-# tmp: size at least n>>2
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
+function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
@@ -132,7 +119,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
+function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
@@ -201,10 +188,7 @@ end
 
 # WPT
 # 1-D
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
-    wpt!(y, scheme, maketree(length(y), L, :full), fw, tmp)
-end
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,length(y)>>2))
+function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))

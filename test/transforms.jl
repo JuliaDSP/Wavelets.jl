@@ -55,19 +55,18 @@ for wclass in (WT.db1, WT.db2)
     stderr2 = 1e-10*sqrt(n*n)
     
     x2 = copy(x)
-    tmp = zeros(n)
     
     for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        dwt!(x2, wls, L, true, tmp)
+        dwt!(x2, wls, L)
         
         @test_vecnorm_eq_eps yf yls stderr
         @test_vecnorm_eq_eps yf x2 stderr
         
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        dwt!(x2, wls, L, false, tmp)
+        idwt!(x2, wls, L)
         
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
@@ -102,7 +101,7 @@ x = randn(16,2)
 y = copy(x)
 y[:,1] = dwt(vec(x[:,1]),wf)
 y[:,2] = dwt(vec(x[:,2]),wf)
-@test_approx_eq dwtc(x,wf) y
+@test_approx_eq dwtc(x,wf,ndyadicscales(16),2) y
 @test_approx_eq dwtc(x',wf,ndyadicscales(16),1)' y
 
 # column-wise 2-d
@@ -111,23 +110,24 @@ x = randn(n,n,2)
 y = copy(x)
 y[:,:,1] = dwt(reshape(x[:,:,1],n,n),wf)
 y[:,:,2] = dwt(reshape(x[:,:,2],n,n),wf)
-@test_approx_eq dwtc(x,wf) y
+@test_approx_eq dwtc(x,wf,ndyadicscales(16),3) y
 x = randn(n,2,n)
 y = copy(x)
 y[:,1,:] = dwt(reshape(x[:,1,:],n,n),wf)
 y[:,2,:] = dwt(reshape(x[:,2,:],n,n),wf)
 @test_approx_eq dwtc(x,wf,ndyadicscales(16),2) y
 
+#=
 # "inplace" for filter
 wf = wavelet(WT.db2, WT.Filter)
 x = randn(16)
-@test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2,true)
+@test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2)
 
 # "out of place" for LS
 wt = GLS(WT.db2)
 x = randn(16)
-@test_approx_eq dwt(x,wt,2) dwt!(similar(x),x,wt,2,true)
-
+@test_approx_eq dwt(x,wt,2) dwt!(similar(x),x,wt,2)
+=#
 
 # ============= types and sizes ================
 print("transforms: types and sizes ...\n")

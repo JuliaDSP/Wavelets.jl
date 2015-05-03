@@ -389,6 +389,7 @@ end
 # return a tree (BitVector)
 # s=:full, all nodes for first L levels equal 1, others 0
 # s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
+maketree(x::Vector, s::Symbol=:full) = maketree(length(x), maxtransformlevels(x), s)
 function maketree(n::Int, L::Int, s::Symbol=:full)
     ns = maxtransformlevels(n)
     nb = 2^(ns)-1
