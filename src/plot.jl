@@ -1,5 +1,5 @@
 module Plot
-using ..Util, ..WaveletTypes, ..Transforms
+using ..Util, ..WT, ..Transforms
 export wplotdots, wplotim
 
 # PLOTTING UTILITIES

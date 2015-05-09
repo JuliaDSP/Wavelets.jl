@@ -20,17 +20,37 @@ export  dyadicdetailindex,
         isdyadic, 
         sufficientpoweroftwo, 
         wcount, 
-        circshift!,
-        split!, 
-        merge!, 
         stridedcopy!,
         isvalidtree, 
         maketree,
         makewavelet, 
         testfunction
+using Compat
 
 # WAVELET INDEXING AND SIZES 
 
+# Non-dyadic
+# detail coef at level l location i (i starting at 1) -> vector index
+detailindex(arraysize::Integer, l::Integer, i::Integer) = @compat round(Int, arraysize/2^l+i)
+detailindex(x::AbstractArray, l::Integer, i::Integer) = detailindex(size(x,1), l ,i)
+# the range of detail coefs at level l
+detailrange(arraysize::Integer, l::Integer) = @compat round(Int, (arraysize/2^l+1)) : round(Int, arraysize/2^(l-1))
+detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
+# number of detail coefs at level l
+detailn(arraysize::Integer, l::Integer) = @compat round(Int, arraysize/2^l)
+detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
+# max levels to transform
+maxtransformlevels(x::AbstractArray) = maxtransformlevels(minimum(size(x)))
+function maxtransformlevels(arraysize::Integer)
+    arraysize > 1 || return 0
+    tl = 0
+    while sufficientpoweroftwo(arraysize, tl)
+        tl += 1
+    end
+    return tl - 1
+end
+
+# Dyadic
 # detail coef at level j location i (i starting at 1) -> vector index
 dyadicdetailindex(j::Integer,i::Integer) = 2^j+i
 # the range of detail coefs at level j
@@ -40,7 +60,7 @@ dyadicscalingrange(j::Integer) = 1:2^j
 # number of detail coefs at level j
 dyadicdetailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
-ndyadicscales(n::Integer) = int(log2(n))
+ndyadicscales(n::Integer) = @compat round(Int, log2(n))
 ndyadicscales(x::AbstractArray) = ndyadicscales(size(x,1))
 # the largest detail level
 maxdyadiclevel(n::Integer) = ndyadicscales(n)-1
@@ -51,33 +71,14 @@ tl2dyadiclevel(x::AbstractVector, L::Integer) = tl2dyadiclevel(length(x), L)
 # convert maximum level j to number of transformed levels L
 dyadiclevel2tl(arg...) = tl2dyadiclevel(arg...)
 
-# Non-dyadic Wavelet Indexing and sizes
-# detail coef at level l location i (i starting at 1) -> vector index
-detailindex(arraysize::Integer, l::Integer, i::Integer) = int(arraysize/2^l+i)
-detailindex(x::AbstractArray, l::Integer, i::Integer) = detailindex(size(x,1), l ,i)
-# the range of detail coefs at level l
-detailrange(arraysize::Integer, l::Integer) = int((arraysize/2^l+1)):int(arraysize/2^(l-1))
-detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
-# number of detail coefs at level l
-detailn(arraysize::Integer, l::Integer) = int(arraysize/2^l)
-detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
-# max levels to transform
-maxtransformlevels(x::AbstractArray) = maxtransformlevels(size(x,1))
-function maxtransformlevels(arraysize::Integer)
-    arraysize > 1 || return 0
-    tl = 0
-    while sufficientpoweroftwo(arraysize, tl)
-        tl += 1
-    end
-    return tl - 1
-end
+
 
 # UTILITY FUNCTIONS
 
 # are all dimensions equal length?
 function iscube(x::AbstractArray)
     for i = 1:ndims(x)
-        size(x,1)!=size(x,i) && return false
+        size(x,1) != size(x,i) && return false
     end
     return true
 end
@@ -388,6 +389,7 @@ end
 # return a tree (BitVector)
 # s=:full, all nodes for first L levels equal 1, others 0
 # s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
+maketree(x::Vector, s::Symbol=:full) = maketree(length(x), maxtransformlevels(x), s)
 function maketree(n::Int, L::Int, s::Symbol=:full)
     ns = maxtransformlevels(n)
     nb = 2^(ns)-1

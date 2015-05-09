@@ -1,10 +1,10 @@
 
 using Wavelets
 
-wf = waveletfilter(WT.db2)
-wl = waveletls(WT.db2)
+wf = wavelet(WT.db2, WT.Filter)
+wl = wavelet(WT.db2, WT.Lifting)
 N = 1024*1024;
 x0 = rand(N);
-L = nscales(N)  # int(log2(N)-2)
+L = maxtransformlevels(N)  # int(log2(N)-2)
 tn = 10
 

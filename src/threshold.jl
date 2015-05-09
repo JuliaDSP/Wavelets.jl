@@ -1,5 +1,5 @@
 module Threshold
-using ..Util, ..WaveletTypes, ..Transforms
+using ..Util, ..WT, ..Transforms
 export 
     # threshold
     threshold!,
@@ -24,7 +24,6 @@ export
     Entropy,
     ShannonEntropy,
     LogEnergyEntropy
-
 
 # THRESHOLD TYPES AND FUNCTIONS
 
@@ -166,7 +165,7 @@ function VisuShrink(n::Int)
     return VisuShrink(DEFAULT_TH, sqrt(2*log(n)))
 end
 
-const DEFAULT_WAVELET = waveletfilter(WT.sym5)    # default wavelet type
+const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
 # estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
@@ -190,13 +189,13 @@ function denoise{S<:DNFT}(x::AbstractArray,
             z = Array(eltype(x), size(x))
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
-                circshift!(z, x, shift)
+                Util.circshift!(z, x, shift)
                 
-                dwt!(xt, z, wt, L, true)
+                Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
-                dwt!(z, xt, wt, L, false)
+                Transforms.idwt_oop!(z, xt, wt, L)
                 
-                circshift!(xt, z, -shift)
+                Util.circshift!(xt, z, -shift)
                 arrayadd!(y, xt)
             end
         else # ndims > 1
@@ -204,9 +203,9 @@ function denoise{S<:DNFT}(x::AbstractArray,
                 shift = nspin2circ(nspin, i)
                 z = circshift(x, shift)
                 
-                dwt!(xt, z, wt, L, true)
+                Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
-                dwt!(z, xt, wt, L, false)
+                Transforms.idwt_oop!(z, xt, wt, L)
                 
                 z = circshift(z, -shift)
                 arrayadd!(y, z)
@@ -220,7 +219,12 @@ function denoise{S<:DNFT}(x::AbstractArray,
         else
             y = dwt(x, wt, L)
             threshold!(y, dnt.th, sigma*dnt.t)
-            dwt!(y, wt, L, false)
+            if isa(wt, GLS)
+                idwt!(y, wt, L)
+            else
+                y2 = idwt(y, wt, L)
+                y = y2
+            end
         end
     end
     
@@ -252,7 +256,7 @@ function mad!(y::AbstractArray)
     for i in 1:length(y)
         y[i] = abs(y[i]-m)
     end
-    return median!(y, checknan=false)
+    return median!(y)
 end
 #function mad(x::AbstractArray)
 #    y = copy(x)
@@ -400,7 +404,7 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
             
             entr_bf[k] = coefentropy(dx, et, nrm)
             
-            dwt!(dtmp, dx, wt, 1, true)
+            dwt!(dtmp, dx, wt, 1)
             copy!(dx, dtmp)
             
             ix += nj

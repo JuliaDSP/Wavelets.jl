@@ -1,7 +1,5 @@
 <img src="wavelets.png" alt="Wavelets">
 
----------
-
 [![Build Status](https://travis-ci.org/JuliaDSP/Wavelets.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/Wavelets.jl)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master)](https://coveralls.io/r/JuliaDSP/Wavelets.jl?branch=master)
 
@@ -16,8 +14,6 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 * Wavelet utilities e.g. indexing and size calculation, scaling and wavelet functions computation, test functions, up and down sampling, filter mirrors, coefficient counting, inplace circshifts, and more.
 
 * Plotting/visualization utilities for 1-D and 2-D signals.
-
-Loosely inspired by [this](https://github.com/tomaskrehlik/Wavelets) and [this](http://statweb.stanford.edu/~wavelab). 
 
 See license (MIT) in LICENSE.md.
 
@@ -36,33 +32,38 @@ julia> using Wavelets
 API
 ---------
 
-#### Wavelet transforms and types
-```julia
-# Transform Type construction
-wavelet(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)  # defaults to filter
-waveletfilter(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
-waveletls(w::WT.WaveletClass, boundary::WaveletBoundary=Periodic)
+#### Wavelet Transforms
+See `wavelet` below for construction of the type `wt`.
 
-# DWT (discrete wavelet transform)
-dwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
-idwt(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x))
-dwt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, L::Integer, fw::Bool)
-dwt!(y::AbstractArray, scheme::GLS, L::Integer, fw::Bool)
-# DWTC (discrete wavelet transform along dimension td (default is last dim.))
-dwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x), td::Integer=ndims(x))
-idwtc(x::AbstractArray, wt::DiscreteWavelet, L::Integer=maxtransformlevels(x), td::Integer=ndims(x))
-# WPT (wavelet packet transform)
-# Ltree can be L::Integer=maxtransformlevels(x) or tree::BitVector=maketree(length(y), L, :full)
-wpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
-iwpt(x::AbstractArray, wt::DiscreteWavelet, Ltree)
-wpt!(y::AbstractArray, x::AbstractArray, filter::OrthoFilter, Ltree, fw::Bool)
-wpt!(y::AbstractArray, scheme::GLS, Ltree, fw::Bool)
+**Discrete Wavelet Transform**
+```julia
+# DWT
+dwt(x, wt, L=maxtransformlevels(x))
+idwt(x, wt, L=maxtransformlevels(x))
+dwt!(y, x, filter, L=maxtransformlevels(x))
+idwt!(y, scheme, L=maxtransformlevels(x))
 ```
 
-#### Wavelet classes
+**Wavelet Packet Transform**
+```julia
+# WPT (tree can also be an integer, equivalent to maketree(length(x), L, :full))
+wpt(x, wt, tree::BitVector=maketree(x, :full))
+iwpt(x, wt, tree::BitVector=maketree(x, :full))
+wpt!(y, x, filter, tree::BitVector=maketree(x, :full))
+iwpt!(y, scheme, tree::BitVector=maketree(y, :full))
+```
+
+#### Wavelet Types
+The function `wavelet` is a type contructor for the transform functions. The transform type `t` can be either `WT.Filter` or `WT.Lifting`.
+
+```julia
+wavelet(c, t=WT.Filter, boundary=WT.Periodic)
+```
+
+#### Wavelet Classes
 
 The module WT contains the types for wavelet classes. The module defines constants of the form e.g. `WT.coif4` as shortcuts for `WT.Coiflet{4}()`.
-The numbers for orthogonal wavelets indicate the number vanishing moments of the wavelet function. The length of a `wt::OrthoFilter` can be obtained with `length(wt)`.
+The numbers for orthogonal wavelets indicate the number vanishing moments of the wavelet function.
 
 | Class Type | Namebase | Supertype | Numbers |
 |:------- |:------ |:----- |:----- |
@@ -77,65 +78,72 @@ The numbers for orthogonal wavelets indicate the number vanishing moments of the
 
 Class information
 ```julia
-class(::WaveletClass) ::ASCIIString         # class full name
-name(::WaveletClass) ::ASCIIString          # type short name
-vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
+WT.class(::WaveletClass) ::ASCIIString         # class full name
+WT.name(::WaveletClass) ::ASCIIString          # type short name
+WT.vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
 ```
 Transform type information
 ```julia
-length(f::OrthoFilter)						# length of filter
-qmf(f::OrthoFilter)							# quadrature mirror filter
-name(f::OrthoFilter)
-makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-name(s::GLS)
+WT.name(wt)                                     # type short name
+WT.length(f::OrthoFilter)                       # length of filter
+WT.qmf(f::OrthoFilter)                          # quadrature mirror filter
+WT.makeqmfpair(f::OrthoFilter, fw=true)
+WT.makereverseqmfpair(f::OrthoFilter, fw=true)
 ```
 
 Examples
 ---------
 
+The simplest way to transform a signal x is
 ```julia
-# the simplest way to transform a signal x is
 xt = dwt(x, wavelet(WT.db2))
+```
 
-# the transform type can be more explicitly specified
-# set up wavelet type (filter, Periodic, Orthogonal, 4 vanishing moments)
-wt = wavelet(WT.Coiflet{4}(), Periodic)  # or
-wt = waveletfilter(WT.coif4)
-# which is equivalent to 
-wt = OrthoFilter(WT.coif4)
-# the object wt determines the transform type 
-# wt now contains instructions for a periodic biorthogonal CDF 9/7 lifting scheme
-wt = waveletls(WT.cdf97)
-# xt is a 5 level transform of vector x
+The transform type can be more explicitly specified (filter, Periodic, Orthogonal, 4 vanishing moments)
+```julia
+wt = wavelet(WT.Coiflet{4}(), WT.Filter, WT.Periodic)
+```
+
+For a periodic biorthogonal CDF 9/7 lifting scheme:
+```julia
+wt = wavelet(WT.cdf97, WT.Lifting)
+```
+
+Perform a transform of vector x
+```julia
+# 5 level transform
 xt = dwt(x, wt, 5)
 # inverse tranform
 xti = idwt(xt, wt, 5)
 # a full transform
 xt = dwt(x, wt)
+```
 
+Other examples:
+```julia
 # scaling filters is easy
-wt = scale(wt, 1/sqrt(2))
+wt = wavelet(WT.haar)
+wt = WT.scale(wt, 1/sqrt(2))
 # signals can be transformed inplace with a low-level command
 # requiring very little memory allocation (especially for L=1 for filters)
-dwt!(x, wt, L, true)      # inplace (lifting)
-dwt!(xt, x, wt, L, true)  # write to xt (filter)
+dwt!(x, wt, L)      # inplace (lifting)
+dwt!(xt, x, wt, L)  # write to xt (filter)
 
 # denoising with default parameters (VisuShrink hard thresholding)
-x0 = testfunction(n, "HeaviSine")
-x = x0 + 0.3*randn(n)
+x0 = testfunction(128, "HeaviSine")
+x = x0 + 0.3*randn(128)
 y = denoise(x)
 
 # plotting utilities 1-d (see images and code in /example)
-x = testfunction(n, "Bumps")
-y = dwt(x, waveletls(WT.cdf97))
-d,l = wplotdots(y, 0.1, n)
+x = testfunction(128, "Bumps")
+y = dwt(x, wavelet(WT.cdf97, WT.Lifting))
+d,l = wplotdots(y, 0.1, 128)
 A = wplotim(y)
 # plotting utilities 2-d
 img = imread("lena.png")
 x = permutedims(img.data, [ndims(img.data):-1:1])
 L = 2
-xts = wplotim(x, L, waveletfilter(WT.db3))
+xts = wplotim(x, L, wavelet(WT.db3))
 ```
 
 See [Bumps](/example/transform1d_bumps.png) and [Lena](/example/transform2d_lena.jpg) for plot images.
@@ -209,7 +217,7 @@ threshold!(xtb, BiggestTH(), m)
 threshold!(xt, BiggestTH(), m)
 # compare sparse approximations in ell_2 norm
 vecnorm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
-vecnorm(x - idwt(xt, wt), 2)   		# regular dwt
+vecnorm(x - idwt(xt, wt), 2)        # regular dwt
 ```
 ```
 julia> vecnorm(x - iwpt(xtb, wt, tree), 2)

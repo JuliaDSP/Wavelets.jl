@@ -6,29 +6,20 @@
 #
 ##################################################################################
 
-for (Xwt) in (:dwt!, :wpt!)
-@eval begin
-    # pseudo "inplace" by copying
-    function $Xwt{T<:FloatingPoint}(x::AbstractArray{T}, filter::OrthoFilter, L::Integer, fw::Bool)
-        y = Array(T, size(x))
-        $Xwt(y, x, filter, L, fw)
-        copy!(x,y)
-        return x
-    end
-end
-end
 
 # DWT
 # 1-D
 # writes to y
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
+                                filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
-    
-    dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
-    return y
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
+    return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
-function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
+function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
+                                filter::OrthoFilter, L::Integer, fw::Bool, 
+                                dcfilter::Vector{T}, scfilter::Vector{T}, 
+                                si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
@@ -60,13 +51,15 @@ function dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
             filtup!(true,  dcfilter, si, y, 1, detailn(n,l-1), x, detailindex(n,l,1), 0, true)
         end
         # if not final iteration: copy to tmp location
-        fw  && l != lrange[end] && copy!(snew,1,y,1,detailn(n,l))
-        !fw && l != lrange[end] && copy!(snew,1,y,1,detailn(n,l-1))
+        l != lrange[end] && copy!(snew,1,y,1,detailn(n, fw ? l : l-1))
         L > 1 && (s = snew)
     end
     return y
 end
-function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
+function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
+                                            filter::OrthoFilter, fw::Bool, 
+                                            dcfilter::Vector{T}, scfilter::Vector{T}, 
+                                            si::Vector{T})
     n = length(x)
     l = 1
     filtlen = length(filter)
@@ -87,16 +80,19 @@ end
 
 # 2-D
 # writes to y
-function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool)
+function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, 
+                                filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
     tmpvec = Array(T,n<<1)             # tmp storage vector
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     
-    dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpvec)
-    return y
+    return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpvec)
 end
-function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::OrthoFilter, L::Integer, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, tmpvec::Vector{T})
+function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, 
+                                filter::OrthoFilter, L::Integer, fw::Bool, 
+                                dcfilter::Vector{T}, scfilter::Vector{T}, 
+                                si::Vector{T}, tmpvec::Vector{T})
 
     n = size(x,1)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
@@ -166,9 +162,7 @@ function dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, filter::Orth
             end
 
         end 
-
-        fw  && (nsub = nsub>>1)
-        !fw && (nsub = nsub<<1)
+        nsub = (fw ? nsub>>1 : nsub<<1)
     end
     return y
 end
@@ -180,19 +174,15 @@ end
 # WPT
 # 1-D
 # writes to y
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, L::Integer, fw::Bool)
-    wpt!(y, x, filter, maketree(length(y), L, :full), fw)
-end
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
+function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
     si = Array(T, length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
-    scfilter, dcfilter = makereverseqmfpair(filter, fw, T)
+    scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     
-    wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
-    return y
+    return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
 end
-function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
+function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
 
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
     is(y,x) && throw(ArgumentError("in array is out array"))
@@ -212,8 +202,7 @@ function wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filt
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = Lmax-L)
-        !fw && (Lfw = L-1)
+        Lfw = (fw ? Lmax-L : L-1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         dx = unsafe_vectorslice(snew, 1, nj)
@@ -281,8 +270,8 @@ function filtdown!{T<:FloatingPoint}(f::Vector{T}, si::Vector{T},
     @assert shift <= 0
 
     fill!(si,0.0)
-    istart = flen + int(ss)
-    dsshift = (flen%2 + int(ss))%2  # is flen odd, and shift downsampling
+    istart = @compat flen + Int(ss)
+    dsshift = @compat (flen%2 + Int(ss))%2  # is flen odd, and shift downsampling
     
     rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
     @inbounds begin
@@ -361,7 +350,7 @@ function filtup!{T<:FloatingPoint}(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     fill!(si,0.0)
     istart = flen - shift%2
-    dsshift = int(ss)%2  # shift upsampling
+    dsshift = @compat Int(ss)%2  # shift upsampling
     
     rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin
