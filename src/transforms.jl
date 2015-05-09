@@ -162,6 +162,10 @@ end # for
 #cwtft(::AbstractVector, ::ContinuousWavelet)
 #icwtft(::AbstractVector, ::ContinuousWavelet)
 
+@deprecate dwt!(y, x, filter::OrthoFilter, L, fw) (fw ? dwt!(y,x,filter,L) : idwt!(y,x,filter,L))
+@deprecate dwt!(y, scheme::GLS, L, fw) (fw ? dwt!(y,scheme,L) : idwt!(y,scheme,L))
+@deprecate wpt!(y, x, filter::OrthoFilter, L, fw) (fw ? wpt!(y,x,filter,L) : iwpt!(y,x,filter,L))
+@deprecate wpt!(y, scheme::GLS, L, fw) (fw ? wpt!(y,scheme,L) : wpt!(y,scheme,L))
 
 # Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)

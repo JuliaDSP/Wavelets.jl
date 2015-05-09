@@ -33,22 +33,24 @@ API
 ---------
 
 #### Wavelet Transforms
-DWT (discrete wavelet transform), WPT (wavelet packet transform), and DWTC (discrete wavelet transform along dimension td (default is last dim.)). See `wavelet` below for construction of `wt`.
+See `wavelet` below for construction of the type `wt`.
 
+**Discrete Wavelet Transform**
 ```julia
 # DWT
 dwt(x, wt, L=maxtransformlevels(x))
 idwt(x, wt, L=maxtransformlevels(x))
 dwt!(y, x, filter, L=maxtransformlevels(x))
 idwt!(y, scheme, L=maxtransformlevels(x))
+```
+
+**Wavelet Packet Transform**
+```julia
 # WPT (tree can also be an integer, equivalent to maketree(length(x), L, :full))
 wpt(x, wt, tree::BitVector=maketree(x, :full))
 iwpt(x, wt, tree::BitVector=maketree(x, :full))
 wpt!(y, x, filter, tree::BitVector=maketree(x, :full))
 iwpt!(y, scheme, tree::BitVector=maketree(y, :full))
-# DWTC
-dwtc(x, wt, L, td)
-idwtc(x, wt, L, td)
 ```
 
 #### Wavelet Types
