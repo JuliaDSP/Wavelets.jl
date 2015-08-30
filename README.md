@@ -1,7 +1,7 @@
 <img src="wavelets.png" alt="Wavelets">
 
 [![Build Status](https://travis-ci.org/JuliaDSP/Wavelets.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/Wavelets.jl)
-[![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master)](https://coveralls.io/r/JuliaDSP/Wavelets.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaDSP/Wavelets.jl?branch=master)
 
 A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-D, 2-D, 3-D, by filtering or lifting). The package includes discrete wavelet transforms, column-wise discrete wavelet transforms, and wavelet packet transforms.
 
