@@ -230,6 +230,9 @@ for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!))
 end
 end
 
+
+# utils
+
 # for dwtc
 function maketfsize(t::NTuple, td::Integer)
     s = Array(eltype(t[1]), length(t)-1)
@@ -247,6 +250,14 @@ end
 function unsafe_vectorslice(A::Array, i::Int, n::Int)
     return pointer_to_array(pointer(A, i), n, false)::Vector
 end
+
+# 2-D
+row_idx(i, n) = i
+col_idx(i, n) = 1 + (i-1)*n
+# 3-D
+row_idx(i, j, n) = row_idx(i, n) + (j-1)*n*n
+col_idx(i, j, n) = col_idx(i, n) + (j-1)*n*n
+hei_idx(i, j, n) = i + (j-1)*n
 
 # filter transforms
 include("transforms_filter.jl")

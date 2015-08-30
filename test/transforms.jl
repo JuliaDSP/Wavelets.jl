@@ -45,7 +45,7 @@ for i = 1:length(wname)
     end
 end
 
-# 1-d and 2-d lifting and filtering comparison
+# 1-D, 2-D, 3-D lifting vs filtering / inverse vs original tests
 for wclass in (WT.db1, WT.db2)
     wf = wavelet(wclass, WT.Filter)
     wls = wavelet(wclass, WT.Lifting)
@@ -59,19 +59,16 @@ for wclass in (WT.db1, WT.db2)
     for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        dwt!(x2, wls, L)
         
+        # filter vs lifting
         @test_vecnorm_eq_eps yf yls stderr
-        @test_vecnorm_eq_eps yf x2 stderr
         
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        idwt!(x2, wls, L)
         
+        # inverse vs original
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
-        @test_vecnorm_eq_eps x2 x stderr
-        
     end
     
     x = randn(n,n)
@@ -80,12 +77,30 @@ for wclass in (WT.db1, WT.db2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
         
+        # filter vs lifting
         @test_vecnorm_eq_eps yf yls stderr2
-        @test_approx_eq yf yls
         
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
         
+        # inverse vs original
+        @test_vecnorm_eq_eps ytf x stderr2
+        @test_vecnorm_eq_eps ytls x stderr2
+    end
+
+    x = randn(n,n,n)
+    x2 = copy(x)
+    for L in (ndyadicscales(n),0,1,2)
+        yf = dwt(x, wf, L)
+        yls = dwt(x, wls, L)
+        
+        # filter vs lifting
+        @test_vecnorm_eq_eps yf yls stderr2
+        
+        ytf = idwt(yf, wf, L)
+        ytls = idwt(yls, wls, L)
+        
+        # inverse vs original
         @test_vecnorm_eq_eps ytf x stderr2
         @test_vecnorm_eq_eps ytls x stderr2
         
