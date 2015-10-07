@@ -1,5 +1,6 @@
 module WT
 export  DiscreteWavelet,
+        ContinuousWavelet,
         FilterWavelet,
         LSWavelet,
         OrthoFilter,
@@ -14,7 +15,7 @@ VERSION < v"0.4-" && using Docile
 # TYPE HIERARCHY
 
 abstract DiscreteWavelet{T}
-#abstract ContinuousWavelet{T}
+abstract ContinuousWavelet
 # discrete transforms via filtering
 abstract FilterWavelet{T} <: DiscreteWavelet{T}
 # discrete transforms via lifting
@@ -128,7 +129,7 @@ end
 Wavelet type for discrete orthogonal transforms by filtering.
 
 **See also:** `GLS`, `wavelet`
-""" -> 
+""" ->
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
     name    ::ASCIIString            # filter short name
@@ -205,11 +206,11 @@ Base.length(s::LSStep) = length(s.param)
 Base.length(s::LSStepParam) = length(s.coef)
 
 @doc """
-Wavelet type for discrete general (bi)orthogonal transforms 
+Wavelet type for discrete general (bi)orthogonal transforms
 by using a lifting scheme.
 
 **See also:** `OrthoFilter`, `wavelet`
-""" -> 
+""" ->
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
@@ -229,7 +230,45 @@ name(s::GLS) = s.name
 
 # IMPLEMENTATIONS OF ContinuousWavelet
 
-# ...
+for (TYPE, NAMEBASE, PARAM, FFFUNCTION, COIFUNCTION, DFUNCTION, SUPERCLASS) in (
+    (:Morlet, "morlet",
+            6., #PARAM
+            :((4*π)/(m + sqrt(2 + m^2))), #FourierFactorFunction
+            :(1/sqrt(2)), #COIFunction
+            :(daughter=sqrt(scale*k[2])*(π^(-1//4))*sqrt(n)*exp(-(scale*k - m).^2/2)), #DaughterFunction
+            :ContinuousWavelet),
+    (:Paul, "paul",
+            4.,  #PARAM
+            :(4*pi/(2*m+1)), #FourierFactorFunction
+            :(1*sqrt(2)), #COIFunction
+            :(daughter=sqrt(scale*k[2])*(2^m/sqrt(m*prod(2:(2*m-1))))*sqrt(n)*exp(-(scale*k))), #DaughterFunction
+            :ContinuousWavelet),
+    (:DOG, "dog",
+            2.,  #PARAM
+            :(2*pi*sqrt(2./(2*m+1))), #FourierFactorFunction
+            :(1/sqrt(2)), #COIFunction
+            :(expnt = -(scale*k).^2/2.0;
+              norm = sqrt(scale*k[2]/gamma(m+0.5))*sqrt(n);
+              daughter = -norm*(i^m)*((scale*k2)^m).*exp(expnt)), #DaughterFunction
+            :ContinuousWavelet) # TODO moments
+        )
+    @eval begin
+        immutable $TYPE <: $SUPERCLASS end
+        name(::$TYPE) = string($NAMEBASE)::ASCIIString
+        sparam(::$TYPE) = $PARAM
+        FourierFactor(::$TYPE,m::Real)= $FFFUNCTION
+        COI(::$TYPE,FFactor::Real)=FFactor* $COIFUNCTION
+        function Daughter(::$TYPE,scale::Real,k::Array{Float64,1},m::Real,n::Integer)
+            $DFUNCTION
+           daughter[k.<0]=0.;
+           return daughter
+        end
+    end
+    CONSTNAME = symbol(NAMEBASE)
+    @eval begin
+        const $CONSTNAME = $TYPE()                  # type shortcut
+    end
+end
 
 # TRANSFORM TYPE CONSTRUCTORS
 
@@ -278,7 +317,7 @@ function daubechies(N::Int)
     # Find roots in y domain (truncated binomial series; (1 - y)^{-N})
     Y = roots(C)
 
-    # Find roots in z domain: 
+    # Find roots in z domain:
     # z + z^{-1} = 2 - 4*y
     # where y is a root from above
     Z = zeros(Complex128, 2*N-2)
@@ -347,7 +386,7 @@ function vieta(R::AbstractVector)
     C[1] = 1
     Ci::Complex128 = 0
     Cig::Complex128 = 0
-    
+
     @inbounds for k = 1:n
         Ci = C[1]
         for i = 1:k
@@ -361,7 +400,7 @@ end
 
 
 # scaling filters h (low pass)
-# the number at end of a filter name is the 
+# the number at end of a filter name is the
 # number of vanishing moments of the mother wavelet function
 # sources:
 # http://statweb.stanford.edu/~wavelab/ (Orthogonal/MakeONFilter.m)
@@ -476,11 +515,9 @@ const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
             0.5176380902050414,
             1.9318516525781364)
 
-)        
+)
 
 
 
 
 end
-
-

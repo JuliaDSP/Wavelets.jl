@@ -1,9 +1,9 @@
 module Transforms
 using ..Util, ..WT
 using Compat
-export  dwt, idwt, dwt!, idwt!, 
-        wpt, iwpt, wpt!, iwpt!, 
-        dwtc, idwtc
+export  dwt, idwt, dwt!, idwt!,
+        wpt, iwpt, wpt!, iwpt!,
+        dwtc, idwtc, cwtft
 VERSION < v"0.4-" && using Docile
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
@@ -13,31 +13,31 @@ typealias WPTArray AbstractVector
 
 # DWT (discrete wavelet transform)
 
-for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true), 
+for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
                                 (:idwt, :idwt!, :_dwt!, false))
 @eval begin
     # filter
-    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T},
+                                    filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         y = Array(T, size(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T},
+                                    filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     # lifting
-    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt){T<:FloatingPoint}(x::DWTArray{T},
+                                    scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         y = Array(T, size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, L, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt!){T<:FloatingPoint}(y::DWTArray{T},
+                                    scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         return ($_Xwt!)(y, scheme, L, $fw)
     end
@@ -99,46 +99,46 @@ The inverse of `dwt!`.
 
 # WPT (wavelet packet transform)
 
-for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true), 
+for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
                                 (:iwpt, :iwpt!, :_wpt!, false))
 @eval begin
-    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
-                                    wt::DiscreteWavelet, 
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T},
+                                    wt::DiscreteWavelet,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt)(x, wt, maketree(length(x), L, :full))
     end
     # filter
-    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T},
+                                    filter::OrthoFilter,
                                     tree::BitVector=maketree(x, :full))
         y = Array(T, size(x))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T},
+                                    filter::OrthoFilter,
                                     tree::BitVector=maketree(x, :full))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, x::WPTArray{T},
+                                    filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, x, filter, maketree(length(x), L, :full))
     end
     # lifting
-    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt){T<:FloatingPoint}(x::WPTArray{T},
+                                    scheme::GLS,
                                     tree::BitVector=maketree(x, :full))
         y = Array(T, size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T},
+                                    scheme::GLS,
                                     tree::BitVector=maketree(y, :full))
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
-    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt!){T<:FloatingPoint}(y::WPTArray{T},
+                                    scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, scheme, maketree(length(x), L, :full))
     end
@@ -159,7 +159,50 @@ end # for
 #icwt(::AbstractVector, ::ContinuousWavelet)
 
 # CWTFT (continuous wavelet transform via FFT)
-#cwtft(::AbstractVector, ::ContinuousWavelet)
+
+## After Torrence & Compo (1998):
+
+function cwtft{T<:Real}(Y::AbstractArray{T},dt::Number; pad::Bool=false,dj::Number=0.25,s0::Number=2.*dt,J1::Number=-1,mother::WT.ContinuousWavelet=WT.morlet,param::Number=WT.sparam(mother))
+
+#Y=Y[:];
+n1 = length(Y);
+
+if J1 == -1
+        J1=floor(Int,(log(n1*dt/s0)/log(2.))/dj);
+end
+#....construct time series to analyze, pad if necessary
+x = Y - mean(Y);
+if pad
+        base2 = floor(Int,log(n1)/log(2) + 0.4999);   # power of 2 nearest to N
+        x = [x, zeros(2^(floor(Int,base2)+1)-n1)];
+end
+n = length(x);
+
+#....construct wavenumber array used in transform [Eqn(5)]
+k = 1:floor(Int,n/2);
+k = [0.;  k;  -k[floor(Int,(n-1)/2):-1:1]]*((2*pi)/(n*dt));
+#....compute FFT of the (padded) time series
+f = fft(x);    # [Eqn(3)]
+#....construct SCALE array & empty PERIOD & WAVE arrays
+scale = s0*2.^((0:J1)*dj);
+
+wave = zeros(Complex,J1+1,n);  # define the wavelet array
+
+
+# loop through all scales and compute transform
+for a1 in 1:J1+1
+        daughter=WT.Daughter(mother,scale[a1],k,param,n)
+        wave[a1,:] = ifft(f.*daughter)  # wavelet transform[Eqn(4)]
+end
+fourier_factor=WT.FourierFactor(mother,param);
+period = fourier_factor*scale;
+coi = WT.COI(mother,fourier_factor).*dt*[1E-5; 1:((n1+1)/2-1); flipdim((1:(n1/2-1)),1); 1E-5];  # COI [Sec.3g]
+wave = wave[:,1:n1];  # get rid of padding before returning
+
+
+return wave,period,scale,coi
+end
+
 #icwtft(::AbstractVector, ::ContinuousWavelet)
 
 @deprecate dwt!(y, x, filter::OrthoFilter, L, fw) (fw ? dwt!(y,x,filter,L) : idwt!(y,x,filter,L))
@@ -178,14 +221,14 @@ end
 for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
 @eval begin
     # filter
-    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
-                                    filter::OrthoFilter, 
+    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T},
+                                    filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, x, filter, L)
     end
     # lifting
-    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T}, 
-                                    scheme::GLS, 
+    function ($Xwt_oop!){T<:FloatingPoint}(y::DWTArray{T}, x::DWTArray{T},
+                                    scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         copy!(y, x)
         return ($Xwt!)(y, scheme, L)
@@ -207,12 +250,12 @@ for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!))
         y = Array(T, sizex)
         xc = Array(T, sizexc)
         yc = Array(T, sizexc)
-        
+
         ind = Array(Any, dim)
         for i = 1:dim
             ind[i] = 1:sizex[i]
         end
-        
+
         for d = 1:sizex[td]
             ind[td] = d
             if dim > 2
@@ -267,4 +310,3 @@ include("transforms_lifting.jl")
 
 
 end # module
-
