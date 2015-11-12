@@ -1,33 +1,33 @@
 module Util
-export  dyadicdetailindex, 
-        dyadicdetailrange, 
-        dyadicscalingrange, 
-        dyadicdetailn, 
-        ndyadicscales, 
-        maxdyadiclevel, 
-        tl2dyadiclevel, 
-        dyadiclevel2tl, 
+export  dyadicdetailindex,
+        dyadicdetailrange,
+        dyadicscalingrange,
+        dyadicdetailn,
+        ndyadicscales,
+        maxdyadiclevel,
+        tl2dyadiclevel,
+        dyadiclevel2tl,
         # non-dyadic
-        detailindex, 
-        detailrange, 
-        detailn, 
-        maxtransformlevels, 
+        detailindex,
+        detailrange,
+        detailn,
+        maxtransformlevels,
         #
-        mirror, 
-        upsample, 
-        downsample, 
-        iscube, 
-        isdyadic, 
-        sufficientpoweroftwo, 
-        wcount, 
+        mirror,
+        upsample,
+        downsample,
+        iscube,
+        isdyadic,
+        sufficientpoweroftwo,
+        wcount,
         stridedcopy!,
-        isvalidtree, 
+        isvalidtree,
         maketree,
-        makewavelet, 
+        makewavelet,
         testfunction
 using Compat
 
-# WAVELET INDEXING AND SIZES 
+# WAVELET INDEXING AND SIZES
 
 # Non-dyadic
 # detail coef at level l location i (i starting at 1) -> vector index
@@ -91,7 +91,7 @@ function isdyadic(x::AbstractArray)
 end
 isdyadic(n::Integer) = (n == 2^(ndyadicscales(n)))
 
-# To perform a level L transform, the size of the signal in each dimension 
+# To perform a level L transform, the size of the signal in each dimension
 # must have 2^L as a factor.
 function sufficientpoweroftwo(x::AbstractArray, L::Integer)
     for i = 1:ndims(x)
@@ -109,7 +109,7 @@ function upsample(x::AbstractVector, sw::Int=0)
     n = length(x)
     y = zeros(eltype(x), n<<1)
     sw -= 1
-    
+
     for i = 1:n
         @inbounds y[i<<1 + sw] = x[i]
     end
@@ -122,7 +122,7 @@ function downsample(x::AbstractVector, sw::Int=0)
     @assert n%2 == 0
     y = zeros(eltype(x), n>>1)
     sw -= 1
-    
+
     for i = 1:length(y)
         @inbounds y[i] = x[i<<1 + sw]
     end
@@ -243,7 +243,7 @@ function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
         b[2] = a[2]
         return b
     end
-    
+
     h = n>>1
     for i=1:h  # odds to b
         @inbounds b[i] = a[(i-1)<<1 + 1]
@@ -263,7 +263,7 @@ function split!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Intege
         b[2] = a[ia + inca]
         return b
     end
-    
+
     h = n>>1
     inca2 = inca<<1
     for i=1:h  # odds to b
@@ -317,7 +317,7 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
         b[2] = a[2]
         return b
     end
-    
+
     h = n>>1
     for i=1:h  # odds to b
         @inbounds b[(i-1)<<1 + 1] = a[i]
@@ -337,7 +337,7 @@ function merge!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::A
         b[ib + incb] = a[2]
         return b
     end
-    
+
     h = n>>1
     incb2 = incb<<1
     for i=1:h  # odds to b
@@ -378,7 +378,7 @@ function isvalidtree(x::AbstractVector, b::BitVector)
     nb = length(b)
     nb == 2^(ns)-1 || return false
     @assert (2^(ns-1)-1)<<1+1 <= nb
-    
+
     for i in 1:2^(ns-1)-1
         @inbounds if !b[i] && (b[i<<1] || b[i<<1+1])
             return false
@@ -398,7 +398,7 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
 
     b = BitArray(nb)
     fill!(b, false)
-    
+
     t = true
     if s == :full
         for i in 1:2^(L)-1
@@ -409,12 +409,12 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
             @inbounds b[2^(i-1)] = t
         end
     else
-        error("uknown symbol")
+        throw(ArgumentError("uknown symbol"))
     end
     return b
 end
 
-# return scaling and wavelet functions and location vector, made from filter h 
+# return scaling and wavelet functions and location vector, made from filter h
 # iterated with a cascade algorithm with N steps
 makewavelet(h, arg...) = makewavelet(h.qmf, arg...)
 function makewavelet(h::AbstractVector, N::Integer=8)
@@ -472,7 +472,7 @@ function testfunction(n::Int, ft::String)
             i += 1
         end
     else
-        error("test function not found")
+        throw(ArgumentError("unknown test function"))
     end
     return f
 end
@@ -513,4 +513,3 @@ end
 
 
 end # module
-

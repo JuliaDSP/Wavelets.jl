@@ -1,7 +1,7 @@
 
 ##################################################################################
 #
-#  LIFTING TRANSFORMS 
+#  LIFTING TRANSFORMS
 #  Periodic boundaries
 #
 ##################################################################################
@@ -15,11 +15,11 @@ function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
     stepseq = Array(WT.LSStep{T}, n)
     for i = 1:n
         j = fw ? i : n+1-i
-        stepseq[i] = WT.LSStep(scheme.step[j].steptype, 
-                            convert(Vector{T}, scheme.step[j].param.coef), 
+        stepseq[i] = WT.LSStep(scheme.step[j].steptype,
+                            convert(Vector{T}, scheme.step[j].param.coef),
                             scheme.step[j].param.shift)
     end
-    norm1, norm2 =  convert(T, fw ? scheme.norm1 : 1/scheme.norm1), 
+    norm1, norm2 =  convert(T, fw ? scheme.norm1 : 1/scheme.norm1),
                     convert(T, fw ? scheme.norm2 : 1/scheme.norm2)
     return stepseq, norm1, norm2
 end
@@ -30,17 +30,17 @@ end
 function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    length(tmp) >= n>>2 || 
+    length(tmp) >= n>>2 ||
         throw(ArgumentError("length of tmp incorrect"))
 
     if L == 0
         return y
     end
-    
+
     if fw
         lrange = 1:L
         ns = n
@@ -59,7 +59,7 @@ function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, 
                 liftfw!(s, half, step.param, step.steptype)
             end
             normalize!(s, half, ns, norm1, norm2)
-            ns = ns>>1 
+            ns = ns>>1
             half = half>>1
         else
             normalize!(s, half, ns, norm1, norm2)
@@ -67,7 +67,7 @@ function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, 
                 liftbw!(s, half, step.param, step.steptype)
             end
             Util.merge!(s, ns, tmp)        # inverse split
-            ns = ns<<1 
+            ns = ns<<1
             half = half<<1
         end
     end
@@ -125,15 +125,15 @@ end
 function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
-    iscube(y) || 
+    iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n>>2) || 
+    (length(tmp) >= n>>2) ||
         throw(ArgumentError("length of tmp incorrect"))
-    (length(tmpvec) >= n) || 
+    (length(tmpvec) >= n) ||
         throw(ArgumentError("length of tmpvec incorrect"))
 
     if L == 0
@@ -141,7 +141,7 @@ function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool
     end
     row_stride = n
     height_stride = n*n
-    
+
     if fw
         lrange = 1:L
         nsub = n
@@ -150,7 +150,7 @@ function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool
         nsub = div(n,2^(L-1))
     end
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
-    
+
     # transforms with stride are out of place in a dense array for speed
     for l in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
@@ -158,35 +158,35 @@ function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool
             # rows
             for i in 1:nsub
                 xi = row_idx(i, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
-            end       
+            end
         else
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
-            end   
+            end
             # rows
             for i in 1:nsub
                 xi = row_idx(i, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
         end
 
         nsub = (fw ? nsub>>1 : nsub<<1)
     end
-    
+
     return y
 end
 
@@ -197,15 +197,15 @@ end
 function _dwt!{T<:FloatingPoint}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
-    iscube(y) || 
+    iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n>>2) || 
+    (length(tmp) >= n>>2) ||
         throw(ArgumentError("length of tmp incorrect"))
-    (length(tmpvec) >= n) || 
+    (length(tmpvec) >= n) ||
         throw(ArgumentError("length of tmpvec incorrect"))
 
     if L == 0
@@ -213,7 +213,7 @@ function _dwt!{T<:FloatingPoint}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Boo
     end
     row_stride = n
     height_stride = n*n
-    
+
     if fw
         lrange = 1:L
         nsub = n
@@ -230,47 +230,47 @@ function _dwt!{T<:FloatingPoint}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Boo
             # heights
             for i in 1:nsub, j in 1:nsub
                 xi = hei_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
-            end       
+            end
         else
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
-            end   
+            end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
             # heights
             for i in 1:nsub, j in 1:nsub
                 xi = hei_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw, 
+                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
         end
 
         nsub = (fw ? nsub>>1 : nsub<<1)
     end
-    
+
     return y
 end
 
@@ -280,17 +280,17 @@ end
 function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
-    isvalidtree(y, tree) || 
+    isvalidtree(y, tree) ||
         throw(ArgumentError("invalid tree"))
-    length(tmp) >= n>>2 || 
+    length(tmp) >= n>>2 ||
         throw(ArgumentError("length of tmp incorrect"))
 
     if !tree[1]
         return y
     end
-    
+
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
-    
+
     Lmax = maxtransformlevels(n)
     L = Lmax
     while L > 0
@@ -300,7 +300,7 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVec
         !fw && (Lfw = L-1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
-        
+
         while ix <= n
             if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
@@ -311,7 +311,7 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVec
         end
         L -= 1
     end
-    
+
     return y
 end
 
@@ -360,11 +360,11 @@ end
 # half: half of the length under consideration
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
-for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!), 
-										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ), 
+for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!),
+										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ),
     step_type in (WT.StepType{:predict}, WT.StepType{:update})
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int,
                                     param::WT.LSStepParam{T}, steptype::$step_type)
     lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
     coefs = param.coef
@@ -417,15 +417,15 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
 end
 
 # periodic boundary
-for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ), 
+for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ),
 	(step_type, puxind) in ((WT.StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
                             (WT.StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int, 
+function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int,
 									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
     nc = length(c)
     for i in irange
-        for k = 1:nc  
+        for k = 1:nc
             @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
         end
     end
@@ -469,6 +469,3 @@ function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, c::Vector{T}, irange::
 end
 end # eval begin
 end # for
-
-
-

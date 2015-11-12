@@ -1,4 +1,4 @@
-julia 0.3.7
+julia 0.4
 Reexport
 Compat
 Docile 0.4.11

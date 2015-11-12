@@ -14,7 +14,7 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     l = Array(Int, c)
     range = 0:1/n:1-eps()
     range *= r
-    
+
     J = ndyadicscales(n)
     k = 1
     @inbounds begin
@@ -53,7 +53,7 @@ end
 
 # return an array of scaled detail coefficients and unscaled scaling coefficients
 # ready to be plotted as an image
-function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing; 
+function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing;
                 wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     dim = ndims(x)
@@ -64,7 +64,7 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing
     (cn == 1 || cn == 3) || throw(ArgumentError("third dimension $(cn)  not supported"))
     J = ndyadicscales(n)
     nsc = 2^(J-L)
-        
+
     # do wavelet transform
     if wt != nothing
         if size(x,3)>1
@@ -105,4 +105,3 @@ end
 
 
 end
-

@@ -1,6 +1,6 @@
 module Threshold
 using ..Util, ..WT, ..Transforms
-export 
+export
     # threshold
     threshold!,
     threshold,
@@ -141,11 +141,11 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::PosTH)
 end
 
 # the non inplace functions
-function threshold{T<:Number}(x::AbstractArray{T}, TH::THType, t::Real) 
+function threshold{T<:Number}(x::AbstractArray{T}, TH::THType, t::Real)
     y = Array(T, size(x))
     return threshold!(copy!(y,x), TH, t)
 end
-function threshold{T<:Number}(x::AbstractArray{T}, TH::THType) 
+function threshold{T<:Number}(x::AbstractArray{T}, TH::THType)
     y = Array(T, size(x))
     return threshold!(copy!(y,x), TH)
 end
@@ -173,28 +173,28 @@ function denoise{S<:DNFT}(x::AbstractArray,
                         wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
                         L::Int=min(maxtransformlevels(x),6),
                         dnt::S=VisuShrink(size(x,1)),
-                        estnoise::Function=noisest, 
+                        estnoise::Function=noisest,
                         TI::Bool=false,
                         nspin::Union(Int,Tuple)=tuple([8 for i=1:ndims(x)]...) )
     iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
-    
+
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
         xt = Array(eltype(x), size(x))
         pns = prod(nspin)
-        
+
         if ndims(x) == 1
             z = Array(eltype(x), size(x))
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
                 Util.circshift!(z, x, shift)
-                
+
                 Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
                 Transforms.idwt_oop!(z, xt, wt, L)
-                
+
                 Util.circshift!(xt, z, -shift)
                 arrayadd!(y, xt)
             end
@@ -202,11 +202,11 @@ function denoise{S<:DNFT}(x::AbstractArray,
             for i = 1:pns
                 shift = nspin2circ(nspin, i)
                 z = circshift(x, shift)
-                
+
                 Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma*dnt.t)
                 Transforms.idwt_oop!(z, xt, wt, L)
-                
+
                 z = circshift(z, -shift)
                 arrayadd!(y, z)
             end
@@ -227,7 +227,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
             end
         end
     end
-    
+
     return y
 end
 # add z to y
@@ -287,7 +287,7 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     @assert tol > 0
     r = x
     n = 1
-    
+
     if !oop
         y = zeros(eltype(x), length(ft(x)))
     else # out of place functions f and ft
@@ -298,22 +298,22 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     end
     spat = zeros(eltype(x), length(y))  # sparse for atom computation
     nmax == -1 && (nmax = length(y))
-    
+
     while vecnorm(r) > tol && n <= nmax
         # find largest inner product
         !oop && (ftr = ft(r))
         oop  && ft(ftr, r, tmp)
         i = findmaxabs(ftr)
-        
+
         # project on i-th atom
         spat[i] = ftr[i]
         !oop && (aphi = f(spat))
         oop  && f(aphi, spat, tmp)
         spat[i] = 0
-        
+
         # update residual, r = r - aphi
         broadcast!(-, r, r, aphi)
-        
+
         y[i] += ftr[i]
         n += 1
     end
@@ -371,7 +371,7 @@ end
 
 
 # find the best tree that is a subset of the input tree (use :full to find the best tree)
-# for wpt 
+# for wpt
 function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
@@ -380,14 +380,14 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
 
     tree[1] || copy(tree)      # do nothing
-    
+
     x = copy(y)
     n = length(y)
     tmp = Array(T, n)
     ntree = length(tree)
     entr_bf = Array(T, ntree)
     nrm = vecnorm(y)
-    
+
     Lmax = maxtransformlevels(n)
     L = Lmax
     k = 1
@@ -395,24 +395,24 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
         ix = 1
         Lfw = Lmax-L
         nj = detailn(n, Lfw)
-        
+
         @assert nj <= n
         dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
         while ix <= n
             @assert nj+ix-1 <= n
             dx = Transforms.unsafe_vectorslice(x, ix, nj)
-            
+
             entr_bf[k] = coefentropy(dx, et, nrm)
-            
+
             dwt!(dtmp, dx, wt, 1)
             copy!(dx, dtmp)
-            
+
             ix += nj
             k += 1
         end
         L -= 1
     end
-    
+
     # entropy of fully transformed signal (end nodes)
     n_af = 2^(Lmax-1)
     entr_af = Array(T, n_af)
@@ -421,7 +421,7 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
         range = (i-1)*n_coef_af+1 : i*n_coef_af
         entr_af[i] = coefentropy(x[range], et, nrm)
     end
-    
+
     # make the best tree
     besttree = copy(tree)
     for i in 1:ntree
@@ -435,7 +435,7 @@ function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavel
             end
         end
     end
-    
+
     @assert isvalidtree(y, besttree)
     return besttree::BitVector
 end
@@ -447,7 +447,7 @@ function bestsubtree_entropy(entr_bf::Array, entr_af::Array, i::Int)
     @assert isdyadic(n+1)
     @assert isdyadic(n_af)
     @assert n + 1 == n_af<<1
-    
+
     if n < (i<<1)  # bottom of tree
         sum  = entr_af[i - n_af + 1]
     else

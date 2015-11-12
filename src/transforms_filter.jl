@@ -1,7 +1,7 @@
 
 ##################################################################################
 #
-#  ORTHOFILTER TRANSFORMS 
+#  ORTHOFILTER TRANSFORMS
 #  Periodic boundaries, Orthogonal
 #
 ##################################################################################
@@ -10,37 +10,37 @@
 # DWT
 # 1-D
 # writes to y
-function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
+function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
-function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
-                                filter::OrthoFilter, L::Integer, fw::Bool, 
-                                dcfilter::Vector{T}, scfilter::Vector{T}, 
+function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T},
+                                filter::OrthoFilter, L::Integer, fw::Bool,
+                                dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
-    size(x) == size(y) || 
+    size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) && 
+    is(y,x) &&
         throw(ArgumentError("in array is out array"))
-    L > 1 && length(snew) != n>>1 && 
+    L > 1 && length(snew) != n>>1 &&
         throw(ArgumentError("length of snew incorrect"))
-    
+
     if L == 0
         return copy!(y,x)
     end
     s = x                           # s is currect scaling coefs location
     filtlen = length(filter)
-    
+
     lrange = 1:L
     !fw && (lrange = reverse(lrange))
-    
+
     for l in lrange
         if fw
             # detail coefficients
@@ -59,9 +59,9 @@ function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T},
     end
     return y
 end
-function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, 
-                                            filter::OrthoFilter, fw::Bool, 
-                                            dcfilter::Vector{T}, scfilter::Vector{T}, 
+function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T},
+                                            filter::OrthoFilter, fw::Bool,
+                                            dcfilter::Vector{T}, scfilter::Vector{T},
                                             si::Vector{T})
     n = length(x)
     l = 1
@@ -82,10 +82,10 @@ function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVe
 end
 
 
-function dwt_transform_strided!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{T}, 
-                            nsub::Int, stride::Int, idx_func::Function, 
-                            tmpvec::Vector{T}, tmpvec2::Vector{T}, 
-                            filter::OrthoFilter, fw::Bool, 
+function dwt_transform_strided!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{T},
+                            nsub::Int, stride::Int, idx_func::Function,
+                            tmpvec::Vector{T}, tmpvec2::Vector{T},
+                            filter::OrthoFilter, fw::Bool,
                             dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     for i=1:nsub
         xi = idx_func(i)
@@ -95,49 +95,49 @@ function dwt_transform_strided!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{
     end
 end
 
-function dwt_transform_cols!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{T}, 
-                            nsub::Int, idx_func::Function, 
-                            tmpvec::Vector{T}, 
-                            filter::OrthoFilter, fw::Bool, 
+function dwt_transform_cols!{T<:FloatingPoint}(y::Array{T}, x::AbstractArray{T},
+                            nsub::Int, idx_func::Function,
+                            tmpvec::Vector{T},
+                            filter::OrthoFilter, fw::Bool,
                             dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     for i=1:nsub
         xi = idx_func(i)
         copy!(tmpvec, 1, x, xi, nsub)
         ya = unsafe_vectorslice(y, xi, nsub)
         unsafe_dwt1level!(ya, tmpvec, filter, fw, dcfilter, scfilter, si)
-    end    
+    end
 end
 
 # 2-D
 # writes to y
-function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, 
+function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
     tmpbuffer = Array(T,n<<1)             # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
-    
+
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T}, 
-                                filter::OrthoFilter, L::Integer, fw::Bool, 
-                                dcfilter::Vector{T}, scfilter::Vector{T}, 
+function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T},
+                                filter::OrthoFilter, L::Integer, fw::Bool,
+                                dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
 
     n = size(x,1)
-    size(x) == size(y) || 
+    size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    iscube(x) || 
+    iscube(x) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) && 
+    is(y,x) &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n<<1 || 
+    length(tmpbuffer) >= n<<1 ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
-    
+
     if L == 0
         return copy!(y,x)
     end
@@ -162,23 +162,23 @@ function _dwt!{T<:FloatingPoint}(y::Matrix{T}, x::AbstractMatrix{T},
         col_idx_func = i -> col_idx(i, n)
         if fw
             # rows
-            dwt_transform_strided!(y, inputArray, nsub, row_stride, row_idx_func, 
+            dwt_transform_strided!(y, inputArray, nsub, row_stride, row_idx_func,
                 tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
-            dwt_transform_cols!(y, y, nsub, col_idx_func, 
+            dwt_transform_cols!(y, y, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(y, inputArray, nsub, col_idx_func, 
+            dwt_transform_cols!(y, inputArray, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # rows
-            dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func, 
+            dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
                 tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
-        end 
+        end
         nsub = (fw ? nsub>>1 : nsub<<1)
     end
     return y
@@ -186,34 +186,34 @@ end
 
 # 3-D
 # writes to y
-function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3}, 
+function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
     tmpbuffer = Array(T,n<<1)             # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
-    
+
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3}, 
-                                filter::OrthoFilter, L::Integer, fw::Bool, 
-                                dcfilter::Vector{T}, scfilter::Vector{T}, 
+function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3},
+                                filter::OrthoFilter, L::Integer, fw::Bool,
+                                dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
 
     n = size(x,1)
-    size(x) == size(y) || 
+    size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    iscube(x) || 
+    iscube(x) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L || 
+    0 <= L ||
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) || 
+    sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) && 
+    is(y,x) &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n<<1 || 
+    length(tmpbuffer) >= n<<1 ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
-    
+
     if L == 0
         return copy!(y,x)
     end
@@ -238,7 +238,7 @@ function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3},
             # heights
             for j in 1:nsub
                 hei_idx_func = i -> hei_idx(i, j, n)
-                dwt_transform_strided!(y, inputArray, nsub, height_stride, hei_idx_func, 
+                dwt_transform_strided!(y, inputArray, nsub, height_stride, hei_idx_func,
                     tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
@@ -246,20 +246,20 @@ function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3},
             # rows
             for j in 1:nsub
                 row_idx_func = i -> row_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func, 
+                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
                     tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
             end
             # columns
             for j in 1:nsub
                 col_idx_func = i -> col_idx(i, j, n)
-                dwt_transform_cols!(y, y, nsub, col_idx_func, 
+                dwt_transform_cols!(y, y, nsub, col_idx_func,
                     tmpvec, filter, fw, dcfilter, scfilter, si)
             end
         else
             # columns
             for j in 1:nsub
                 col_idx_func = i -> col_idx(i, j, n)
-                dwt_transform_cols!(y, inputArray, nsub, col_idx_func, 
+                dwt_transform_cols!(y, inputArray, nsub, col_idx_func,
                     tmpvec, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
@@ -267,16 +267,16 @@ function _dwt!{T<:FloatingPoint}(y::Array{T, 3}, x::AbstractArray{T, 3},
             # rows
             for j in 1:nsub
                 row_idx_func = i -> row_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func, 
+                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
                     tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
             end
             # heights
             for j in 1:nsub
                 hei_idx_func = i -> hei_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, height_stride, hei_idx_func, 
+                dwt_transform_strided!(y, y, nsub, height_stride, hei_idx_func,
                     tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
             end
-        end 
+        end
         nsub = (fw ? nsub>>1 : nsub<<1)
     end
     return y
@@ -292,16 +292,16 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, fil
     ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
-    
+
     return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
 end
 function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
 
-    size(x) == size(y) || 
+    size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    is(y,x) && 
+    is(y,x) &&
         throw(ArgumentError("in array is out array"))
-    isvalidtree(y, tree) || 
+    isvalidtree(y, tree) ||
         throw(ArgumentError("invalid tree"))
     if tree[1] && length(snew) < ifelse(fw, length(x)>>1, length(x))
         throw(ArgumentError("length of snew incorrect"))
@@ -310,7 +310,7 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, fil
     if !tree[1]
         return copy!(y,x)
     end
-    
+
     first = true
     n = length(x)
     Lmax = maxtransformlevels(n)
@@ -322,7 +322,7 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, fil
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
         dx = unsafe_vectorslice(snew, 1, nj)
-        
+
         while ix <= n
             if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
@@ -343,7 +343,7 @@ function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, fil
         L -= 1
         first = false
     end
-    
+
     return y
 end
 
@@ -374,7 +374,7 @@ end
 # ss : shift downsampling
 # based on Base.filt
 function filtdown!{T<:FloatingPoint}(f::Vector{T}, si::Vector{T},
-                              out::AbstractVector{T},  iout::Integer, nout::Integer, 
+                              out::AbstractVector{T},  iout::Integer, nout::Integer,
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout<<1
     silen = length(si)
@@ -388,7 +388,7 @@ function filtdown!{T<:FloatingPoint}(f::Vector{T}, si::Vector{T},
     fill!(si,0.0)
     istart = @compat flen + Int(ss)
     dsshift = @compat (flen%2 + Int(ss))%2  # is flen odd, and shift downsampling
-    
+
     rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
     @inbounds begin
         for i in rout1  # rout1 assumed to be in 1:istart-1
@@ -453,7 +453,7 @@ end
 # ss : shift upsampling
 # based on Base.filt
 function filtup!{T<:FloatingPoint}(add2out::Bool, f::Vector{T}, si::Vector{T},
-                              out::AbstractVector{T},  iout::Integer, nout::Integer, 
+                              out::AbstractVector{T},  iout::Integer, nout::Integer,
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout>>1
     silen = length(si)
@@ -467,7 +467,7 @@ function filtup!{T<:FloatingPoint}(add2out::Bool, f::Vector{T}, si::Vector{T},
     fill!(si,0.0)
     istart = flen - shift%2
     dsshift = @compat Int(ss)%2  # shift upsampling
-    
+
     rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin
         xatind = 0.0
@@ -549,5 +549,3 @@ function splituprangeper(istart, ix, nx, nout, shift)
         return (0:-1, 0:-1, 1:(nout-1+istart))
     end
 end
-
-

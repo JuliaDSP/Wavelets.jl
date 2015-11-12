@@ -8,7 +8,6 @@ export  DiscreteWavelet,
 
 using ..Util
 using Compat
-VERSION < v"0.4-" && using Docile
 
 
 # TYPE HIERARCHY
@@ -22,9 +21,16 @@ abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
 #typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
 
+@doc "Get wavelet type name." ->
+function name(::DiscreteWavelet) end
+@doc "Get wavelet filter length." ->
+function Base.length(::FilterWavelet) end
+
 immutable FilterTransform end
 immutable LiftingTransform end
+@doc "Transform by filtering." ->
 const Filter = FilterTransform()
+@doc "Transform by lifting." ->
 const Lifting = LiftingTransform()
 
 
@@ -128,41 +134,41 @@ end
 Wavelet type for discrete orthogonal transforms by filtering.
 
 **See also:** `GLS`, `wavelet`
-""" -> 
+""" ->
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
     name    ::ASCIIString            # filter short name
     OrthoFilter(qmf, name) = new(qmf, name)
-end
 
-function OrthoFilter{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
-    name = WT.name(w)
-    if WC <: WT.Daubechies
-        qmf = daubechies(WT.vanishingmoments(w))
-    else
-        qmf = get(FILTERS, name, nothing)
-        qmf == nothing && error("filter not found")
+    function call{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(::Type{OrthoFilter}, w::WC, ::T=DEFAULT_BOUNDARY)
+        name = WT.name(w)
+        if WC <: WT.Daubechies
+            qmf = daubechies(WT.vanishingmoments(w))
+        else
+            qmf = get(FILTERS, name, nothing)
+            qmf == nothing && throw(ArgumentError("filter not found"))
+        end
+        # make sure it is normalized in l2-norm
+        return new{T}(qmf./norm(qmf), name)
     end
-    # make sure it is normalized in l2-norm
-    return OrthoFilter{T}(qmf./norm(qmf), name)
 end
 
 Base.length(f::OrthoFilter) = length(f.qmf)
 qmf(f::OrthoFilter) = f.qmf
 name(f::OrthoFilter) = f.name
 
-# scale filter by scalar
+@doc "Scale filter by scalar." ->
 function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
     return OrthoFilter{T}(f.qmf.*a, f.name)
 end
 
-# quadrature mirror filter pair
+@doc "Quadrature mirror filter pair." ->
 function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
     scfilter, dcfilter = makereverseqmfpair(f, fw, T)
     return reverse(scfilter), reverse(dcfilter)
 end
 
-# reversed quadrature mirror filter pair
+@doc "Reversed quadrature mirror filter pair." ->
 function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
     h = convert(Vector{T}, qmf(f))
     if fw
@@ -194,35 +200,36 @@ immutable LSStepParam{T<:Number}
     shift   ::Int              # + left shift, - right shift
     LSStepParam(coef, shift) = new(coef, shift)
 end
-#LSstep{T}(st::StepType{:predict}, coef::Vector{T}, shift::Int) = PredictStep(coef, shift)
+
 immutable LSStep{T<:Number}
     param::LSStepParam{T}
     steptype::StepType
     LSStep(param, steptype) = new(param, steptype)
+    call{T}(::Type{LSStep}, st::StepType, coef::Vector{T}, shift::Int) = new{T}(LSStepParam{T}(coef, shift), st)
 end
-LSStep{T}(st::StepType, coef::Vector{T}, shift::Int) = LSStep{T}(LSStepParam{T}(coef, shift), st)
+
 Base.length(s::LSStep) = length(s.param)
 Base.length(s::LSStepParam) = length(s.coef)
 
 @doc """
-Wavelet type for discrete general (bi)orthogonal transforms 
+Wavelet type for discrete general (bi)orthogonal transforms
 by using a lifting scheme.
 
 **See also:** `OrthoFilter`, `wavelet`
-""" -> 
+""" ->
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
     norm2   ::Float64           # normalization of detail coefs.
     name    ::ASCIIString       # name of scheme
     GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
-end
 
-function GLS{WC<:WT.WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
-    name = WT.name(w)
-    schemedef = get(SCHEMES, name, nothing)
-    schemedef == nothing && error("scheme not found")
-    return GLS{T}(schemedef..., name)
+    function call{WC<:WT.WaveletClass, T<:WaveletBoundary}(::Type{GLS}, w::WC, ::T=DEFAULT_BOUNDARY)
+        name = WT.name(w)
+        schemedef = get(SCHEMES, name, nothing)
+        schemedef == nothing && throw(ArgumentError("scheme not found"))
+        return new{T}(schemedef[1], schemedef[2], schemedef[3], name)
+    end
 end
 
 name(s::GLS) = s.name
@@ -233,6 +240,22 @@ name(s::GLS) = s.name
 
 # TRANSFORM TYPE CONSTRUCTORS
 
+@doc """
+`wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])`
+
+Construct wavelet type where `c` is a wavelet class,
+`t` is the transformation type (`WT.Filter` or `WT.Lifting`),
+and `boundary` is the type of boundary treatment.
+
+**Example:**
+```julia
+wavelet(WT.coif6)
+wavelet(WT.db1, WT.Lifting)
+```
+
+**See also:** `WT.WaveletClass`
+""" ->
+function wavelet end
 
 function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return wavelet(c, WT.Filter, boundary)
@@ -243,22 +266,6 @@ end
 function wavelet(c::WT.WaveletClass, t::WT.LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
     return GLS(c, boundary)
 end
-
-@doc """
-`wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])`
-
-Construct wavelet type where `c` is a wavelet class,
-t is the transformation type (`WT.Filter` or `WT.Lifting`),
-and boundary is the type of boundary treatment.
-
-**Example:**
-```julia
-wavelet(WT.coif6)
-wavelet(WT.db1, WT.Lifting)
-```
-
-**See also:** `WT.WaveletClass`
-""" -> wavelet
 
 @deprecate waveletfilter(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Filter, boundary)
 @deprecate waveletls(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Lifting, boundary)
@@ -278,7 +285,7 @@ function daubechies(N::Int)
     # Find roots in y domain (truncated binomial series; (1 - y)^{-N})
     Y = roots(C)
 
-    # Find roots in z domain: 
+    # Find roots in z domain:
     # z + z^{-1} = 2 - 4*y
     # where y is a root from above
     Z = zeros(Complex128, 2*N-2)
@@ -347,7 +354,7 @@ function vieta(R::AbstractVector)
     C[1] = 1
     Ci::Complex128 = 0
     Cig::Complex128 = 0
-    
+
     @inbounds for k = 1:n
         Ci = C[1]
         for i = 1:k
@@ -361,7 +368,7 @@ end
 
 
 # scaling filters h (low pass)
-# the number at end of a filter name is the 
+# the number at end of a filter name is the
 # number of vanishing moments of the mother wavelet function
 # sources:
 # http://statweb.stanford.edu/~wavelab/ (Orthogonal/MakeONFilter.m)
@@ -476,11 +483,9 @@ const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
             0.5176380902050414,
             1.9318516525781364)
 
-)        
+)
 
 
 
 
 end
-
-
