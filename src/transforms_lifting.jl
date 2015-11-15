@@ -10,7 +10,7 @@
 reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
 
 # return scheme parameters adjusted for direction and type
-function makescheme{T<:FloatingPoint}(::Type{T}, scheme::GLS, fw::Bool)
+function makescheme{T<:AbstractFloat}(::Type{T}, scheme::GLS, fw::Bool)
     n = length(scheme.step)
     stepseq = Array(WT.LSStep{T}, n)
     for i = 1:n
@@ -27,7 +27,7 @@ end
 
 # 1-D
 # inplace transform of y, no vector allocation
-function _dwt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
+function _dwt!{T<:AbstractFloat}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
     0 <= L ||
@@ -78,7 +78,7 @@ end
 # tmp: size at least n>>2
 # oopc: use oop computation, if false iy and incy are assumed to be 1
 # oopv: the out of place location
-function unsafe_dwt1level!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool, oopv::Vector{T}, scheme::GLS, fw::Bool, stepseq::Vector, norm1::T, norm2::T, tmp::Vector{T})
+function unsafe_dwt1level!{T<:AbstractFloat}(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool, oopv::Vector{T}, scheme::GLS, fw::Bool, stepseq::Vector, norm1::T, norm2::T, tmp::Vector{T})
     if !oopc
         oopv = y
     end
@@ -122,7 +122,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!{T<:FloatingPoint}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
+function _dwt!{T<:AbstractFloat}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
     iscube(y) ||
@@ -194,7 +194,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!{T<:FloatingPoint}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
+function _dwt!{T<:AbstractFloat}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
 
     n = size(y,1)
     iscube(y) ||
@@ -277,7 +277,7 @@ end
 
 # WPT
 # 1-D
-function _wpt!{T<:FloatingPoint}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
+function _wpt!{T<:AbstractFloat}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
 
     n = length(y)
     isvalidtree(y, tree) ||
@@ -317,7 +317,7 @@ end
 
 
 
-function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
+function normalize!{T<:AbstractFloat}(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds x[i] *= n1
     end
@@ -327,7 +327,7 @@ function normalize!{T<:FloatingPoint}(x::AbstractVector{T}, half::Int, ns::Int, 
     return x
 end
 # out of place normalize from x to y
-function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
+function normalize!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds y[i] = n1*x[i]
     end
@@ -336,7 +336,7 @@ function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractVector{T}
     end
     return y
 end
-function normalize!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
+function normalize!{T<:AbstractFloat}(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds y[iy + (i-1)*incy] = n1*x[i]
     end
@@ -345,7 +345,7 @@ function normalize!{T<:FloatingPoint}(y::AbstractArray{T}, iy::Int, incy::Int, x
     end
     return y
 end
-function normalize!{T<:FloatingPoint}(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T)
+function normalize!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T)
     for i = 1:half
         @inbounds y[i] = n1*x[ix + (i-1)*incx]
     end
@@ -364,7 +364,7 @@ for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perbo
 										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ),
     step_type in (WT.StepType{:predict}, WT.StepType{:update})
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int,
+function ($fname){T<:AbstractFloat}(x::AbstractVector{T}, half::Int,
                                     param::WT.LSStepParam{T}, steptype::$step_type)
     lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
     coefs = param.coef
@@ -421,7 +421,7 @@ for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ),
 	(step_type, puxind) in ((WT.StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
                             (WT.StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, half::Int,
+function ($fname){T<:AbstractFloat}(x::AbstractVector{T}, half::Int,
 									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
     nc = length(c)
     for i in irange
@@ -438,7 +438,7 @@ end # for
 # main lift loop
 for (fname,op) in ( (:lift_inboundsfw!,:-), (:lift_inboundsbw!,:+,) )
 @eval begin
-function ($fname){T<:FloatingPoint}(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int)
+function ($fname){T<:AbstractFloat}(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int)
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]

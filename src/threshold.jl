@@ -168,14 +168,14 @@ end
 const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
-# estnoise is (x::AbstractArray, wt::Union(DiscreteWavelet,Nothing))
+# estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Void})
 function denoise{S<:DNFT}(x::AbstractArray,
-                        wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET;
+                        wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET;
                         L::Int=min(maxtransformlevels(x),6),
                         dnt::S=VisuShrink(size(x,1)),
                         estnoise::Function=noisest,
                         TI::Bool=false,
-                        nspin::Union(Int,Tuple)=tuple([8 for i=1:ndims(x)]...) )
+                        nspin::Union{Int,Tuple}=tuple([8 for i=1:ndims(x)]...) )
     iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
 
@@ -241,7 +241,7 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union(DiscreteWavelet,Nothing)=DEFAULT_WAVELET, L::Integer = 1)
+function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET, L::Integer = 1)
     if wt == nothing
         y = x
     else
@@ -343,7 +343,7 @@ immutable LogEnergyEntropy <: Entropy end
 # given x and y, where x has "more concentrated energy" than y
 # then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
 
-function coefentropy{T<:FloatingPoint}(x::T, et::ShannonEntropy, nrm::T)
+function coefentropy{T<:AbstractFloat}(x::T, et::ShannonEntropy, nrm::T)
     s = (x/nrm)^2
     if s == 0.0
         return -zero(T)
@@ -351,7 +351,7 @@ function coefentropy{T<:FloatingPoint}(x::T, et::ShannonEntropy, nrm::T)
         return -s*log(s)
     end
 end
-function coefentropy{T<:FloatingPoint}(x::T, et::LogEnergyEntropy, nrm::T)
+function coefentropy{T<:AbstractFloat}(x::T, et::LogEnergyEntropy, nrm::T)
     s = (x/nrm)^2
     if s == 0.0
         return -zero(T)
@@ -359,7 +359,7 @@ function coefentropy{T<:FloatingPoint}(x::T, et::LogEnergyEntropy, nrm::T)
         return -log(s)
     end
 end
-function coefentropy{T<:FloatingPoint}(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x))
+function coefentropy{T<:AbstractFloat}(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x))
     @assert nrm >= 0
     sum = zero(T)
     nrm == sum && return sum
@@ -372,10 +372,10 @@ end
 
 # find the best tree that is a subset of the input tree (use :full to find the best tree)
 # for wpt
-function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
+function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
-function bestbasistree{T<:FloatingPoint}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
+function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
 
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
 

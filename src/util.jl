@@ -435,7 +435,7 @@ end
 
 # return a vector of test function values on [0,1), see
 #Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
-function testfunction(n::Int, ft::String)
+function testfunction(n::Int, ft::AbstractString)
     @assert n >= 1
     f = Array(Float64,n)
     range = 0:1/n:1-eps()

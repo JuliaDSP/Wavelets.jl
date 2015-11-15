@@ -19,7 +19,7 @@ abstract FilterWavelet{T} <: DiscreteWavelet{T}
 # discrete transforms via lifting
 abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
-#typealias WaveletTransformType Union(DiscreteWavelet, ContinuousWavelet)
+#typealias WaveletTransformType Union{DiscreteWavelet, ContinuousWavelet}
 
 @doc "Get wavelet type name." ->
 function name(::DiscreteWavelet) end

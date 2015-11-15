@@ -53,7 +53,7 @@ end
 
 # return an array of scaled detail coefficients and unscaled scaling coefficients
 # ready to be plotted as an image
-function wplotim(x::AbstractArray, L::Integer, wt::Union(DiscreteWavelet,Nothing)=nothing;
+function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Void}=nothing;
                 wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     dim = ndims(x)
