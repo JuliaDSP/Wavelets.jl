@@ -43,7 +43,7 @@ function wplotim(x::AbstractVector)
         for j = 0:J-1
 	        dr = dyadicdetailrange(j)
 	        m = 2^(J-j)
-	        for i = 1:length(dr)
+	        for i in eachindex(dr)
 		        A[j+1,1+(i-1)*m:i*m] = x[dr[i]]
 	        end
         end
@@ -96,7 +96,7 @@ end
 function scale01!(z)
     mi = minimum(z)
     ma = maximum(z)
-    for i = 1:length(z)
+    for i in eachindex(z)
         @inbounds z[i] = (z[i] - mi)/(ma-mi)
     end
     return z

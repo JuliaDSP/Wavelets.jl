@@ -362,7 +362,7 @@ end
 # For update : writes to range half+1:2*half, reads from 1:2*half
 for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!),
 										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ),
-    step_type in (WT.StepType{:predict}, WT.StepType{:update})
+    step_type in (WT.PredictStep, WT.UpdateStep)
 @eval begin
 function ($fname){T<:AbstractFloat}(x::AbstractVector{T}, half::Int,
                                     param::WT.LSStepParam{T}, steptype::$step_type)
@@ -418,8 +418,8 @@ end
 
 # periodic boundary
 for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ),
-	(step_type, puxind) in ((WT.StepType{:predict}, :(mod1(i+k-1+rhsis-half,half)+half)),
-                            (WT.StepType{:update},  :(mod1(i+k-1+rhsis,half))) )
+	(step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)),
+                            (WT.UpdateStep,  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
 function ($fname){T<:AbstractFloat}(x::AbstractVector{T}, half::Int,
 									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)

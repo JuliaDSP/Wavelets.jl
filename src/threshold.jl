@@ -57,7 +57,7 @@ end
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::HardTH, t::Real)
     @assert t >= 0
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             if abs(x[i]) <= t
                 x[i] = 0
             end
@@ -70,7 +70,7 @@ end
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::SoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             sh = abs(x[i]) - t
             if sh < 0
                 x[i] = 0
@@ -86,7 +86,7 @@ end
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::SemiSoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             if x[i] <= 2*t
                 sh = abs(x[i]) - t
                 if sh < 0
@@ -104,7 +104,7 @@ end
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::SteinTH, t::Real)
     @assert t >= 0
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             sh = 1 - t*t/(x[i]*x[i])
             if sh < 0
                 x[i] = 0
@@ -119,7 +119,7 @@ end
 # shrink negative elements to 0
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::NegTH)
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             if x[i] < 0
                 x[i] = 0
             end
@@ -131,7 +131,7 @@ end
 # shrink positive elements to 0
 function threshold!{T<:Number}(x::AbstractArray{T}, TH::PosTH)
     @inbounds begin
-        for i = 1:length(x)
+        for i in eachindex(x)
             if x[i] > 0
                 x[i] = 0
             end
@@ -233,7 +233,7 @@ end
 # add z to y
 function arrayadd!(y::AbstractArray, z::AbstractArray)
     length(y) == length(z) || throw(DimensionMismatch("lengths must be equal"))
-    for i = 1:length(y)
+    for i in eachindex(y)
         @inbounds y[i] += z[i]
     end
     return y
@@ -253,7 +253,7 @@ end
 # Median absolute deviation
 function mad!(y::AbstractArray)
     m = median!(y)
-    for i in 1:length(y)
+    for i in eachindex(y)
         y[i] = abs(y[i]-m)
     end
     return median!(y)
@@ -268,7 +268,7 @@ nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
     c1 = ind2sub(nspin,i)
     c = Array(Int, length(c1))
-    for k = 1:length(c1)
+    for k in 1:length(c1)
         c[k] = c1[k]-1
     end
     return c
@@ -322,7 +322,7 @@ end
 function findmaxabs(x::AbstractVector)
     m = abs(x[1])
     k = 1
-    @inbounds for i = 1:length(x)
+    @inbounds for i in eachindex(x)
         if abs(x[i]) > m
             k = i
             m = abs(x[i])
@@ -363,7 +363,7 @@ function coefentropy{T<:AbstractFloat}(x::AbstractArray{T}, et::Entropy, nrm::T=
     @assert nrm >= 0
     sum = zero(T)
     nrm == sum && return sum
-    for i in 1:length(x)
+    for i in eachindex(x)
         @inbounds sum += coefentropy(x[i], et, nrm)
     end
     return sum

@@ -15,14 +15,14 @@ data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_data.txt"),'\t')
 stderr = 1e-9*sqrt(length(data))
 stderr2 = 1e-9*sqrt(length(data2))
 
-for i = 1:length(wname)
-    for num = 1:length(wnum[i])
+for i in eachindex(wname)
+    for num in eachindex(wnum[i])
         # expected transforms
         ye = vec(readdlm(joinpath(dirname(@__FILE__), "data", string(name,"1d_",wname[i],wnum[i][num],".txt")),'\t'))
         ye2 = readdlm(joinpath(dirname(@__FILE__), "data", string(name,"2d_",wname[i],wnum[i][num],".txt")),'\t')
-        
+
         wtc = wtype[i]
-        if wnum[i][num] != 0 
+        if wnum[i][num] != 0
             class = wtc{wvm[i][num]}()
         else
             class = wtc()
@@ -32,7 +32,7 @@ for i = 1:length(wname)
         # transform data
         y = dwt(data, wt)
         y2 = dwt(data2, wt)
-        
+
         @test_vecnorm_eq_eps y ye stderr
         @test_vecnorm_eq_eps y2 ye2 stderr2
         # a few bad cases have quite large norms
@@ -53,36 +53,36 @@ for wclass in (WT.db1, WT.db2)
     x = randn(n)
     stderr = 1e-10*sqrt(n)
     stderr2 = 1e-10*sqrt(n*n)
-    
+
     x2 = copy(x)
-    
+
     for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        
+
         # filter vs lifting
         @test_vecnorm_eq_eps yf yls stderr
-        
+
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        
+
         # inverse vs original
         @test_vecnorm_eq_eps ytf x stderr
         @test_vecnorm_eq_eps ytls x stderr
     end
-    
+
     x = randn(n,n)
     x2 = copy(x)
     for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        
+
         # filter vs lifting
         @test_vecnorm_eq_eps yf yls stderr2
-        
+
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        
+
         # inverse vs original
         @test_vecnorm_eq_eps ytf x stderr2
         @test_vecnorm_eq_eps ytls x stderr2
@@ -93,17 +93,17 @@ for wclass in (WT.db1, WT.db2)
     for L in (ndyadicscales(n),0,1,2)
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
-        
+
         # filter vs lifting
         @test_vecnorm_eq_eps yf yls stderr2
-        
+
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
-        
+
         # inverse vs original
         @test_vecnorm_eq_eps ytf x stderr2
         @test_vecnorm_eq_eps ytls x stderr2
-        
+
     end
 end
 

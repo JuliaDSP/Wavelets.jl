@@ -236,7 +236,7 @@ end
 function maketfsize(t::NTuple, td::Integer)
     s = Array(eltype(t[1]), length(t)-1)
     k = 1
-    for i=1:length(t)
+    for i in 1:length(t) # TODO eachindex for tuples
         if i != td
             s[k] = t[i]
             k += 1

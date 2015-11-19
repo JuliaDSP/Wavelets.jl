@@ -15,12 +15,10 @@ ax[2][:plot](x,"g")
 ax[2][:set_title]("noisy",fontsize=11)
 ax[3][:plot](y,"r")
 ax[3][:set_title]("denoised (TI VisuShrink)",fontsize=11)
-for i=1:length(ax)
+for i in eachindex(ax)
     ax[i][:set_xlim]([0,n])
     ax[i][:set_ylim]([-cc,cc])
 end
 f[:set_size_inches](6,5)
 
 savefig("denoise_doppler.png")
-
-

@@ -123,7 +123,7 @@ function downsample(x::AbstractVector, sw::Int=0)
     y = zeros(eltype(x), n>>1)
     sw -= 1
 
-    for i = 1:length(y)
+    for i in eachindex(y)
         @inbounds y[i] = x[i<<1 + sw]
     end
     return y
@@ -146,7 +146,7 @@ end
 # count coefficients above threshold t (>=)
 function wcount(x::AbstractArray, t::Real=0)
     c = 0
-    @inbounds for i = 1:length(x)
+    @inbounds for i in eachindex(x)
         if abs(x[i]) >= t
             c += 1
         end

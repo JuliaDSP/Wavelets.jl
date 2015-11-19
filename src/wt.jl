@@ -70,15 +70,15 @@ abstract OrthoWaveletClass <: WaveletClass
 abstract BiOrthoWaveletClass <: WaveletClass
 
 # Single classes
-for (TYPE, CLASSNAME, NAMEBASE, MOMENTS, SUPERCLASS) in (
-        (:Haar,         "Haar", "haar", 1,        :OrthoWaveletClass),
-        (:Beylkin,      "Beylkin", "beyl", -1,    :OrthoWaveletClass), # TODO moments
-        (:Vaidyanathan, "Vaidyanathan", "vaid",-1,:OrthoWaveletClass), # TODO moments
+for (TYPE, NAMEBASE, MOMENTS) in (
+        (:Haar, "haar", 1),
+        (:Beylkin, "beyl", -1), # TODO moments
+        (:Vaidyanathan, "vaid",-1), # TODO moments
         )
     @eval begin
-        immutable $TYPE <: $SUPERCLASS end
-        class(::$TYPE) = string($CLASSNAME)::ASCIIString
-        name(::$TYPE) = string($NAMEBASE)::ASCIIString
+        immutable $TYPE <: OrthoWaveletClass end
+        class(::$TYPE) = $(string(TYPE))
+        name(::$TYPE) = string($NAMEBASE)
         vanishingmoments(::$TYPE) = $MOMENTS
     end
     CONSTNAME = symbol(NAMEBASE)
@@ -88,16 +88,16 @@ for (TYPE, CLASSNAME, NAMEBASE, MOMENTS, SUPERCLASS) in (
 end
 
 # Parameterized classes
-for (TYPE, CLASSNAME, NAMEBASE, RANGE, SUPERCLASS) in (
-        (:Daubechies, "Daubechies", "db", 1:10, :OrthoWaveletClass),
-        (:Coiflet,    "Coiflet", "coif", 2:2:8, :OrthoWaveletClass),
-        (:Symlet,     "Symlet", "sym", 4:10,    :OrthoWaveletClass),
-        (:Battle,     "Battle", "batt", 2:2:6,  :OrthoWaveletClass),
+for (TYPE, NAMEBASE, RANGE) in (
+        (:Daubechies, "db", 1:10),
+        (:Coiflet, "coif", 2:2:8),
+        (:Symlet, "sym", 4:10),
+        (:Battle, "batt", 2:2:6),
         )
     @eval begin
-        immutable $TYPE{N} <: $SUPERCLASS end
-        class(::$TYPE) = string($CLASSNAME)::ASCIIString
-        name{N}(::$TYPE{N}) = string($NAMEBASE,N)::ASCIIString
+        immutable $TYPE{N} <: OrthoWaveletClass end
+        class(::$TYPE) = $(string(TYPE))
+        name{N}(::$TYPE{N}) = string($NAMEBASE,N)
         vanishingmoments{N}(::$TYPE{N}) = N
     end
     for NUM in RANGE
@@ -109,13 +109,13 @@ for (TYPE, CLASSNAME, NAMEBASE, RANGE, SUPERCLASS) in (
 end
 
 # Parameterized BiOrtho classes
-for (TYPE, CLASSNAME, NAMEBASE, RANGE1, RANGE2, SUPERCLASS) in (
-        (:CDF,    "CDF", "cdf", [9], [7], :BiOrthoWaveletClass),
+for (TYPE, NAMEBASE, RANGE1, RANGE2) in (
+        (:CDF, "cdf", [9], [7]),
         )
     @eval begin
-        immutable $TYPE{N1, N2} <: $SUPERCLASS end
-        class(::$TYPE) = string($CLASSNAME)::ASCIIString
-        name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)::ASCIIString
+        immutable $TYPE{N1, N2} <: BiOrthoWaveletClass end
+        class(::$TYPE) = $(string(TYPE))
+        name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)
         vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
     end
     for i in length(RANGE1)
@@ -191,20 +191,21 @@ end
 
 # IMPLEMENTATIONS OF LSWavelet
 
-immutable StepType{T} end
-const Predict = StepType{:predict}()
-const Update = StepType{:update}()
+abstract StepType
+immutable PredictStep <: StepType end
+immutable UpdateStep <: StepType end
+const Predict = PredictStep()
+const Update = UpdateStep()
 
 immutable LSStepParam{T<:Number}
     coef    ::Vector{T}        # lifting coefficients
     shift   ::Int              # + left shift, - right shift
-    LSStepParam(coef, shift) = new(coef, shift)
 end
 
 immutable LSStep{T<:Number}
     param::LSStepParam{T}
     steptype::StepType
-    LSStep(param, steptype) = new(param, steptype)
+
     call{T}(::Type{LSStep}, st::StepType, coef::Vector{T}, shift::Int) = new{T}(LSStepParam{T}(coef, shift), st)
 end
 
@@ -222,7 +223,6 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     norm1   ::Float64           # normalization of scaling coefs.
     norm2   ::Float64           # normalization of detail coefs.
     name    ::ASCIIString       # name of scheme
-    GLS(step, norm1, norm2, name) = new(step, norm1, norm2, name)
 
     function call{WC<:WT.WaveletClass, T<:WaveletBoundary}(::Type{GLS}, w::WC, ::T=DEFAULT_BOUNDARY)
         name = WT.name(w)
@@ -299,7 +299,7 @@ function daubechies(N::Int)
 
     # Retain roots inside unit circle
     nr = 0  # count roots
-    @inbounds for i = 1:length(Z)
+    @inbounds for i = eachindex(Z)
         if abs(Z[i]) <= 1 + eps()
             nr += 1
         end
@@ -312,7 +312,7 @@ function daubechies(N::Int)
         R[i] = -1
     end
     k = N
-    @inbounds for i = 1:length(Z)
+    @inbounds for i = eachindex(Z)
         if abs(Z[i]) <= 1 + eps()
             k += 1
             R[k] = Z[i]
