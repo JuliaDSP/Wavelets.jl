@@ -10,6 +10,98 @@ typealias DWTArray AbstractArray
 typealias WPTArray AbstractVector
 
 
+# DWT
+
+@doc """
+`dwt(x, wt[, L=maxtransformlevels(x)])`
+
+Perform a discrete wavelet transform of the array `x`.
+The wavelet type `wt` determines the transform type
+(filter or lifting) and the wavelet class, see `wavelet`.
+
+The number of transformation levels `L` can be any non-negative
+integer such that the size of `x` is divisible by `L`.
+Performs the identity transformation if `L==0`.
+
+**Example:**
+```julia
+dwt(x, wavelet(WT.coif6))
+```
+
+**See also:** `idwt`, `dwt!`, `wavelet`
+""" ->
+function dwt end
+
+@doc """
+`idwt(x, wt[, L=maxtransformlevels(x)])`
+
+Perform an inverse discrete wavelet transform of the array `x`,
+the inverse of `dwt(x, wt, L)`.
+
+**See also:** `dwt`, `idwt!`
+""" ->
+function idwt end
+
+@doc """
+`dwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+
+`dwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+
+Same as `dwt` but without array allocation.
+Perform "out of place" transform with a filter, or
+a inplace transform with a lifting scheme. The difference
+between the filter and lifting methods is due to the
+structure of the transform algorithms.
+
+**See also:** `idwt!`
+""" ->
+function dwt! end
+
+@doc """
+`idwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+
+`idwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+
+The inverse of `dwt!`.
+
+**See also:** `dwt!`
+""" ->
+function idwt! end
+
+
+# WPT
+
+@doc """
+`wpt`
+
+Perform a discrete wavelet packet transform of the array `x`.
+**See also:** `dwt`, `wavelet`
+""" ->
+function wpt end
+
+@doc """
+`iwpt`
+
+Perform an inverse discrete wavelet packet transform of the array `x`.
+**See also:** `idwt`, `wavelet`
+""" ->
+function iwpt end
+
+@doc """
+`wpt!`
+
+Same as `wpt` but without array allocation.
+""" ->
+function wpt! end
+
+@doc """
+`iwpt!`
+
+Same as `iwpt` but without array allocation.
+""" ->
+function iwpt! end
+
+
 # DWT (discrete wavelet transform)
 
 for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
@@ -42,58 +134,6 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     end
 end # begin
 end # for
-
-@doc """
-`dwt(x, wt[, L=maxtransformlevels(x)])`
-
-Perform a discrete wavelet transform of the array `x`.
-The wavelet type `wt` determines the transform type
-(filter or lifting) and the wavelet class, see `wavelet`.
-
-The number of transformation levels `L` can be any non-negative
-integer such that the size of `x` is divisible by `L`.
-Performs the identity transformation if `L==0`.
-
-**Example:**
-```julia
-dwt(x, wavelet(WT.coif6))
-```
-
-**See also:** `idwt`, `dwt!`, `wavelet`
-""" -> dwt
-
-@doc """
-`idwt(x, wt[, L=maxtransformlevels(x)])`
-
-Perform an inverse discrete wavelet transform of the array `x`,
-the inverse of `dwt(x, wt, L)`.
-
-**See also:** `dwt`, `idwt!`
-""" -> idwt
-
-@doc """
-`dwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
-
-`dwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
-
-Same as `dwt` but without array allocation.
-Perform "out of place" transform with a filter, or
-a inplace transform with a lifting scheme. The difference
-between the filter and lifting methods is due to the
-structure of the transform algorithms.
-
-**See also:** `idwt!`
-""" -> dwt!
-
-@doc """
-`idwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
-
-`idwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
-
-The inverse of `dwt!`.
-
-**See also:** `dwt!`
-""" -> idwt!
 
 
 # WPT (wavelet packet transform)
