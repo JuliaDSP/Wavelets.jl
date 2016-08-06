@@ -12,8 +12,8 @@ typealias WPTArray AbstractVector
 
 # DWT
 
-@doc """
-`dwt(x, wt[, L=maxtransformlevels(x)])`
+"""
+    dwt(x, wt[, L=maxtransformlevels(x)])
 
 Perform a discrete wavelet transform of the array `x`.
 The wavelet type `wt` determines the transform type
@@ -23,29 +23,29 @@ The number of transformation levels `L` can be any non-negative
 integer such that the size of `x` is divisible by `L`.
 Performs the identity transformation if `L==0`.
 
-**Example:**
+# Examples
 ```julia
 dwt(x, wavelet(WT.coif6))
 ```
 
 **See also:** `idwt`, `dwt!`, `wavelet`
-""" ->
+"""
 function dwt end
 
-@doc """
-`idwt(x, wt[, L=maxtransformlevels(x)])`
+"""
+    idwt(x, wt[, L=maxtransformlevels(x)])
 
 Perform an inverse discrete wavelet transform of the array `x`,
 the inverse of `dwt(x, wt, L)`.
 
 **See also:** `dwt`, `idwt!`
-""" ->
+"""
 function idwt end
 
-@doc """
-`dwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+"""
+    dwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])
 
-`dwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+    dwt!(y, wt::GLS[, L=maxtransformlevels(x)])
 
 Same as `dwt` but without array allocation.
 Perform "out of place" transform with a filter, or
@@ -54,51 +54,51 @@ between the filter and lifting methods is due to the
 structure of the transform algorithms.
 
 **See also:** `idwt!`
-""" ->
+"""
 function dwt! end
 
-@doc """
-`idwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])`
+"""
+    idwt!(y, x, wt::OrthoFilter[, L=maxtransformlevels(x)])
 
-`idwt!(y, wt::GLS[, L=maxtransformlevels(x)])`
+    idwt!(y, wt::GLS[, L=maxtransformlevels(x)])
 
 The inverse of `dwt!`.
 
 **See also:** `dwt!`
-""" ->
+"""
 function idwt! end
 
 
 # WPT
 
-@doc """
-`wpt`
+"""
+    wpt
 
 Perform a discrete wavelet packet transform of the array `x`.
 **See also:** `dwt`, `wavelet`
-""" ->
+"""
 function wpt end
 
-@doc """
-`iwpt`
+"""
+    iwpt
 
 Perform an inverse discrete wavelet packet transform of the array `x`.
 **See also:** `idwt`, `wavelet`
-""" ->
+"""
 function iwpt end
 
-@doc """
-`wpt!`
+"""
+    wpt!
 
 Same as `wpt` but without array allocation.
-""" ->
+"""
 function wpt! end
 
-@doc """
-`iwpt!`
+"""
+    iwpt!
 
 Same as `iwpt` but without array allocation.
-""" ->
+"""
 function iwpt! end
 
 

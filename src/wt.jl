@@ -21,16 +21,16 @@ abstract LSWavelet{T} <: DiscreteWavelet{T}
 # all wavelet types
 #typealias WaveletTransformType Union{DiscreteWavelet, ContinuousWavelet}
 
-@doc "Get wavelet type name." ->
+"""Get wavelet type name."""
 function name(::DiscreteWavelet) end
-@doc "Get wavelet filter length." ->
+"""Get wavelet filter length."""
 function Base.length(::FilterWavelet) end
 
 immutable FilterTransform end
 immutable LiftingTransform end
-@doc "Transform by filtering." ->
+"""Transform by filtering."""
 const Filter = FilterTransform()
-@doc "Transform by lifting." ->
+"""Transform by lifting."""
 const Lifting = LiftingTransform()
 
 
@@ -51,7 +51,7 @@ const DEFAULT_BOUNDARY = PerBoundary()
 
 # WAVELET CLASSES
 
-@doc """
+"""
 The `WaveletClass` type has subtypes `OrthoWaveletClass`
 and `BiOrthoWaveletClass`.
 
@@ -61,10 +61,11 @@ specifing the number of vanishing moments.
 
 A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
 
-**Example**: `WT.db2`, `WT.haar`, `WT.cdf97`
+# Examples
+`WT.db2`, `WT.haar`, `WT.cdf97`
 
 **See also:** `WT.class`, `WT.name`, `WT.vanishingmoments`
-""" ->
+"""
 abstract WaveletClass
 abstract OrthoWaveletClass <: WaveletClass
 abstract BiOrthoWaveletClass <: WaveletClass
@@ -130,11 +131,11 @@ end
 
 # IMPLEMENTATIONS OF FilterWavelet
 
-@doc """
+"""
 Wavelet type for discrete orthogonal transforms by filtering.
 
 **See also:** `GLS`, `wavelet`
-""" ->
+"""
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
     name    ::ASCIIString            # filter short name
@@ -157,18 +158,18 @@ Base.length(f::OrthoFilter) = length(f.qmf)
 qmf(f::OrthoFilter) = f.qmf
 name(f::OrthoFilter) = f.name
 
-@doc "Scale filter by scalar." ->
+"""Scale filter by scalar."""
 function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
     return OrthoFilter{T}(f.qmf.*a, f.name)
 end
 
-@doc "Quadrature mirror filter pair." ->
+"""Quadrature mirror filter pair."""
 function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
     scfilter, dcfilter = makereverseqmfpair(f, fw, T)
     return reverse(scfilter), reverse(dcfilter)
 end
 
-@doc "Reversed quadrature mirror filter pair." ->
+"""Reversed quadrature mirror filter pair."""
 function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
     h = convert(Vector{T}, qmf(f))
     if fw
@@ -212,12 +213,12 @@ end
 Base.length(s::LSStep) = length(s.param)
 Base.length(s::LSStepParam) = length(s.coef)
 
-@doc """
+"""
 Wavelet type for discrete general (bi)orthogonal transforms
 by using a lifting scheme.
 
 **See also:** `OrthoFilter`, `wavelet`
-""" ->
+"""
 immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
@@ -240,21 +241,21 @@ name(s::GLS) = s.name
 
 # TRANSFORM TYPE CONSTRUCTORS
 
-@doc """
-`wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])`
+"""
+    wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])
 
 Construct wavelet type where `c` is a wavelet class,
 `t` is the transformation type (`WT.Filter` or `WT.Lifting`),
 and `boundary` is the type of boundary treatment.
 
-**Example:**
+# Examples
 ```julia
 wavelet(WT.coif6)
 wavelet(WT.db1, WT.Lifting)
 ```
 
 **See also:** `WT.WaveletClass`
-""" ->
+"""
 function wavelet end
 
 function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
