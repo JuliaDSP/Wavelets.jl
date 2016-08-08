@@ -10,13 +10,13 @@
 # DWT
 # 1-D
 # writes to y
-function _dwt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T},
+function _dwt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     si = Array(T, length(filter)-1)       # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
-function _dwt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T},
+function _dwt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool,
                                 dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
@@ -59,7 +59,7 @@ function _dwt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T},
     end
     return y
 end
-function unsafe_dwt1level!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T},
+function unsafe_dwt1level!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
                                             filter::OrthoFilter, fw::Bool,
                                             dcfilter::Vector{T}, scfilter::Vector{T},
                                             si::Vector{T})
@@ -82,7 +82,7 @@ function unsafe_dwt1level!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVe
 end
 
 
-function dwt_transform_strided!{T<:AbstractFloat}(y::Array{T}, x::AbstractArray{T},
+function dwt_transform_strided!{T<:Number}(y::Array{T}, x::AbstractArray{T},
                             nsub::Int, stride::Int, idx_func::Function,
                             tmpvec::Vector{T}, tmpvec2::Vector{T},
                             filter::OrthoFilter, fw::Bool,
@@ -95,7 +95,7 @@ function dwt_transform_strided!{T<:AbstractFloat}(y::Array{T}, x::AbstractArray{
     end
 end
 
-function dwt_transform_cols!{T<:AbstractFloat}(y::Array{T}, x::AbstractArray{T},
+function dwt_transform_cols!{T<:Number}(y::Array{T}, x::AbstractArray{T},
                             nsub::Int, idx_func::Function,
                             tmpvec::Vector{T},
                             filter::OrthoFilter, fw::Bool,
@@ -110,7 +110,7 @@ end
 
 # 2-D
 # writes to y
-function _dwt!{T<:AbstractFloat}(y::Matrix{T}, x::AbstractMatrix{T},
+function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
@@ -119,7 +119,7 @@ function _dwt!{T<:AbstractFloat}(y::Matrix{T}, x::AbstractMatrix{T},
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!{T<:AbstractFloat}(y::Matrix{T}, x::AbstractMatrix{T},
+function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool,
                                 dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
@@ -186,7 +186,7 @@ end
 
 # 3-D
 # writes to y
-function _dwt!{T<:AbstractFloat}(y::Array{T, 3}, x::AbstractArray{T, 3},
+function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
     si = Array(T, length(filter)-1)       # tmp filter vector
@@ -195,7 +195,7 @@ function _dwt!{T<:AbstractFloat}(y::Array{T, 3}, x::AbstractArray{T, 3},
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!{T<:AbstractFloat}(y::Array{T, 3}, x::AbstractArray{T, 3},
+function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 filter::OrthoFilter, L::Integer, fw::Bool,
                                 dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
@@ -287,7 +287,7 @@ end
 # WPT
 # 1-D
 # writes to y
-function _wpt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
+function _wpt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
     si = Array(T, length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
     snew = Array(T, ns)
@@ -295,7 +295,7 @@ function _wpt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T}, fil
 
     return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
 end
-function _wpt!{T<:AbstractFloat}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
+function _wpt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T})
 
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
@@ -373,7 +373,7 @@ end
 # x : filter convolved with x[ix:ix+nx-1], where nx=nout*2 (shifted by shift)
 # ss : shift downsampling
 # based on Base.filt
-function filtdown!{T<:AbstractFloat}(f::Vector{T}, si::Vector{T},
+function filtdown!{T<:Number}(f::Vector{T}, si::Vector{T},
                               out::AbstractVector{T},  iout::Integer, nout::Integer,
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout<<1
@@ -452,7 +452,7 @@ end
 # x : filter convolved with x[ix:ix+nx-1] upsampled, where nout==nx*2 (then shifted by shift)
 # ss : shift upsampling
 # based on Base.filt
-function filtup!{T<:AbstractFloat}(add2out::Bool, f::Vector{T}, si::Vector{T},
+function filtup!{T<:Number}(add2out::Bool, f::Vector{T}, si::Vector{T},
                               out::AbstractVector{T},  iout::Integer, nout::Integer,
                               x::AbstractVector{T}, ix::Integer, shift::Integer=0, ss::Bool=false)
     nx = nout>>1

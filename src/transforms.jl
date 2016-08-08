@@ -105,29 +105,30 @@ function iwpt! end
 # DWT (discrete wavelet transform)
 
 for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
-                                (:idwt, :idwt!, :_dwt!, false))
+                                (:idwt, :idwt!, :_dwt!, false)),
+    number_type in (AbstractFloat, Complex)
 @eval begin
     # filter
-    function ($Xwt){T<:AbstractFloat}(x::DWTArray{T},
+    function ($Xwt){T<:$number_type}(x::DWTArray{T},
                                     filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         y = Array(T, size(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::DWTArray{T}, x::DWTArray{T},
+    function ($Xwt!){T<:$number_type}(y::DWTArray{T}, x::DWTArray{T},
                                     filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     # lifting
-    function ($Xwt){T<:AbstractFloat}(x::DWTArray{T},
+    function ($Xwt){T<:$number_type}(x::DWTArray{T},
                                     scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         y = Array(T, size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, L, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::DWTArray{T},
+    function ($Xwt!){T<:$number_type}(y::DWTArray{T},
                                     scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         return ($_Xwt!)(y, scheme, L, $fw)
@@ -139,44 +140,45 @@ end # for
 # WPT (wavelet packet transform)
 
 for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
-                                (:iwpt, :iwpt!, :_wpt!, false))
+                                (:iwpt, :iwpt!, :_wpt!, false)),
+    number_type in (AbstractFloat, Complex)
 @eval begin
-    function ($Xwt){T<:AbstractFloat}(x::WPTArray{T},
+    function ($Xwt){T<:$number_type}(x::WPTArray{T},
                                     wt::DiscreteWavelet,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt)(x, wt, maketree(length(x), L, :full))
     end
     # filter
-    function ($Xwt){T<:AbstractFloat}(x::WPTArray{T},
+    function ($Xwt){T<:$number_type}(x::WPTArray{T},
                                     filter::OrthoFilter,
                                     tree::BitVector=maketree(x, :full))
         y = Array(T, size(x))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::WPTArray{T}, x::WPTArray{T},
+    function ($Xwt!){T<:$number_type}(y::WPTArray{T}, x::WPTArray{T},
                                     filter::OrthoFilter,
                                     tree::BitVector=maketree(x, :full))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::WPTArray{T}, x::WPTArray{T},
+    function ($Xwt!){T<:$number_type}(y::WPTArray{T}, x::WPTArray{T},
                                     filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, x, filter, maketree(length(x), L, :full))
     end
     # lifting
-    function ($Xwt){T<:AbstractFloat}(x::WPTArray{T},
+    function ($Xwt){T<:$number_type}(x::WPTArray{T},
                                     scheme::GLS,
                                     tree::BitVector=maketree(x, :full))
         y = Array(T, size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::WPTArray{T},
+    function ($Xwt!){T<:$number_type}(y::WPTArray{T},
                                     scheme::GLS,
                                     tree::BitVector=maketree(y, :full))
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
-    function ($Xwt!){T<:AbstractFloat}(y::WPTArray{T},
+    function ($Xwt!){T<:$number_type}(y::WPTArray{T},
                                     scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, scheme, maketree(length(x), L, :full))
@@ -214,16 +216,17 @@ end
 end
 
 # non-exported "out of place" functions
-for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
+for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!)),
+    number_type in (AbstractFloat, Complex)
 @eval begin
     # filter
-    function ($Xwt_oop!){T<:AbstractFloat}(y::DWTArray{T}, x::DWTArray{T},
+    function ($Xwt_oop!){T<:$number_type}(y::DWTArray{T}, x::DWTArray{T},
                                     filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
         return ($Xwt!)(y, x, filter, L)
     end
     # lifting
-    function ($Xwt_oop!){T<:AbstractFloat}(y::DWTArray{T}, x::DWTArray{T},
+    function ($Xwt_oop!){T<:$number_type}(y::DWTArray{T}, x::DWTArray{T},
                                     scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
         copy!(y, x)
@@ -236,9 +239,10 @@ end # for
 
 # column-wise transforms or color images, transform each x[:,...,:,i] separately (default)
 # or transform each x[:,...,i,:,...] separately at dim td
-for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!))
+for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!)),
+    number_type in (AbstractFloat, Complex)
 @eval begin
-    function $Xwtc{T<:AbstractFloat}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
+    function $Xwtc{T<:$number_type}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
         dim = ndims(x)
         (1 <= td <= dim) || throw(BoundsError())
         sizex = size(x)

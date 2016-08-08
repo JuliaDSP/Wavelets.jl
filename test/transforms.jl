@@ -168,6 +168,14 @@ ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
 @test_approx_eq dwt(x,wf) dwt(float(x),wf)
 
+# Complex types
+for wfc in (wavelet(WT.db2), wavelet(WT.db2, WT.Lifting))
+    xc = zeros(Complex128, n)
+    map!(i->rand(Complex128), xc)
+    yc = dwt(xc, wfc, L)
+    @test Array{Complex128,1} == typeof(yc) && length(yc) == n
+    @test_approx_eq xc idwt(dwt(xc, wfc), wfc)
+end
 
 # 2-d
 sett = ((n,n),wf,L)
