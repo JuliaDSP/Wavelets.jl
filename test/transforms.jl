@@ -192,7 +192,7 @@ ft = Int32; x, y = makedwt(ft, sett...)
 # non-Array type
 wt = wavelet(WT.db2, WT.Lifting)
 x = randn(16, 16)
-xs = sub(copy(x), 1:16, 1:16)
+xs = view(copy(x), 1:16, 1:16)
 @test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
 
 #util functions

@@ -82,7 +82,7 @@ for (TYPE, NAMEBASE, MOMENTS) in (
         name(::$TYPE) = string($NAMEBASE)
         vanishingmoments(::$TYPE) = $MOMENTS
     end
-    CONSTNAME = symbol(NAMEBASE)
+    CONSTNAME = Symbol(NAMEBASE)
     @eval begin
         const $CONSTNAME = $TYPE()                  # type shortcut
     end
@@ -102,7 +102,7 @@ for (TYPE, NAMEBASE, RANGE) in (
         vanishingmoments{N}(::$TYPE{N}) = N
     end
     for NUM in RANGE
-        CONSTNAME = symbol(string(NAMEBASE, NUM))
+        CONSTNAME = Symbol(string(NAMEBASE, NUM))
         @eval begin
             const $CONSTNAME = $TYPE{$NUM}()        # type shortcut
         end
@@ -120,7 +120,7 @@ for (TYPE, NAMEBASE, RANGE1, RANGE2) in (
         vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
     end
     for i in length(RANGE1)
-        CONSTNAME = symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
+        CONSTNAME = Symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
         @eval begin
             const $CONSTNAME = $TYPE{$RANGE1[$i],$RANGE2[$i]}()        # type shortcut
         end
@@ -138,20 +138,19 @@ Wavelet type for discrete orthogonal transforms by filtering.
 """
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
-    name    ::ASCIIString            # filter short name
-    OrthoFilter(qmf, name) = new(qmf, name)
+    name    ::String                 # filter short name
+end
 
-    function call{WC<:WT.OrthoWaveletClass, T<:WaveletBoundary}(::Type{OrthoFilter}, w::WC, ::T=DEFAULT_BOUNDARY)
-        name = WT.name(w)
-        if WC <: WT.Daubechies
-            qmf = daubechies(WT.vanishingmoments(w))
-        else
-            qmf = get(FILTERS, name, nothing)
-            qmf == nothing && throw(ArgumentError("filter not found"))
-        end
-        # make sure it is normalized in l2-norm
-        return new{T}(qmf./norm(qmf), name)
+function (::Type{OrthoFilter}){WC<:OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
+    if WC <: Daubechies
+        qmf = daubechies(vanishingmoments(w))
+    else
+        qmf = get(FILTERS, name, nothing)
+        qmf == nothing && throw(ArgumentError("filter not found"))
     end
+    # make sure it is normalized in l2-norm
+    return OrthoFilter{T}(qmf./norm(qmf), name)
 end
 
 Base.length(f::OrthoFilter) = length(f.qmf)
@@ -185,7 +184,7 @@ end
 #immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
 #    qmf1::Vector{Float64}       # quadrature mirror filter 1
 #    qmf2::Vector{Float64}       # quadrature mirror filter 2
-#    name::ASCIIString           # filter short name
+#    name::String                # filter short name
 #    BiOrthoFilter(qmf1, qmf2, name) = new(qmf1, qmf2, name)
 #end
 
@@ -206,8 +205,10 @@ end
 immutable LSStep{T<:Number}
     param::LSStepParam{T}
     steptype::StepType
+end
 
-    call{T}(::Type{LSStep}, st::StepType, coef::Vector{T}, shift::Int) = new{T}(LSStepParam{T}(coef, shift), st)
+function (::Type{LSStep}){T}(st::StepType, coef::Vector{T}, shift::Int)
+    return LSStep{T}(LSStepParam{T}(coef, shift), st)
 end
 
 Base.length(s::LSStep) = length(s.param)
@@ -223,14 +224,14 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
     norm2   ::Float64           # normalization of detail coefs.
-    name    ::ASCIIString       # name of scheme
+    name    ::String            # name of scheme
+end
 
-    function call{WC<:WT.WaveletClass, T<:WaveletBoundary}(::Type{GLS}, w::WC, ::T=DEFAULT_BOUNDARY)
-        name = WT.name(w)
-        schemedef = get(SCHEMES, name, nothing)
-        schemedef == nothing && throw(ArgumentError("scheme not found"))
-        return new{T}(schemedef[1], schemedef[2], schemedef[3], name)
-    end
+function (::Type{GLS}){WC<:WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+    name = WT.name(w)
+    schemedef = get(SCHEMES, name, nothing)
+    schemedef == nothing && throw(ArgumentError("scheme not found"))
+    return GLS{T}(schemedef[1], schemedef[2], schemedef[3], name)
 end
 
 name(s::GLS) = s.name
@@ -258,18 +259,9 @@ wavelet(WT.db1, WT.Lifting)
 """
 function wavelet end
 
-function wavelet(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return wavelet(c, WT.Filter, boundary)
-end
-function wavelet(c::WT.OrthoWaveletClass, t::WT.FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return OrthoFilter(c, boundary)
-end
-function wavelet(c::WT.WaveletClass, t::WT.LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY)
-    return GLS(c, boundary)
-end
-
-@deprecate waveletfilter(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Filter, boundary)
-@deprecate waveletls(c::WT.WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) wavelet(c, WT.Lifting, boundary)
+wavelet(c::WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = wavelet(c, Filter, boundary)
+wavelet(c::OrthoWaveletClass, t::FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = OrthoFilter(c, boundary)
+wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = GLS(c, boundary)
 
 # ------------------------------------------------------------
 
@@ -376,7 +368,7 @@ end
 # http://www.mathworks.com/matlabcentral/fileexchange/5502-filter-coefficients-to-popular-wavelets
 ### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
 # name => qmf
-const FILTERS = @compat Dict{ASCIIString,Vector{Float64}}(
+const FILTERS = @compat Dict{String,Vector{Float64}}(
 # Haar filter
 "haar" =>
 [0.7071067811865475,0.7071067811865475]
@@ -445,7 +437,7 @@ const FILTERS = @compat Dict{ASCIIString,Vector{Float64}}(
 
 # biortho filters
 # name => (qmf1,qmf2)
-const BIFILTERS = @compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
+const BIFILTERS = @compat Dict{String,NTuple{2,Vector{Float64}}}(
 # test
 "test" =>
 ([0.7071067811865475,0.7071067811865475],
@@ -455,7 +447,7 @@ const BIFILTERS = @compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
 
 
 # in matlab (d,p) -> (predict, update)
-const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
+const SCHEMES = @compat Dict{String,NTuple{3}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([  LSStep(Update,  [1.0,1.0]*1.5861343420604, 0),

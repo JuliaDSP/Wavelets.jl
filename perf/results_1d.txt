@@ -1,7 +1,0 @@
-
-dwt by filtering (N=1048576), 20 levels
-elapsed time: 0.287814759 seconds (125861424 bytes allocated, 14.58% gc time)
-dwt by lifting (N=1048576), 20 levels
-elapsed time: 0.1401407 seconds (104888464 bytes allocated, 21.04% gc time)
-fft (N=1048576), (FFTW)
-elapsed time: 0.428999777 seconds (167805536 bytes allocated, 12.92% gc time)
