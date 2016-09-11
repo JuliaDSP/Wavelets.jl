@@ -1,4 +1,6 @@
 
+import Compat.view
+
 # ============= accuracy tests ================
 print("transforms: accuracy tests ...\n")
 

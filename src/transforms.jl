@@ -294,8 +294,8 @@ function maketfsize(t::NTuple, td::Integer)
 end
 
 # Array with shared memory
-function unsafe_vectorslice{T}(A::Array{T}, i::Int, n::Int)::Vector{T}
-    return unsafe_wrap(Vector{T}, pointer(A, i), n, false)
+function unsafe_vectorslice{T}(A::Array{T}, i::Int, n::Int)#::Vector{T}
+    return unsafe_wrap(Array, pointer(A, i), n, false)::Vector{T}
 end
 
 # 2-D

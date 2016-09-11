@@ -8,7 +8,7 @@ export  DiscreteWavelet,
 
 using ..Util
 using Compat
-
+import Compat: ASCIIString
 
 # TYPE HIERARCHY
 
@@ -138,10 +138,10 @@ Wavelet type for discrete orthogonal transforms by filtering.
 """
 immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
-    name    ::String                 # filter short name
+    name    ::ASCIIString            # filter short name
 end
 
-function (::Type{OrthoFilter}){WC<:OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+@compat function (::Type{OrthoFilter}){WC<:OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
     name = WT.name(w)
     if WC <: Daubechies
         qmf = daubechies(vanishingmoments(w))
@@ -207,7 +207,7 @@ immutable LSStep{T<:Number}
     steptype::StepType
 end
 
-function (::Type{LSStep}){T}(st::StepType, coef::Vector{T}, shift::Int)
+@compat function (::Type{LSStep}){T}(st::StepType, coef::Vector{T}, shift::Int)
     return LSStep{T}(LSStepParam{T}(coef, shift), st)
 end
 
@@ -224,10 +224,10 @@ immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
     norm2   ::Float64           # normalization of detail coefs.
-    name    ::String            # name of scheme
+    name    ::ASCIIString       # name of scheme
 end
 
-function (::Type{GLS}){WC<:WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+@compat function (::Type{GLS}){WC<:WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
     name = WT.name(w)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && throw(ArgumentError("scheme not found"))
@@ -368,7 +368,7 @@ end
 # http://www.mathworks.com/matlabcentral/fileexchange/5502-filter-coefficients-to-popular-wavelets
 ### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
 # name => qmf
-const FILTERS = @compat Dict{String,Vector{Float64}}(
+const FILTERS = @compat Dict{ASCIIString,Vector{Float64}}(
 # Haar filter
 "haar" =>
 [0.7071067811865475,0.7071067811865475]
@@ -437,7 +437,7 @@ const FILTERS = @compat Dict{String,Vector{Float64}}(
 
 # biortho filters
 # name => (qmf1,qmf2)
-const BIFILTERS = @compat Dict{String,NTuple{2,Vector{Float64}}}(
+const BIFILTERS = @compat Dict{ASCIIString,NTuple{2,Vector{Float64}}}(
 # test
 "test" =>
 ([0.7071067811865475,0.7071067811865475],
@@ -447,7 +447,7 @@ const BIFILTERS = @compat Dict{String,NTuple{2,Vector{Float64}}}(
 
 
 # in matlab (d,p) -> (predict, update)
-const SCHEMES = @compat Dict{String,NTuple{3}}(
+const SCHEMES = @compat Dict{ASCIIString,NTuple{3}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([  LSStep(Update,  [1.0,1.0]*1.5861343420604, 0),
