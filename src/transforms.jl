@@ -2,8 +2,7 @@ module Transforms
 using ..Util, ..WT
 using Compat
 export  dwt, idwt, dwt!, idwt!,
-        wpt, iwpt, wpt!, iwpt!,
-        dwtc, idwtc
+        wpt, iwpt, wpt!, iwpt!
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 typealias DWTArray AbstractArray
@@ -209,16 +208,9 @@ end # for
 #cwtft(::AbstractVector, ::ContinuousWavelet)
 #icwtft(::AbstractVector, ::ContinuousWavelet)
 
-@deprecate dwt!(y, x, filter::OrthoFilter, L, fw) (fw ? dwt!(y,x,filter,L) : idwt!(y,x,filter,L))
-@deprecate dwt!(y, scheme::GLS, L, fw) (fw ? dwt!(y,scheme,L) : idwt!(y,scheme,L))
-@deprecate wpt!(y, x, filter::OrthoFilter, L, fw) (fw ? wpt!(y,x,filter,L) : iwpt!(y,x,filter,L))
-@deprecate wpt!(y, scheme::GLS, L, fw) (fw ? wpt!(y,scheme,L) : wpt!(y,scheme,L))
-
 # Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
-@eval begin
-    ($Xwt){T<:Integer}(x::AbstractArray{T}, args...) = ($Xwt)(float(x), args...)
-end
+    @eval $Xwt{T<:Integer}(x::AbstractArray{T}, args...) = $Xwt(float(x), args...)
 end
 
 # non-exported "out of place" functions
@@ -239,59 +231,6 @@ for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
     end
 end # begin
 end # for
-
-
-
-# column-wise transforms or color images, transform each x[:,...,:,i] separately (default)
-# or transform each x[:,...,i,:,...] separately at dim td
-for (Xwtc, Xwt) in ((:dwtc, :dwt!), (:idwtc, :idwt!))
-@eval begin
-    function $Xwtc{T<:ValueType}(x::AbstractArray{T}, wt::DiscreteWavelet, L::Integer, td::Integer=ndims(x))
-        dim = ndims(x)
-        (1 <= td <= dim) || throw(BoundsError())
-        sizex = size(x)
-        sizexc = maketfsize(sizex, td)
-        y = Array(T, sizex)
-        xc = Array(T, sizexc)
-        yc = Array(T, sizexc)
-
-        ind = Array(Any, dim)
-        for i = 1:dim
-            ind[i] = 1:sizex[i]
-        end
-
-        for d = 1:sizex[td]
-            ind[td] = d
-            if dim > 2
-                xc[:] = x[ind...]
-                ($Xwt)(yc, xc, wt, L)
-                y[ind...] = yc
-            else  # fast copy methods in 2-D
-                Util.copygeneral2!(xc, x, ind...)
-                ($Xwt)(yc, xc, wt, L)
-                Util.copygeneral1!(y, ind..., yc)
-            end
-        end
-        return y
-    end
-end
-end
-
-
-# utils
-
-# for dwtc
-function maketfsize(t::NTuple, td::Integer)
-    s = Array(eltype(t[1]), length(t)-1)
-    k = 1
-    for i in 1:length(t) # TODO eachindex for tuples
-        if i != td
-            s[k] = t[i]
-            k += 1
-        end
-    end
-    return tuple(s...)
-end
 
 # Array with shared memory
 function unsafe_vectorslice{T}(A::Array{T}, i::Int, n::Int)#::Vector{T}

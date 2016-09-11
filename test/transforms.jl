@@ -112,28 +112,6 @@ end
 # ============= transform functionality ================
 print("transforms: transform functionality ...\n")
 
-# column-wise 1-d
-wf = wavelet(WT.db2, WT.Filter)
-x = randn(16,2)
-y = copy(x)
-y[:,1] = dwt(vec(x[:,1]),wf)
-y[:,2] = dwt(vec(x[:,2]),wf)
-@test_approx_eq dwtc(x,wf,ndyadicscales(16),2) y
-@test_approx_eq dwtc(x',wf,ndyadicscales(16),1)' y
-
-# column-wise 2-d
-n = 16
-x = randn(n,n,2)
-y = copy(x)
-y[:,:,1] = dwt(reshape(x[:,:,1],n,n),wf)
-y[:,:,2] = dwt(reshape(x[:,:,2],n,n),wf)
-@test_approx_eq dwtc(x,wf,ndyadicscales(16),3) y
-x = randn(n,2,n)
-y = copy(x)
-y[:,1,:] = dwt(reshape(x[:,1,:],n,n),wf)
-y[:,2,:] = dwt(reshape(x[:,2,:],n,n),wf)
-@test_approx_eq dwtc(x,wf,ndyadicscales(16),2) y
-
 #=
 # "inplace" for filter
 wf = wavelet(WT.db2, WT.Filter)
