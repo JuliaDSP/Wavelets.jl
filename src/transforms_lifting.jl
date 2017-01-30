@@ -16,7 +16,7 @@ function makescheme{T<:Number}(::Type{T}, scheme::GLS, fw::Bool)
     for i = 1:n
         j = fw ? i : n+1-i
         stepseq[i] = WT.LSStep(scheme.step[j].steptype,
-                            convert(Vector{T}, scheme.step[j].param.coef),
+                            convert(Vector{T}, scheme.step[j].param.coef * (fw ? -1 : 1)),
                             scheme.step[j].param.shift)
     end
     norm1, norm2 =  convert(T, fw ? scheme.norm1 : 1/scheme.norm1),
@@ -56,7 +56,7 @@ function _dwt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Boo
         if fw
             Util.split!(s, ns, tmp)
             for step in stepseq
-                liftfw!(s, half, step.param, step.steptype)
+                lift!(s, half, step.param, step.steptype)
             end
             normalize!(s, half, ns, norm1, norm2)
             ns = ns>>1
@@ -64,7 +64,7 @@ function _dwt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Boo
         else
             normalize!(s, half, ns, norm1, norm2)
             for step in stepseq
-                liftbw!(s, half, step.param, step.steptype)
+                lift!(s, half, step.param, step.steptype)
             end
             Util.merge!(s, ns, tmp)        # inverse split
             ns = ns<<1
@@ -92,7 +92,7 @@ function unsafe_dwt1level!{T<:Number}(y::AbstractArray{T}, iy::Integer, incy::In
             Util.split!(oopv, ns, tmp)
         end
         for step in stepseq
-            liftfw!(oopv, half, step.param, step.steptype)
+            lift!(oopv, half, step.param, step.steptype)
         end
         if oopc
             normalize!(y, iy, incy, oopv, half, ns, norm1, norm2)
@@ -106,7 +106,7 @@ function unsafe_dwt1level!{T<:Number}(y::AbstractArray{T}, iy::Integer, incy::In
             normalize!(oopv, half, ns, norm1, norm2)
         end
         for step in stepseq
-            liftbw!(oopv, half, step.param, step.steptype)
+            lift!(oopv, half, step.param, step.steptype)
         end
         if oopc
             Util.merge!(y, iy, incy, oopv, ns)
@@ -360,20 +360,18 @@ end
 # half: half of the length under consideration
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
-for (fname, lift_inb, lift_bound) in (	(:liftfw!, :lift_inboundsfw!, :lift_perboundaryfw!),
-										(:liftbw!, :lift_inboundsbw!, :lift_perboundarybw!) ),
-    step_type in (WT.PredictStep, WT.UpdateStep)
+for step_type in (WT.PredictStep, WT.UpdateStep)
 @eval begin
-function ($fname){T<:Number}(x::AbstractVector{T}, half::Int,
-                                    param::WT.LSStepParam{T}, steptype::$step_type)
+function lift!{T<:Number}(x::AbstractVector{T}, half::Int,
+                            param::WT.LSStepParam{T}, steptype::$step_type)
     lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
     coefs = param.coef
     # left boundary
-    ($lift_bound)(x, half, coefs, lhsr, rhsis, steptype)
+    lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
     # main loop
-    ($lift_inb)(x, coefs, irange, rhsis)
+    lift_inbounds!(x, coefs, irange, rhsis)
     # right boundary
-    ($lift_bound)(x, half, coefs, rhsr, rhsis, steptype)
+    lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
     return x
 end
 end # eval begin
@@ -417,16 +415,15 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
 end
 
 # periodic boundary
-for (fname, op) in ( (:lift_perboundaryfw!, :-), (:lift_perboundarybw!, :+) ),
-	(step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)),
+for (step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)),
                             (WT.UpdateStep,  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
-function ($fname){T<:Number}(x::AbstractVector{T}, half::Int,
-									c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
+function lift_perboundary!{T<:Number}(x::AbstractVector{T}, half::Int,
+                                    c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
     nc = length(c)
     for i in irange
         for k = 1:nc
-            @inbounds x[i] = ($op)(x[i], c[k]*x[$puxind] )
+            @inbounds x[i] += c[k]*x[$puxind]
         end
     end
     return x
@@ -436,36 +433,32 @@ end # for
 
 
 # main lift loop
-for (fname,op) in ( (:lift_inboundsfw!,:-), (:lift_inboundsbw!,:+,) )
-@eval begin
-function ($fname){T<:Number}(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int)
+function lift_inbounds!{T<:Number}(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int)
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
-            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] )
+            @inbounds x[i] += c1*x[i+rhsis]
         end
     elseif nc == 2
         c1,c2 = c[1],c[2]
         rhsisp1 = rhsis+1
         for i in irange
-            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] )
+            @inbounds x[i] += c1*x[i+rhsis] + c2*x[i+rhsisp1]
         end
     elseif nc == 3
         c1,c2,c3 = c[1],c[2],c[3]
         rhsisp1 = rhsis+1
         rhsisp2 = rhsis+2
         for i = irange
-            @inbounds x[i] = ($op)(x[i], c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2] )
+            @inbounds x[i] += c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2]
         end
     else
         for i in irange
             for k = 0:nc-1
-                @inbounds x[i] = ($op)(x[i], c[k]*x[i+k+rhsis] )
+                @inbounds x[i] += c[k]*x[i+k+rhsis]
             end
         end
     end
     return x
 end
-end # eval begin
-end # for
