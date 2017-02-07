@@ -2,13 +2,11 @@ __precompile__()
 
 module Wavelets
 
-include("util.jl")
-
-include("wt.jl")
-include("transforms.jl")
-
-include("threshold.jl")
-include("plot.jl")
+include("Util.jl")
+include("WT.jl")
+include("Transforms.jl")
+include("Threshold.jl")
+include("Plot.jl")
 
 using Reexport
 @reexport using .Util, .WT, .Transforms, .Threshold, .Plot
