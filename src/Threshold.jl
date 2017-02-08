@@ -1,5 +1,4 @@
 module Threshold
-using ..Util, ..WT, ..Transforms
 export
     # threshold
     threshold!,
@@ -24,6 +23,7 @@ export
     Entropy,
     ShannonEntropy,
     LogEnergyEntropy
+using ..Util, ..WT, ..Transforms
 
 # THRESHOLD TYPES AND FUNCTIONS
 
@@ -142,11 +142,11 @@ end
 
 # the non inplace functions
 function threshold{T<:Number}(x::AbstractArray{T}, TH::THType, t::Real)
-    y = Array(T, size(x))
+    y = Vector{T}(size(x))
     return threshold!(copy!(y,x), TH, t)
 end
 function threshold{T<:Number}(x::AbstractArray{T}, TH::THType)
-    y = Array(T, size(x))
+    y = Vector{T}(size(x))
     return threshold!(copy!(y,x), TH)
 end
 
@@ -182,11 +182,11 @@ function denoise{S<:DNFT}(x::AbstractArray,
     if TI
         wt == nothing && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
-        xt = Array(eltype(x), size(x))
+        xt = similar(x)
         pns = prod(nspin)
 
         if ndims(x) == 1
-            z = Array(eltype(x), size(x))
+            z = similar(x)
             for i = 1:pns
                 shift = nspin2circ(nspin, i)[1]
                 Util.circshift!(z, x, shift)
@@ -267,7 +267,7 @@ end
 nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
     c1 = ind2sub(nspin,i)
-    c = Array(Int, length(c1))
+    c = Vector{Int}(length(c1))
     for k in 1:length(c1)
         c[k] = c1[k]-1
     end
@@ -292,9 +292,9 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
         y = zeros(eltype(x), length(ft(x)))
     else # out of place functions f and ft
         y = zeros(eltype(x), N)
-        tmp = Array(eltype(x), N)
-        ftr = Array(eltype(x), N)
-        aphi = Array(eltype(x), length(x))
+        tmp = similar(x, N)
+        ftr = similar(x, N)
+        aphi = similar(x, length(x))
     end
     spat = zeros(eltype(x), length(y))  # sparse for atom computation
     nmax == -1 && (nmax = length(y))
@@ -383,9 +383,9 @@ function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavel
 
     x = copy(y)
     n = length(y)
-    tmp = Array(T, n)
+    tmp = Vector{T}(n)
     ntree = length(tree)
-    entr_bf = Array(T, ntree)
+    entr_bf = Vector{T}(ntree)
     nrm = vecnorm(y)
 
     Lmax = maxtransformlevels(n)
@@ -415,7 +415,7 @@ function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavel
 
     # entropy of fully transformed signal (end nodes)
     n_af = 2^(Lmax-1)
-    entr_af = Array(T, n_af)
+    entr_af = Vector{T}(n_af)
     n_coef_af = div(n, n_af)
     for i in 1:n_af
         range = (i-1)*n_coef_af+1 : i*n_coef_af

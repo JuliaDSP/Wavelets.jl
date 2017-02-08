@@ -12,7 +12,7 @@ reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
 # return scheme parameters adjusted for direction and type
 function makescheme{T<:Number}(::Type{T}, scheme::GLS, fw::Bool)
     n = length(scheme.step)
-    stepseq = Array(WT.LSStep{T}, n)
+    stepseq = Vector{WT.LSStep{T}}(n)
     for i = 1:n
         j = fw ? i : n+1-i
         stepseq[i] = WT.LSStep(scheme.step[j].steptype,
@@ -27,7 +27,7 @@ end
 
 # 1-D
 # inplace transform of y, no vector allocation
-function _dwt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
+function _dwt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)))
 
     n = length(y)
     0 <= L ||
@@ -122,7 +122,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!{T<:Number}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
+function _dwt!{T<:Number}(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(size(y,1)))
 
     n = size(y,1)
     iscube(y) ||
@@ -194,7 +194,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!{T<:Number}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)), tmpvec::Vector{T}=Array(T,size(y,1)))
+function _dwt!{T<:Number}(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(size(y,1)))
 
     n = size(y,1)
     iscube(y) ||
@@ -277,7 +277,7 @@ end
 
 # WPT
 # 1-D
-function _wpt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Array(T,reqtmplength(y)))
+function _wpt!{T<:Number}(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)))
 
     n = length(y)
     isvalidtree(y, tree) ||

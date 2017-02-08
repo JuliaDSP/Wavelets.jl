@@ -25,19 +25,19 @@ export  dyadicdetailindex,
         maketree,
         makewavelet,
         testfunction
-using Compat
+
 
 # WAVELET INDEXING AND SIZES
 
 # Non-dyadic
 # detail coef at level l location i (i starting at 1) -> vector index
-detailindex(arraysize::Integer, l::Integer, i::Integer) = @compat round(Int, arraysize/2^l+i)
+detailindex(arraysize::Integer, l::Integer, i::Integer) = round(Int, arraysize/2^l+i)
 detailindex(x::AbstractArray, l::Integer, i::Integer) = detailindex(size(x,1), l ,i)
 # the range of detail coefs at level l
-detailrange(arraysize::Integer, l::Integer) = @compat round(Int, (arraysize/2^l+1)) : round(Int, arraysize/2^(l-1))
+detailrange(arraysize::Integer, l::Integer) = round(Int, (arraysize/2^l+1)) : round(Int, arraysize/2^(l-1))
 detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
 # number of detail coefs at level l
-detailn(arraysize::Integer, l::Integer) = @compat round(Int, arraysize/2^l)
+detailn(arraysize::Integer, l::Integer) = round(Int, arraysize/2^l)
 detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
 # max levels to transform
 maxtransformlevels(x::AbstractArray) = maxtransformlevels(minimum(size(x)))
@@ -60,7 +60,7 @@ dyadicscalingrange(j::Integer) = 1:2^j
 # number of detail coefs at level j
 dyadicdetailn(j::Integer) = 2^j
 # number of scales of dyadic length signal (n=2^J)
-ndyadicscales(n::Integer) = @compat round(Int, log2(n))
+ndyadicscales(n::Integer) = round(Int, log2(n))
 ndyadicscales(x::AbstractArray) = ndyadicscales(size(x,1))
 # the largest detail level
 maxdyadiclevel(n::Integer) = ndyadicscales(n)-1
@@ -208,7 +208,7 @@ end
 function split!{T<:Number}(a::AbstractVector{T})
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = Array(T, nt)
+    tmp = Vector{T}(nt)
     split!(a, n, tmp)
     return a
 end
@@ -282,7 +282,7 @@ end
 function merge!{T<:Number}(a::AbstractVector{T})
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = Array(T,nt)
+    tmp = Vector{T}(nt)
     merge!(a, n, tmp)
     return a
 end
@@ -437,7 +437,7 @@ end
 #Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
 function testfunction(n::Int, ft::AbstractString)
     @assert n >= 1
-    f = Array(Float64,n)
+    f = Vector{Float64}(n)
     range = 0:1/n:1-eps()
     i = 1
     if ft=="Blocks"

@@ -78,8 +78,8 @@ The numbers for orthogonal wavelets indicate the number vanishing moments of the
 
 Class information
 ```julia
-WT.class(::WaveletClass) ::ASCIIString         # class full name
-WT.name(::WaveletClass) ::ASCIIString          # type short name
+WT.class(::WaveletClass) ::String              # class full name
+WT.name(::WaveletClass) ::String               # type short name
 WT.vanishingmoments(::WaveletClass)            # vanishing moments of wavelet function
 ```
 Transform type information
@@ -173,15 +173,15 @@ denoise(x::AbstractArray,
         wt=DEFAULT_WAVELET;
         L::Int=min(maxtransformlevels(x),6),
         dnt=VisuShrink(size(x,1)),
-        estnoise::Function=noisest, 
+        estnoise::Function=noisest,
         TI=false,
         nspin=tuple([8 for i=1:ndims(x)]...) )
 # entropy
 coefentropy(x, et::Entropy, nrm)
 # best basis for WPT limited to active inital tree nodes
-bestbasistree(y::AbstractVector, wt::DiscreteWavelet, 
+bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
         L::Integer=nscales(y), et::Entropy=ShannonEntropy() )
-bestbasistree(y::AbstractVector, wt::DiscreteWavelet, 
+bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
         tree::BitVector, et::Entropy=ShannonEntropy() )
 ```
 
@@ -275,5 +275,3 @@ To-do list
 * Stationary transform
 * Continuous wavelets
 * Wavelet scalogram
-
-

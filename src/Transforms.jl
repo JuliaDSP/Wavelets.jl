@@ -1,8 +1,7 @@
 module Transforms
-using ..Util, ..WT
-using Compat
 export  dwt, idwt, dwt!, idwt!,
         wpt, iwpt, wpt!, iwpt!
+using ..Util, ..WT
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 typealias DWTArray AbstractArray
@@ -110,7 +109,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     function ($Xwt){T<:ValueType}(x::DWTArray{T},
                                     filter::OrthoFilter,
                                     L::Integer=maxtransformlevels(x))
-        y = Array(T, size(x))
+        y = Array{T}(size(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     function ($Xwt!){T<:ValueType}(y::DWTArray{T}, x::DWTArray{T},
@@ -122,7 +121,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     function ($Xwt){T<:ValueType}(x::DWTArray{T},
                                     scheme::GLS,
                                     L::Integer=maxtransformlevels(x))
-        y = Array(T, size(x))
+        y = Array{T}(size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, L, $fw)
     end
@@ -149,7 +148,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     function ($Xwt){T<:ValueType}(x::WPTArray{T},
                                     filter::OrthoFilter,
                                     tree::BitVector=maketree(x, :full))
-        y = Array(T, size(x))
+        y = Array{T}(size(x))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
     function ($Xwt!){T<:ValueType}(y::WPTArray{T}, x::WPTArray{T},
@@ -170,7 +169,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     function ($Xwt){T<:ValueType}(x::WPTArray{T},
                                     scheme::GLS,
                                     tree::BitVector=maketree(x, :full))
-        y = Array(T, size(x))
+        y = Array{T}(size(x))
         copy!(y, x)
         return ($_Xwt!)(y, scheme, tree, $fw)
     end

@@ -12,14 +12,14 @@
 # writes to y
 function _dwt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
-    si = Array(T, length(filter)-1)       # tmp filter vector
+    si = Vector{T}(length(filter)-1)       # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
 function _dwt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool,
                                 dcfilter::Vector{T}, scfilter::Vector{T},
-                                si::Vector{T}, snew::Vector{T} = Array(T, ifelse(L>1, length(x)>>1, 0)))
+                                si::Vector{T}, snew::Vector{T} = Vector{T}(ifelse(L>1, length(x)>>1, 0)))
     n = length(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
@@ -27,7 +27,7 @@ function _dwt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T},
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) &&
+    y === x &&
         throw(ArgumentError("in array is out array"))
     L > 1 && length(snew) != n>>1 &&
         throw(ArgumentError("length of snew incorrect"))
@@ -113,8 +113,8 @@ end
 function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
-    si = Array(T, length(filter)-1)       # tmp filter vector
-    tmpbuffer = Array(T,n<<1)             # tmp storage vector
+    si = Vector{T}(length(filter)-1)       # tmp filter vector
+    tmpbuffer = Vector{T}(n<<1)            # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -133,7 +133,7 @@ function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) &&
+    y === x &&
         throw(ArgumentError("in array is out array"))
     length(tmpbuffer) >= n<<1 ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
@@ -189,8 +189,8 @@ end
 function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
     n = size(x,1)
-    si = Array(T, length(filter)-1)       # tmp filter vector
-    tmpbuffer = Array(T,n<<1)             # tmp storage vector
+    si = Vector{T}(length(filter)-1)       # tmp filter vector
+    tmpbuffer = Vector{T}(n<<1)             # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -209,7 +209,7 @@ function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    is(y,x) &&
+    y === x &&
         throw(ArgumentError("in array is out array"))
     length(tmpbuffer) >= n<<1 ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
@@ -288,9 +288,9 @@ end
 # 1-D
 # writes to y
 function _wpt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool)
-    si = Array(T, length(filter)-1)
+    si = Vector{T}(length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
-    snew = Array(T, ns)
+    snew = Vector{T}(ns)
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
@@ -299,7 +299,7 @@ function _wpt!{T<:Number}(y::AbstractVector{T}, x::AbstractVector{T}, filter::Or
 
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    is(y,x) &&
+    y === x &&
         throw(ArgumentError("in array is out array"))
     isvalidtree(y, tree) ||
         throw(ArgumentError("invalid tree"))
@@ -386,8 +386,8 @@ function filtdown!{T<:Number}(f::Vector{T}, si::Vector{T},
     @assert shift <= 0
 
     fill!(si,0.0)
-    istart = @compat flen + Int(ss)
-    dsshift = @compat (flen%2 + Int(ss))%2  # is flen odd, and shift downsampling
+    istart = flen + Int(ss)
+    dsshift = (flen%2 + Int(ss))%2  # is flen odd, and shift downsampling
 
     rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
     @inbounds begin
@@ -466,7 +466,7 @@ function filtup!{T<:Number}(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     fill!(si,0.0)
     istart = flen - shift%2
-    dsshift = @compat Int(ss)%2  # shift upsampling
+    dsshift = Int(ss)%2  # shift upsampling
 
     rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin

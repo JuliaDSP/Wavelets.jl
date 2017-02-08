@@ -1,6 +1,4 @@
 
-import Compat.view
-
 # ============= accuracy tests ================
 print("transforms: accuracy tests ...\n")
 
@@ -146,15 +144,15 @@ ft = Int64; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
 ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
-@test_approx_eq dwt(x,wf) dwt(float(x),wf)
+@test dwt(x,wf) ≈ dwt(float(x),wf)
 
 # Complex types
 for wfc in (wavelet(WT.db2), wavelet(WT.db2, WT.Lifting))
     xc = zeros(Complex128, n)
-    map!(i->rand(Complex128), xc)
+    map!(i->rand(Complex128), xc, xc)
     yc = dwt(xc, wfc, L)
     @test Array{Complex128,1} == typeof(yc) && length(yc) == n
-    @test_approx_eq xc idwt(dwt(xc, wfc), wfc)
+    @test xc ≈ idwt(dwt(xc, wfc), wfc)
 end
 
 # 2-d
@@ -167,13 +165,13 @@ ft = Int64; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
 ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
-@test_approx_eq dwt(x,wf) dwt(float(x),wf)
+@test dwt(x,wf) ≈ dwt(float(x),wf)
 
 # non-Array type
 wt = wavelet(WT.db2, WT.Lifting)
 x = randn(16, 16)
 xs = view(copy(x), 1:16, 1:16)
-@test_approx_eq dwt(x,wt,2) dwt(xs,wt,2)
+@test dwt(x,wt,2) ≈ dwt(xs,wt,2)
 
 #util functions
 for class in (WT.haar, WT.db2, WT.cdf97)
@@ -184,12 +182,12 @@ end
 class = WT.db1
 wt = wavelet(class, WT.Filter)
 @test length(wt) == 2
-@test_approx_eq wt.qmf*0.7 WT.scale(wt, 0.7).qmf
+@test wt.qmf*0.7 ≈ WT.scale(wt, 0.7).qmf
 
 # ============= error tests ================
 print("transforms: error tests ...\n")
 
-type wunknownt <: DiscreteWavelet end
+type wunknownt <: DiscreteWavelet{Float64} end
 uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
@@ -207,44 +205,44 @@ x = randn(16)
 L = 1
 wp = wpt(x,wf,L)
 dw = dwt(x,wf,L)
-@test_approx_eq wp dw
-@test_approx_eq iwpt(wp,wf,L) x
+@test wp ≈ dw
+@test iwpt(wp,wf,L) ≈ x
 
 L = 2
 wp = wpt(x,wf,L)
 dw = dwt(x,wf,L)
 dw2 = copy(dw)
 dw2[9:end] = dwt(dw[9:end],wf,1)
-@test_approx_eq dw[1:8] wp[1:8]
-@test_approx_eq dw2 wp
-@test_approx_eq iwpt(wp,wf,L) x
+@test dw[1:8] ≈ wp[1:8]
+@test dw2 ≈ wp
+@test iwpt(wp,wf,L) ≈ x
 
 L = 3
 wp = wpt(x,wf,L)
 dw = dwt(x,wf,L)
-@test_approx_eq dw[1:4] wp[1:4]
-@test_approx_eq dwt(dw2[5:8],wf,1) wp[5:8]
-@test_approx_eq dwt(dw2[9:12],wf,1) wp[9:12]
-@test_approx_eq dwt(dw2[13:16],wf,1) wp[13:16]
-@test_approx_eq iwpt(wp,wf,L) x
+@test dw[1:4] ≈ wp[1:4]
+@test dwt(dw2[5:8],wf,1) ≈ wp[5:8]
+@test dwt(dw2[9:12],wf,1) ≈ wp[9:12]
+@test dwt(dw2[13:16],wf,1) ≈ wp[13:16]
+@test iwpt(wp,wf,L) ≈ x
 
 wl = wavelet(WT.db2, WT.Lifting)
 x = randn(128)
-@test_approx_eq iwpt(wpt(x,wf),wf) x
-@test_approx_eq iwpt(wpt(x,wl),wl) x
-@test_approx_eq wpt(x,wl,1) wpt(x,wf,1)
-@test_approx_eq wpt(x,wl,2) wpt(x,wf,2)
-@test_approx_eq wpt(x,wl,4) wpt(x,wf,4)
-@test_approx_eq wpt(x,wl) wpt(x,wf)
+@test iwpt(wpt(x,wf),wf) ≈ x
+@test iwpt(wpt(x,wl),wl) ≈ x
+@test wpt(x,wl,1) ≈ wpt(x,wf,1)
+@test wpt(x,wl,2) ≈ wpt(x,wf,2)
+@test wpt(x,wl,4) ≈ wpt(x,wf,4)
+@test wpt(x,wl) ≈ wpt(x,wf)
 
 wl = wavelet(WT.db2, WT.Lifting)
 n = 128
 x = randn(n)
 for L = 0:ndyadicscales(n)
-    @test_approx_eq wpt(x, wl, maketree(n, L, :dwt)) dwt(x, wl, L)
-    @test_approx_eq iwpt(x, wl, maketree(n, L, :dwt)) idwt(x, wl, L)
-    @test_approx_eq wpt(x, wf, maketree(n, L, :dwt)) dwt(x, wf, L)
-    @test_approx_eq iwpt(x, wf, maketree(n, L, :dwt)) idwt(x, wf, L)
+    @test wpt(x, wl, maketree(n, L, :dwt)) ≈ dwt(x, wl, L)
+    @test iwpt(x, wl, maketree(n, L, :dwt)) ≈ idwt(x, wl, L)
+    @test wpt(x, wf, maketree(n, L, :dwt)) ≈dwt(x, wf, L)
+    @test iwpt(x, wf, maketree(n, L, :dwt)) ≈ idwt(x, wf, L)
 end
 
 # non-dyadic tests
@@ -253,8 +251,8 @@ n = 5*8
 x = randn(n)
 for L in 0:maxtransformlevels(n)
     for wt in (wavelet(WT.db2, WT.Filter), wavelet(WT.db2, WT.Lifting))
-        @test_approx_eq wpt(x, wt, maketree(n, L, :dwt)) dwt(x, wt, L)
-        @test_approx_eq iwpt(x, wt, maketree(n, L, :dwt)) idwt(x, wt, L)
+        @test wpt(x, wt, maketree(n, L, :dwt)) ≈ dwt(x, wt, L)
+        @test iwpt(x, wt, maketree(n, L, :dwt)) ≈ idwt(x, wt, L)
     end
 end
 

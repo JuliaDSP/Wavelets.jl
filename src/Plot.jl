@@ -1,6 +1,6 @@
 module Plot
-using ..Util, ..WT, ..Transforms
 export wplotdots, wplotim
+using ..Util, ..WT, ..Transforms
 
 # PLOTTING UTILITIES
 
@@ -10,8 +10,8 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
 	n = length(x)
 	c = wcount(x, t, level=0)
-    d = Array(Float64, c)
-    l = Array(Int, c)
+    d = Vector{Float64}(c)
+    l = Vector{Int}(c)
     range = 0:1/n:1-eps()
     range *= r
 

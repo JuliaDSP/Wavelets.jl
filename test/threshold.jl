@@ -23,15 +23,15 @@ y = denoise(randn(32,32), TI=true)
 
 # best basis
 wt = wavelet(WT.db4)
-x = sin(4*linspace(0,2*pi-eps(),1024))
+x = sin.(4*linspace(0,2*pi-eps(),1024))
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
-@test_approx_eq iwpt(xtb, wt, tree) x
+@test iwpt(xtb, wt, tree) ≈ x
 
-x = sin(4*linspace(0,2*pi-eps(),5*64)) # non-dyadic
+x = sin.(4*linspace(0,2*pi-eps(),5*64)) # non-dyadic
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
-@test_approx_eq iwpt(xtb, wt, tree) x
+@test iwpt(xtb, wt, tree) ≈ x
 
 #matching pursuit
 N = 128
