@@ -173,7 +173,7 @@ x = randn(16, 16)
 xs = view(copy(x), 1:16, 1:16)
 @test dwt(x,wt,2) ≈ dwt(xs,wt,2)
 
-#util functions
+# util functions
 for class in (WT.haar, WT.db2, WT.cdf97)
     WT.class(class)
     WT.name(class)
@@ -183,6 +183,18 @@ class = WT.db1
 wt = wavelet(class, WT.Filter)
 @test length(wt) == 2
 @test wt.qmf*0.7 ≈ WT.scale(wt, 0.7).qmf
+
+# inplace methods
+class = WT.db1
+wt = wavelet(class, WT.Filter)
+x = randn(8)
+y = similar(x)
+@test dwt!(y, x, wt) ≈ dwt(x, wt)
+
+wt = wavelet(class, WT.Lifting)
+x = randn(8)
+y = copy(x)
+@test dwt!(x, wt) ≈ dwt(y, wt)
 
 # ============= error tests ================
 print("transforms: error tests ...\n")

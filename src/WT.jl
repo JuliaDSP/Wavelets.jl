@@ -7,6 +7,7 @@ export
     GLS,
     wavelet
 using ..Util
+import Base.length
 
 # TYPE HIERARCHY
 
@@ -22,7 +23,7 @@ abstract LSWavelet{T} <: DiscreteWavelet{T}
 """Get wavelet type name."""
 function name(::DiscreteWavelet) end
 """Get wavelet filter length."""
-function Base.length(::FilterWavelet) end
+function length(::FilterWavelet) end
 
 immutable FilterTransform end
 immutable LiftingTransform end
@@ -151,7 +152,7 @@ function (::Type{OrthoFilter}){WC<:OrthoWaveletClass, T<:WaveletBoundary}(w::WC,
     return OrthoFilter{T}(qmf./norm(qmf), name)
 end
 
-Base.length(f::OrthoFilter) = length(f.qmf)
+length(f::OrthoFilter) = length(f.qmf)
 qmf(f::OrthoFilter) = f.qmf
 name(f::OrthoFilter) = f.name
 
@@ -209,8 +210,8 @@ function (::Type{LSStep}){T}(st::StepType, coef::Vector{T}, shift::Int)
     return LSStep{T}(LSStepParam{T}(coef, shift), st)
 end
 
-Base.length(s::LSStep) = length(s.param)
-Base.length(s::LSStepParam) = length(s.coef)
+length(s::LSStep) = length(s.param)
+length(s::LSStepParam) = length(s.coef)
 
 """
 Wavelet type for discrete general (bi)orthogonal transforms

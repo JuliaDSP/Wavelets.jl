@@ -102,7 +102,7 @@ end
 sufficientpoweroftwo(n::Integer, L::Integer) = (n%(2^L) == 0)
 
 # mirror of filter
-mirror{T<:Number}(f::AbstractVector{T}) = f.*(-1).^(0:length(f)-1)
+mirror{T<:Number}(f::AbstractVector{T}) = f .* (-1).^(0:length(f)-1)
 # upsample
 function upsample(x::AbstractVector, sw::Int=0)
     @assert sw==0 || sw==1
@@ -476,40 +476,5 @@ function testfunction(n::Int, ft::AbstractString)
     end
     return f
 end
-
-
-function copygeneral2!(y::AbstractArray, x::AbstractMatrix, t::Range, d::Integer)
-    k = 1
-    for i in t
-        @inbounds y[k] = x[i,d]
-        k +=1
-    end
-    return y
-end
-function copygeneral2!(y::AbstractArray, x::AbstractMatrix, d::Integer, t::Range)
-    k = 1
-    for i in t
-        @inbounds y[k] = x[d,i]
-        k +=1
-    end
-    return y
-end
-function copygeneral1!(y::AbstractMatrix, t::Range, d::Integer, x::AbstractArray)
-    k = 1
-    for i in t
-        @inbounds y[i,d] = x[k]
-        k +=1
-    end
-    return y
-end
-function copygeneral1!(y::AbstractMatrix, d::Integer, t::Range, x::AbstractArray)
-    k = 1
-    for i in t
-        @inbounds y[d,i] = x[k]
-        k +=1
-    end
-    return y
-end
-
 
 end # module

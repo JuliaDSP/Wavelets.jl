@@ -422,7 +422,7 @@ function lift_perboundary!{T<:Number}(x::AbstractVector{T}, half::Int,
                                     c::Vector{T}, irange::Range, rhsis::Int, ::$step_type)
     nc = length(c)
     for i in irange
-        for k = 1:nc
+        for k in 1:nc
             @inbounds x[i] += c[k]*x[$puxind]
         end
     end
@@ -455,7 +455,7 @@ function lift_inbounds!{T<:Number}(x::AbstractVector{T}, c::Vector{T}, irange::R
         end
     else
         for i in irange
-            for k = 0:nc-1
+            for k in 0:nc-1
                 @inbounds x[i] += c[k]*x[i+k+rhsis]
             end
         end
