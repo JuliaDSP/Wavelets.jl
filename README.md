@@ -33,7 +33,7 @@ API
 ---------
 
 #### Wavelet Transforms
-See `wavelet` below for construction of the type `wt`.
+The functions `dwt` and `wpt` (and their inverses) are linear operators. See `wavelet` below for construction of the type `wt`.
 
 **Discrete Wavelet Transform**
 ```julia
