@@ -102,7 +102,7 @@ end
 sufficientpoweroftwo(n::Integer, L::Integer) = (n%(2^L) == 0)
 
 # mirror of filter
-mirror{T<:Number}(f::AbstractVector{T}) = f .* (-1).^(0:length(f)-1)
+mirror(f::AbstractVector{<:Number}) = f .* (-1).^(0:length(f)-1)
 # upsample
 function upsample(x::AbstractVector, sw::Int=0)
     @assert sw==0 || sw==1
@@ -205,7 +205,7 @@ function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
 end
 
 # put odd elements into first half, even into second half
-function split!{T<:Number}(a::AbstractVector{T})
+function split!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
     tmp = Vector{T}(nt)
@@ -214,7 +214,7 @@ function split!{T<:Number}(a::AbstractVector{T})
 end
 
 # split only the range 1:n
-function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
+function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
     @assert n%2 == 0
     n == 2 && return a
@@ -235,7 +235,7 @@ function split!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
 end
 
 # out of place split from a to b, only the range 1:n
-function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
+function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && n <= length(b)
     @assert n%2 == 0
     if n == 2
@@ -255,7 +255,7 @@ function split!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
     return b
 end
 # out of place split from a to b, only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
-function split!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer)
+function split!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where T<:Number
     @assert ia+(n-1)*inca <= length(a) && n <= length(b)
     @assert n%2 == 0
     if n == 2
@@ -279,7 +279,7 @@ function split!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Intege
 end
 
 # inverse the operation of split!
-function merge!{T<:Number}(a::AbstractVector{T})
+function merge!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
     tmp = Vector{T}(nt)
@@ -288,7 +288,7 @@ function merge!{T<:Number}(a::AbstractVector{T})
 end
 
 # merge only the range 1:n
-function merge!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
+function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
     @assert n%2 == 0
     n == 2 && return a
@@ -309,7 +309,7 @@ function merge!{T<:Number}(a::AbstractVector{T}, n::Integer, tmp::Vector{T})
 end
 
 # out of place merge from a to b, only the range 1:n
-function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer)
+function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && n <= length(b)
     @assert n%2 == 0
     if n == 2
@@ -329,7 +329,7 @@ function merge!{T<:Number}(b::AbstractVector{T}, a::AbstractVector{T}, n::Intege
     return b
 end
 # out of place merge from a to b, only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
-function merge!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer)
+function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && ib+(n-1)*incb <= length(b)
     @assert n%2 == 0
     if n == 2
@@ -353,7 +353,7 @@ function merge!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::A
 end
 
 
-function stridedcopy!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer)
+function stridedcopy!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where T<:Number
     @assert ia+(n-1)*inca <= length(a) && n <= length(b)
 
     @inbounds for i = 1:n
@@ -361,7 +361,7 @@ function stridedcopy!{T<:Number}(b::AbstractVector{T}, a::AbstractArray{T}, ia::
     end
     return b
 end
-function stridedcopy!{T<:Number}(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer)
+function stridedcopy!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert ib+(n-1)*incb <= length(b) && n <= length(a)
 
     @inbounds for i = 1:n

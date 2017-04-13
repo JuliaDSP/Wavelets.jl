@@ -27,14 +27,14 @@ using ..Util, ..WT, ..Transforms
 
 # THRESHOLD TYPES AND FUNCTIONS
 
-abstract THType
-immutable HardTH     <: THType end
-immutable SoftTH     <: THType end
-immutable SemiSoftTH <: THType end
-immutable SteinTH    <: THType end
-immutable BiggestTH  <: THType end
-immutable PosTH      <: THType end
-immutable NegTH      <: THType end
+abstract type THType end
+struct HardTH     <: THType end
+struct SoftTH     <: THType end
+struct SemiSoftTH <: THType end
+struct SteinTH    <: THType end
+struct BiggestTH  <: THType end
+struct PosTH      <: THType end
+struct NegTH      <: THType end
 
 const DEFAULT_TH = HardTH()
 
@@ -153,9 +153,9 @@ end
 
 # DENOISING
 
-abstract DNFT
+abstract type DNFT end
 
-type VisuShrink <: DNFT
+struct VisuShrink <: DNFT
     th::THType      # threshold type
     t::Float64      # threshold for noise level sigma=1, use sigma*t in application
     VisuShrink(th, t) = new(th, t)
@@ -334,9 +334,9 @@ end
 
 # ENTROPY MEASURES
 
-abstract Entropy
-immutable ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
-immutable LogEnergyEntropy <: Entropy end
+abstract type Entropy end
+struct ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
+struct LogEnergyEntropy <: Entropy end
 
 # Entropy measures: Additive with coefentropy(0) = 0
 # all coefs assumed to be on [-1,1] after normalization with nrm

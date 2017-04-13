@@ -199,7 +199,7 @@ y = copy(x)
 # ============= error tests ================
 print("transforms: error tests ...\n")
 
-type wunknownt <: DiscreteWavelet{Float64} end
+struct wunknownt <: DiscreteWavelet{Float64} end
 uwt = wunknownt()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
