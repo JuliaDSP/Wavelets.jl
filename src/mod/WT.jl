@@ -11,22 +11,22 @@ import Base.length
 
 # TYPE HIERARCHY
 
-abstract DiscreteWavelet{T}
+abstract type DiscreteWavelet{T} end
 #abstract ContinuousWavelet{T}
 # discrete transforms via filtering
-abstract FilterWavelet{T} <: DiscreteWavelet{T}
+abstract type FilterWavelet{T} <: DiscreteWavelet{T} end
 # discrete transforms via lifting
-abstract LSWavelet{T} <: DiscreteWavelet{T}
+abstract type LSWavelet{T} <: DiscreteWavelet{T} end
 # all wavelet types
-#typealias WaveletTransformType Union{DiscreteWavelet, ContinuousWavelet}
+#const WaveletTransformType = Union{DiscreteWavelet, ContinuousWavelet}
 
 """Get wavelet type name."""
 function name(::DiscreteWavelet) end
 """Get wavelet filter length."""
 function length(::FilterWavelet) end
 
-immutable FilterTransform end
-immutable LiftingTransform end
+struct FilterTransform end
+struct LiftingTransform end
 """Transform by filtering."""
 const Filter = FilterTransform()
 """Transform by lifting."""
@@ -35,13 +35,13 @@ const Lifting = LiftingTransform()
 
 # BOUNDARY TYPES
 
-abstract WaveletBoundary
+abstract type WaveletBoundary end
 # periodic (default)
-immutable PerBoundary <: WaveletBoundary end
+struct PerBoundary <: WaveletBoundary end
 # zero padding
-#immutable ZPBoundary <: WaveletBoundary end
+#struct ZPBoundary <: WaveletBoundary end
 # constant padding
-#immutable CPBoundary <: WaveletBoundary end
+#struct CPBoundary <: WaveletBoundary end
 # and so on...
 
 const Periodic = PerBoundary()
@@ -65,9 +65,9 @@ A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
 
 **See also:** `WT.class`, `WT.name`, `WT.vanishingmoments`
 """
-abstract WaveletClass
-abstract OrthoWaveletClass <: WaveletClass
-abstract BiOrthoWaveletClass <: WaveletClass
+abstract type WaveletClass end
+abstract type OrthoWaveletClass <: WaveletClass end
+abstract type BiOrthoWaveletClass <: WaveletClass end
 
 # Single classes
 for (TYPE, NAMEBASE, MOMENTS) in (
@@ -76,7 +76,7 @@ for (TYPE, NAMEBASE, MOMENTS) in (
         (:Vaidyanathan, "vaid",-1), # TODO moments
         )
     @eval begin
-        immutable $TYPE <: OrthoWaveletClass end
+        struct $TYPE <: OrthoWaveletClass end
         class(::$TYPE) = $(string(TYPE))
         name(::$TYPE) = string($NAMEBASE)
         vanishingmoments(::$TYPE) = $MOMENTS
@@ -95,10 +95,10 @@ for (TYPE, NAMEBASE, RANGE) in (
         (:Battle, "batt", 2:2:6),
         )
     @eval begin
-        immutable $TYPE{N} <: OrthoWaveletClass end
+        struct $TYPE{N} <: OrthoWaveletClass end
         class(::$TYPE) = $(string(TYPE))
-        name{N}(::$TYPE{N}) = string($NAMEBASE,N)
-        vanishingmoments{N}(::$TYPE{N}) = N
+        name(::$TYPE{N}) where N = string($NAMEBASE,N)
+        vanishingmoments(::$TYPE{N}) where N = N
     end
     for NUM in RANGE
         CONSTNAME = Symbol(string(NAMEBASE, NUM))
@@ -113,10 +113,10 @@ for (TYPE, NAMEBASE, RANGE1, RANGE2) in (
         (:CDF, "cdf", [9], [7]),
         )
     @eval begin
-        immutable $TYPE{N1, N2} <: BiOrthoWaveletClass end
+        struct $TYPE{N1, N2} <: BiOrthoWaveletClass end
         class(::$TYPE) = $(string(TYPE))
-        name{N1, N2}(::$TYPE{N1, N2}) = string($NAMEBASE,N1,"/",N2)
-        vanishingmoments{N1, N2}(::$TYPE{N1, N2}) = (N1, N2)
+        name(::$TYPE{N1, N2}) where {N1, N2} = string($NAMEBASE,N1,"/",N2)
+        vanishingmoments(::$TYPE{N1, N2}) where {N1, N2} = (N1, N2)
     end
     for i in length(RANGE1)
         CONSTNAME = Symbol(string(NAMEBASE,RANGE1[i],RANGE2[i]))
@@ -135,12 +135,12 @@ Wavelet type for discrete orthogonal transforms by filtering.
 
 **See also:** `GLS`, `wavelet`
 """
-immutable OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+struct OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     qmf     ::Vector{Float64}        # quadrature mirror filter
     name    ::String                 # filter short name
 end
 
-function (::Type{OrthoFilter}){WC<:OrthoWaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+function OrthoFilter(w::WC, ::T=DEFAULT_BOUNDARY) where {WC<:OrthoWaveletClass, T<:WaveletBoundary}
     name = WT.name(w)
     if WC <: Daubechies
         qmf = daubechies(vanishingmoments(w))
@@ -157,7 +157,7 @@ qmf(f::OrthoFilter) = f.qmf
 name(f::OrthoFilter) = f.name
 
 """Scale filter by scalar."""
-function scale{T<:WaveletBoundary}(f::OrthoFilter{T}, a::Number)
+function scale(f::OrthoFilter{T}, a::Number) where T<:WaveletBoundary
     return OrthoFilter{T}(f.qmf.*a, f.name)
 end
 
@@ -180,7 +180,7 @@ function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)
     return scfilter, dcfilter
 end
 
-#immutable BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
+#struct BiOrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
 #    qmf1::Vector{Float64}       # quadrature mirror filter 1
 #    qmf2::Vector{Float64}       # quadrature mirror filter 2
 #    name::String                # filter short name
@@ -190,23 +190,23 @@ end
 
 # IMPLEMENTATIONS OF LSWavelet
 
-abstract StepType
-immutable PredictStep <: StepType end
-immutable UpdateStep <: StepType end
+abstract type StepType end
+struct PredictStep <: StepType end
+struct UpdateStep <: StepType end
 const Predict = PredictStep()
 const Update = UpdateStep()
 
-immutable LSStepParam{T<:Number}
+struct LSStepParam{T<:Number}
     coef    ::Vector{T}        # lifting coefficients
     shift   ::Int              # + left shift, - right shift
 end
 
-immutable LSStep{T<:Number}
+struct LSStep{T<:Number}
     param::LSStepParam{T}
     steptype::StepType
 end
 
-function (::Type{LSStep}){T}(st::StepType, coef::Vector{T}, shift::Int)
+function LSStep(st::StepType, coef::Vector{T}, shift::Int) where T
     return LSStep{T}(LSStepParam{T}(coef, shift), st)
 end
 
@@ -219,14 +219,14 @@ by using a lifting scheme.
 
 **See also:** `OrthoFilter`, `wavelet`
 """
-immutable GLS{T<:WaveletBoundary} <: LSWavelet{T}
+struct GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
     norm1   ::Float64           # normalization of scaling coefs.
     norm2   ::Float64           # normalization of detail coefs.
     name    ::String            # name of scheme
 end
 
-function (::Type{GLS}){WC<:WaveletClass, T<:WaveletBoundary}(w::WC, ::T=DEFAULT_BOUNDARY)
+function GLS(w::WC, ::T=DEFAULT_BOUNDARY) where {WC<:WaveletClass, T<:WaveletBoundary}
     name = WT.name(w)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && throw(ArgumentError("scheme not found"))
