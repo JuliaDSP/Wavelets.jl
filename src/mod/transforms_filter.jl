@@ -83,11 +83,11 @@ end
 
 
 function dwt_transform_strided!{T<:Number}(y::Array{T}, x::AbstractArray{T},
-                            nsub::Int, stride::Int, idx_func::Function,
-                            tmpvec::Vector{T}, tmpvec2::Vector{T},
+                            msub::Int, nsub::Int, stride::Int, idx_func::Function,
+                            tmpvec::AbstractVector{T}, tmpvec2::AbstractVector{T},
                             filter::OrthoFilter, fw::Bool,
                             dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
-    for i=1:nsub
+    for i=1:msub
         xi = idx_func(i)
         stridedcopy!(tmpvec, x, xi, stride, nsub)
         unsafe_dwt1level!(tmpvec2, tmpvec, filter, fw, dcfilter, scfilter, si)
@@ -96,14 +96,15 @@ function dwt_transform_strided!{T<:Number}(y::Array{T}, x::AbstractArray{T},
 end
 
 function dwt_transform_cols!{T<:Number}(y::Array{T}, x::AbstractArray{T},
-                            nsub::Int, idx_func::Function,
-                            tmpvec::Vector{T},
+                            msub::Int, nsub::Int, idx_func::Function,
+                            tmpvec::AbstractVector{T},
                             filter::OrthoFilter, fw::Bool,
                             dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T})
     for i=1:nsub
         xi = idx_func(i)
-        copy!(tmpvec, 1, x, xi, nsub)
-        ya = unsafe_vectorslice(y, xi, nsub)
+        copy!(tmpvec, 1, x, xi, msub)
+        ya = view(y, xi:xi+msub-1)
+        #= ya = unsafe_vectorslice(y, xi, nsub) =#
         unsafe_dwt1level!(ya, tmpvec, filter, fw, dcfilter, scfilter, si)
     end
 end
@@ -112,9 +113,9 @@ end
 # writes to y
 function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
-    n = size(x,1)
+    m, n  = size(x)
     si = Vector{T}(length(filter)-1)       # tmp filter vector
-    tmpbuffer = Vector{T}(n<<1)            # tmp storage vector
+    tmpbuffer = Vector{T}(max(n<<1, m))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -124,61 +125,63 @@ function _dwt!{T<:Number}(y::Matrix{T}, x::AbstractMatrix{T},
                                 dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
 
-    n = size(x,1)
+    m, n = size(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    iscube(x) ||
-        throw(ArgumentError("array must be square/cube"))
     0 <= L ||
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n<<1 ||
+    length(tmpbuffer) >= max(n<<1,m) ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
 
     if L == 0
         return copy!(y,x)
     end
-    row_stride = n
+    row_stride = m
     #s = x
 
     if fw
         lrange = 1:L
         nsub = n
+        msub = m
     else
         lrange = L:-1:1
         nsub = div(n,2^(L-1))
+        msub = div(m,2^(L-1))
         copy!(y,x)
     end
 
     inputArray = x
 
     for l in lrange
-        tmpvec = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmpvec2 = unsafe_vectorslice(tmpbuffer, nsub+1, nsub)
+        tmpvec  = view(tmpbuffer, 1:msub)
+        tmpvec2 = view(tmpbuffer, 1:nsub)
+        tmpvec3 = view(tmpbuffer, nsub+1:nsub<<1)
         row_idx_func = i -> row_idx(i, n)
-        col_idx_func = i -> col_idx(i, n)
+        col_idx_func = i -> col_idx(i, m)
         if fw
             # rows
-            dwt_transform_strided!(y, inputArray, nsub, row_stride, row_idx_func,
-                tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_strided!(y, inputArray, msub, nsub, row_stride, row_idx_func,
+                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
-            dwt_transform_cols!(y, y, nsub, col_idx_func,
+            dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(y, inputArray, nsub, col_idx_func,
+            dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # rows
-            dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
-                tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
         end
+        msub = (fw ? msub>>1 : msub<<1)
         nsub = (fw ? nsub>>1 : nsub<<1)
     end
     return y
@@ -188,9 +191,9 @@ end
 # writes to y
 function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 filter::OrthoFilter, L::Integer, fw::Bool)
-    n = size(x,1)
-    si = Vector{T}(length(filter)-1)       # tmp filter vector
-    tmpbuffer = Vector{T}(n<<1)             # tmp storage vector
+    m, n, d = size(x)
+    si = Vector{T}(length(filter)-1)            # tmp filter vector
+    tmpbuffer = Vector{T}(max(m, n<<1, d<<1))   # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -200,11 +203,9 @@ function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
                                 dcfilter::Vector{T}, scfilter::Vector{T},
                                 si::Vector{T}, tmpbuffer::Vector{T})
 
-    n = size(x,1)
+    m, n, d = size(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    iscube(x) ||
-        throw(ArgumentError("array must be square/cube"))
     0 <= L ||
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
@@ -217,67 +218,76 @@ function _dwt!{T<:Number}(y::Array{T, 3}, x::AbstractArray{T, 3},
     if L == 0
         return copy!(y,x)
     end
-    row_stride = n
-    height_stride = n*n
+    row_stride = m
+    height_stride = m*n
 
     if fw
         lrange = 1:L
+        msub = m
         nsub = n
+        dsub = d
     else
         lrange = L:-1:1
+        msub = div(m,2^(L-1))
         nsub = div(n,2^(L-1))
+        dsub = div(d,2^(L-1))
         copy!(y,x)
     end
 
     inputArray = x
 
     for l in lrange
-        tmpvec = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmpvec2 = unsafe_vectorslice(tmpbuffer, nsub+1, nsub)
+        tmpcol  = view(tmpbuffer, 1:msub)
+        tmprow = view(tmpbuffer, 1:nsub)
+        tmprow2 = view(tmpbuffer, nsub+1:nsub<<1)
+        tmphei = view(tmpbuffer, 1:dsub)
+        tmphei2 = view(tmpbuffer, dsub+1:dsub<<1)
         if fw
             # heights
             for j in 1:nsub
-                hei_idx_func = i -> hei_idx(i, j, n)
-                dwt_transform_strided!(y, inputArray, nsub, height_stride, hei_idx_func,
-                    tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+                hei_idx_func = i -> hei_idx(i, j, m)
+                dwt_transform_strided!(y, inputArray, msub, dsub, height_stride, hei_idx_func,
+                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
 
             # rows
-            for j in 1:nsub
-                row_idx_func = i -> row_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
-                    tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+            for j in 1:dsub
+                row_idx_func = i -> row_idx(i, j, m, n)
+                dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
             end
             # columns
-            for j in 1:nsub
-                col_idx_func = i -> col_idx(i, j, n)
-                dwt_transform_cols!(y, y, nsub, col_idx_func,
-                    tmpvec, filter, fw, dcfilter, scfilter, si)
+            for j in 1:dsub
+                col_idx_func = i -> col_idx(i, j, m, n)
+                dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
+                    tmpcol, filter, fw, dcfilter, scfilter, si)
             end
         else
             # columns
-            for j in 1:nsub
-                col_idx_func = i -> col_idx(i, j, n)
-                dwt_transform_cols!(y, inputArray, nsub, col_idx_func,
-                    tmpvec, filter, fw, dcfilter, scfilter, si)
+            for j in 1:dsub
+                col_idx_func = i -> col_idx(i, j, m, n)
+                dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
+                    tmpcol, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
 
             # rows
-            for j in 1:nsub
-                row_idx_func = i -> row_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, row_stride, row_idx_func,
-                    tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+            for j in 1:dsub
+                row_idx_func = i -> row_idx(i, j, m, n)
+                dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
             end
             # heights
             for j in 1:nsub
-                hei_idx_func = i -> hei_idx(i, j, n)
-                dwt_transform_strided!(y, y, nsub, height_stride, hei_idx_func,
-                    tmpvec, tmpvec2, filter, fw, dcfilter, scfilter, si)
+                hei_idx_func = i -> hei_idx(i, j, m)
+                dwt_transform_strided!(y, y, msub, dsub, height_stride, hei_idx_func,
+                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
         end
+        msub = (fw ? msub>>1 : msub<<1)
         nsub = (fw ? nsub>>1 : nsub<<1)
+        dsub = (fw ? dsub>>1 : dsub<<1)
     end
     return y
 end
