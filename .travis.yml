@@ -1,6 +1,6 @@
 language: julia
 julia:
-  - v0.6.0-pre.beta
+  #- v0.6
   - nightly
 notifications:
   email: false
