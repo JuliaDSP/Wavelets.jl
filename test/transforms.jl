@@ -45,6 +45,12 @@ for i in eachindex(wname)
     end
 end
 
+# first test for non-square 2-D data
+data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_data.txt"))
+y2  = dwt(data2, wavelet(WT.haar), 1)
+ye2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_Haar0.txt"))
+@test_vecnorm_eq_eps y2 ye2 stderr2
+
 # 1-D, 2-D, 3-D lifting vs filtering / inverse vs original tests
 for wclass in (WT.db1, WT.db2)
     wf = wavelet(wclass, WT.Filter)
