@@ -224,9 +224,10 @@ end
 row_idx(i, n) = i
 col_idx(i, n) = 1 + (i-1)*n
 # 3-D
-row_idx(i, j, n) = row_idx(i, n) + (j-1)*n*n
-col_idx(i, j, n) = col_idx(i, n) + (j-1)*n*n
-hei_idx(i, j, n) = i + (j-1)*n
+# size(A) = (m,n,d)
+row_idx(i, j, m, n=m) = row_idx(i, n) + (j-1)*n*m
+col_idx(i, j, m, n=m) = col_idx(i, m) + (j-1)*n*m
+hei_idx(i, j, m) = i + (j-1)*m
 
 # filter transforms
 include("transforms_filter.jl")
