@@ -141,7 +141,7 @@ function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} =
         return y
     end
     row_stride = n
-    height_stride = n*n
+    plane_stride = n*n
 
     if fw
         lrange = 1:L
@@ -213,7 +213,7 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
         return y
     end
     row_stride = n
-    height_stride = n*n
+    plane_stride = n*n
 
     if fw
         lrange = 1:L
@@ -228,10 +228,10 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
     for l in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
-            # heights
+            # planes
             for i in 1:nsub, j in 1:nsub
-                xi = hei_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw,
+                xi = plane_idx(i, j, n)
+                unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
             # rows
@@ -261,10 +261,10 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
                 unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
-            # heights
+            # planes
             for i in 1:nsub, j in 1:nsub
-                xi = hei_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, height_stride, true, tmpsub, scheme, fw,
+                xi = plane_idx(i, j, n)
+                unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
                                     stepseq, norm1, norm2, tmp)
             end
         end

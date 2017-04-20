@@ -154,12 +154,12 @@ function _dwt!(y::Matrix{T}, x::AbstractMatrix{T},
 
     inputArray = x
 
+    row_idx_func = i -> row_idx(i, m)
+    col_idx_func = i -> col_idx(i, m)
     for l in lrange
         tmpvec  = unsafe_vectorslice(tmpbuffer, 1, msub)
         tmpvec2 = unsafe_vectorslice(tmpbuffer, 1, nsub)
         tmpvec3 = unsafe_vectorslice(tmpbuffer, nsub+1, nsub)
-        row_idx_func = i -> row_idx(i, n)
-        col_idx_func = i -> col_idx(i, m)
         if fw
             # rows
             dwt_transform_strided!(y, inputArray, msub, nsub, row_stride, row_idx_func,
@@ -217,7 +217,7 @@ function _dwt!(y::Array{T, 3}, x::AbstractArray{T, 3},
         return copy!(y,x)
     end
     row_stride = m
-    height_stride = m*n
+    plane_stride = m*n
 
     if fw
         lrange = 1:L
@@ -241,10 +241,10 @@ function _dwt!(y::Array{T, 3}, x::AbstractArray{T, 3},
         tmphei  = unsafe_vectorslice(tmpbuffer, 1, dsub)
         tmphei2 = unsafe_vectorslice(tmpbuffer, dsub+1, dsub)
         if fw
-            # heights
+            # planes
             for j in 1:nsub
-                hei_idx_func = i -> hei_idx(i, j, m)
-                dwt_transform_strided!(y, inputArray, msub, dsub, height_stride, hei_idx_func,
+                plane_idx_func = i -> plane_idx(i, j, m)
+                dwt_transform_strided!(y, inputArray, msub, dsub, plane_stride, plane_idx_func,
                     tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
@@ -276,10 +276,10 @@ function _dwt!(y::Array{T, 3}, x::AbstractArray{T, 3},
                 dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
                     tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
             end
-            # heights
+            # planes
             for j in 1:nsub
-                hei_idx_func = i -> hei_idx(i, j, m)
-                dwt_transform_strided!(y, y, msub, dsub, height_stride, hei_idx_func,
+                plane_idx_func = i -> plane_idx(i, j, m)
+                dwt_transform_strided!(y, y, msub, dsub, plane_stride, plane_idx_func,
                     tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
         end

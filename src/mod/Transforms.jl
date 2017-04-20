@@ -220,14 +220,14 @@ function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
     return unsafe_wrap(Array, pointer(A, i), n, false)::Vector{T}
 end
 
-# 2-D
-row_idx(i, n) = i
-col_idx(i, n) = 1 + (i-1)*n
-# 3-D
-# size(A) = (m,n,d)
+# linear indices of start of rows/cols/planes
+# 2-D, size(A) = (m,n)
+row_idx(i, m) = i
+col_idx(i, m) = 1 + (i-1)*m
+# 3-D, size(A) = (m,n,d)
 row_idx(i, j, m, n=m) = row_idx(i, n) + (j-1)*n*m
 col_idx(i, j, m, n=m) = col_idx(i, m) + (j-1)*n*m
-hei_idx(i, j, m) = i + (j-1)*m
+plane_idx(i, j, m) = i + (j-1)*m
 
 # filter transforms
 include("transforms_filter.jl")
