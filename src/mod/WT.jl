@@ -1,18 +1,19 @@
 module WT
-export
-    DiscreteWavelet,
-    FilterWavelet,
-    LSWavelet,
-    OrthoFilter,
-    GLS,
-    wavelet
+export  DiscreteWavelet,
+        ContinuousWavelet,
+        FilterWavelet,
+        LSWavelet,
+        OrthoFilter,
+        GLS,
+        wavelet
+
 using ..Util
 import Base.length
 
 # TYPE HIERARCHY
 
 abstract type DiscreteWavelet{T} end
-#abstract ContinuousWavelet{T}
+abstract type ContinuousWavelet{T} end
 # discrete transforms via filtering
 abstract type FilterWavelet{T} <: DiscreteWavelet{T} end
 # discrete transforms via lifting
@@ -51,8 +52,7 @@ const DEFAULT_BOUNDARY = PerBoundary()
 # WAVELET CLASSES
 
 """
-The `WaveletClass` type has subtypes `OrthoWaveletClass`
-and `BiOrthoWaveletClass`.
+The `WaveletClass` type has subtypes `OrthoWaveletClass`, `BiOrthoWaveletClass`, and `ContinuousWaveletClass`
 
 The `WT` module has for convenience constants defined named
 as the class short name and optionally amended with a number
@@ -68,15 +68,19 @@ A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
 abstract type WaveletClass end
 abstract type OrthoWaveletClass <: WaveletClass end
 abstract type BiOrthoWaveletClass <: WaveletClass end
+abstract type ContinuousWaveletClass <: WaveletClass end
 
-# Single classes
-for (TYPE, NAMEBASE, MOMENTS) in (
-        (:Haar, "haar", 1),
-        (:Beylkin, "beyl", -1), # TODO moments
-        (:Vaidyanathan, "vaid",-1), # TODO moments
+# Single classes, orthogonal and continuous
+for (TYPE, NAMEBASE, MOMENTS, SUPERCLASS) in (
+        (:Haar, "haar", 1, :OrthoWaveletClass),
+        (:Beylkin, "beyl", -1, :OrthoWaveletClass), # TODO moments
+        (:Vaidyanathan, "vaid",-1, :OrthoWaveletClass), # TODO moments
+        (:Morlet, "morl", 0, :ContinuousWaveletClass),
+        (:Paul, "paul", 0, :ContinuousWaveletClass), # moments?
+        (:DOG, "dog",  0, :ContinuousWaveletClass), # moments?
         )
     @eval begin
-        struct $TYPE <: OrthoWaveletClass end
+        struct $TYPE <: $SUPERCLASS end
         class(::$TYPE) = $(string(TYPE))
         name(::$TYPE) = string($NAMEBASE)
         vanishingmoments(::$TYPE) = $MOMENTS
@@ -86,6 +90,16 @@ for (TYPE, NAMEBASE, MOMENTS) in (
         const $CONSTNAME = $TYPE()                  # type shortcut
     end
 end
+
+struct CFW <: ContinuousWavelet
+    sparam # TODO transform definition
+    fourierfactor
+    coi
+    daughterfunc
+    name    ::ASCIIString
+    CFW(sparam, fourierfactor, coi, daughter_func, name) = new(sparam, fourierfactor, coi, daughter_func, name)
+end
+
 
 # Parameterized classes
 for (TYPE, NAMEBASE, RANGE) in (
@@ -217,7 +231,7 @@ length(s::LSStepParam) = length(s.coef)
 Wavelet type for discrete general (bi)orthogonal transforms
 by using a lifting scheme.
 
-**See also:** `OrthoFilter`, `wavelet`
+**See also:** `OrthoFilter`, `wavelet`, `CWT`
 """
 struct GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
@@ -236,8 +250,6 @@ end
 name(s::GLS) = s.name
 
 # IMPLEMENTATIONS OF ContinuousWavelet
-
-# ...
 
 # TRANSFORM TYPE CONSTRUCTORS
 
