@@ -161,6 +161,17 @@ for wfc in (wavelet(WT.db2), wavelet(WT.db2, WT.Lifting))
     @test xc ≈ idwt(dwt(xc, wfc), wfc)
 end
 
+# continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
+for boundary = (WT.DEFAULT_BOUNDARY, ZPBoundary, NullBoundary)
+    for s=1:2:8
+        for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
+            xc = rand(Float64,13)
+            yc = cwt(xc,wfc)
+            @test Array{Complex128,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,n)
+        end
+    end
+end
+
 # 2-d
 sett = ((n,n),wf,L)
 ft = Float64; x, y = makedwt(ft, sett...)
@@ -206,11 +217,16 @@ y = copy(x)
 print("transforms: error tests ...\n")
 
 struct wunknownt <: DiscreteWavelet{Float64} end
+struct wunknownc <: ContinuousWaveletClass end
 uwt = wunknownt()
+uwtc = wunknownc()
 EE = Exception
 @test_throws EE dwt(randn(4),uwt)
 @test_throws EE dwt(randn(4,4),uwt)
+@test_throws EE cwt(randn(4),uwtc)
 @test_throws EE wavelet(WT.Coiflet{33}())
+@test_throws EE wavelet(WT.dog{102}())
+@test_throws EE wavelet("db2asdsad")
 @test_throws EE wavelet("db2asdsad")
 @test_throws EE wavelet("db2", "ppppp")
 
