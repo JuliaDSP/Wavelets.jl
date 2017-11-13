@@ -146,17 +146,19 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
         J1=floor(Int64,(log2(n1))*c.scalingFactor);
     end
     #....construct time series to analyze, pad if necessary
-    if eltypes(c) == WT.ZPBoundary
+    if eltypes(c) == WT.padded
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
-        x = [Y, zeros(2^(base2+1)-n1)];
-    elseif eltypes(c) == WT.PerBoundary
+        x = [Y; zeros(2^(base2+1)-n1)];
+    elseif eltypes(c) == WT.DEFAULT_BOUNDARY
         x = [Y; flipdim(Y,1)]
+    else
+        x= Y
     end
 
     n = length(x);
     #....construct wavenumber array used in transform [Eqn(5)]
 
-    ω = [0:floor(Int, n/2); -floor(Int,n/2)+1:-1]*2π
+    ω = [0:ceil(Int, n/2); -floor(Int,n/2)+1:-1]*2π
 
     #....compute FFT of the (padded) time series
     x̂ = fft(x);    # [Eqn(3)]

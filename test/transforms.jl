@@ -162,12 +162,12 @@ for wfc in (wavelet(WT.db2), wavelet(WT.db2, WT.Lifting))
 end
 
 # continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
-for boundary = (WT.DEFAULT_BOUNDARY, ZPBoundary, NullBoundary)
+for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
     for s=1:2:8
         for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
             xc = rand(Float64,13)
             yc = cwt(xc,wfc)
-            @test Array{Complex128,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,n)
+            @test Array{Complex128,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,13)
         end
     end
 end
@@ -217,7 +217,7 @@ y = copy(x)
 print("transforms: error tests ...\n")
 
 struct wunknownt <: DiscreteWavelet{Float64} end
-struct wunknownc <: ContinuousWaveletClass end
+struct wunknownc <: ContinuousWavelet{Float64} end
 uwt = wunknownt()
 uwtc = wunknownc()
 EE = Exception

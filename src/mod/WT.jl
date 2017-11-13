@@ -51,7 +51,8 @@ struct NullBoundary <: WaveletBoundary end
 
 const Periodic = PerBoundary()
 const DEFAULT_BOUNDARY = PerBoundary()
-
+const padded = ZPBoundary()
+const NaivePer = NullBoundary()
 
 # WAVELET CLASSES
 
