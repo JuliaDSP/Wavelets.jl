@@ -258,14 +258,10 @@ end # for
 #swt(::AbstractVector, ::DiscreteWavelet)
 #iswt(::AbstractVector, ::DiscreteWavelet)
 
-# CWT (continuous wavelet transform via FFT) TODO: direct if sufficiently small
+# CWT (continuous wavelet transform directly) TODO: direct if sufficiently small
 
 # TODO: continuous inverse, when defined
 #icwt(::AbstractVector, ::ContinuousWavelet)
-
-# CWTFT (continuous wavelet transform via FFT)
-#cwtft(::AbstractVector, ::ContinuousWavelet)
-#icwtft(::AbstractVector, ::ContinuousWavelet)
 
 # Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)

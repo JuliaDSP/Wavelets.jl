@@ -378,8 +378,6 @@ and `boundary` is the type of boundary treatment. In the continuous case, s>0
 is the number of wavelets between the octaves ``2^J`` and ``2^{J+1}``
 (defaults to 8, which is most appropriate for music and other audio).
 
-
-
 # Examples
 ```julia
 wavelet(WT.coif6)
