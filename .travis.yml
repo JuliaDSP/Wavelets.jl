@@ -1,13 +1,14 @@
 language: julia
+os:
+  - osx
+  - linux
 julia:
-  #- v0.6
+  - 0.6
   - nightly
+matrix:
+  allow_failures:
+    - julia: nightly
 notifications:
   email: false
-script:
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.init(); Pkg.clone(pwd())'
-  - if [ $TRAVIS_JULIA_VERSION = "nightly" ]; then julia --check-bounds=yes --code-coverage  test/runtests.jl; fi
-  - if [ $TRAVIS_JULIA_VERSION != "nightly" ]; then julia --check-bounds=yes test/runtests.jl; fi
 after_success:
-    - if [ $TRAVIS_JULIA_VERSION = "nightly" ]; then julia -e 'cd(Pkg.dir("Wavelets")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'; fi
+  - julia -e 'cd(Pkg.dir("Wavelets")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
