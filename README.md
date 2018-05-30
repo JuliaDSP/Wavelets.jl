@@ -149,7 +149,7 @@ xts = wplotim(x, L, wavelet(WT.db3))
 See [Bumps](/example/transform1d_bumps.png) and [Lena](/example/transform2d_lena.jpg) for plot images.
 
 
-Thesholding
+Thresholding
 ---------
 
 The `Wavelets.Threshold` module includes the following utilities
