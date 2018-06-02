@@ -12,7 +12,7 @@ name = "filter"
 data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
 data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_data.txt"),'\t')
 
-stderr = 1e-9*sqrt(length(data))
+stderr1 = 1e-9*sqrt(length(data))
 stderr2 = 1e-9*sqrt(length(data2))
 
 for i in eachindex(wname)
@@ -33,13 +33,13 @@ for i in eachindex(wname)
         y = dwt(data, wt)
         y2 = dwt(data2, wt)
 
-        @test_vecnorm_eq_eps y ye stderr
+        @test_vecnorm_eq_eps y ye stderr1
         @test_vecnorm_eq_eps y2 ye2 stderr2
         # a few bad cases have quite large norms
         if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
             @test abs(vecnorm(data)-vecnorm(y)) < 1e-9
             @test abs(vecnorm(data2)-vecnorm(y2)) < 1e-9
-            @test_vecnorm_eq_eps idwt(y,wt) data stderr*100
+            @test_vecnorm_eq_eps idwt(y,wt) data stderr1*100
             @test_vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100
         end
     end
@@ -51,15 +51,14 @@ y2  = dwt(data2, wavelet(WT.haar), 1)
 ye2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_Haar0.txt"))
 @test_vecnorm_eq_eps y2 ye2 stderr2
 
+n = 64
+stderr1 = 1e-10*sqrt(n)
+stderr2 = 1e-10*sqrt(n*n)
 # 1-D, 2-D, 3-D lifting vs filtering / inverse vs original tests
 for wclass in (WT.db1, WT.db2)
     wf = wavelet(wclass, WT.Filter)
     wls = wavelet(wclass, WT.Lifting)
-    n = 64
     x = randn(n)
-    stderr = 1e-10*sqrt(n)
-    stderr2 = 1e-10*sqrt(n*n)
-
     x2 = copy(x)
 
     for L in (ndyadicscales(n),0,1,2)
@@ -67,14 +66,14 @@ for wclass in (WT.db1, WT.db2)
         yls = dwt(x, wls, L)
 
         # filter vs lifting
-        @test_vecnorm_eq_eps yf yls stderr
+        @test_vecnorm_eq_eps yf yls stderr1
 
         ytf = idwt(yf, wf, L)
         ytls = idwt(yls, wls, L)
 
         # inverse vs original
-        @test_vecnorm_eq_eps ytf x stderr
-        @test_vecnorm_eq_eps ytls x stderr
+        @test_vecnorm_eq_eps ytf x stderr1
+        @test_vecnorm_eq_eps ytls x stderr1
     end
 
     x = randn(n,n)
@@ -139,7 +138,9 @@ function makedwt(ft::Type, n, wf, L)
 end
 
 # 1-d
-n = 8; wf = wavelet(WT.db2); L = 2
+n = 8
+wf = wavelet(WT.db2)
+L = 2
 sett = (n,wf,L)
 
 ft = Float64; x, y = makedwt(ft, sett...)

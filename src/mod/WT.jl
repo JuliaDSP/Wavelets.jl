@@ -9,6 +9,10 @@ export
 using ..Util
 import Base.length
 
+if VERSION >= v"0.7.0-DEV.986"
+    using LinearAlgebra: norm
+end
+
 # TYPE HIERARCHY
 
 abstract type DiscreteWavelet{T} end

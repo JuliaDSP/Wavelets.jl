@@ -26,6 +26,9 @@ export  dyadicdetailindex,
         makewavelet,
         testfunction
 
+if VERSION >= v"0.7.0-DEV.986"
+    using DSP: conv
+end
 
 # WAVELET INDEXING AND SIZES
 

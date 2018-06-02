@@ -1,6 +1,8 @@
 using Wavelets
 using Base.Test
-
+if VERSION >= v"0.7.0-DEV.986"
+    using LinearAlgebra
+end
 # modified from Base.Test
 function test_vecnorm_eq(va, vb, Eps, astr, bstr)
     if length(va) != length(vb)
@@ -27,4 +29,3 @@ include("threshold.jl")
 include("plot.jl")
 
 print("\ntesting: success\n")
-
