@@ -8,10 +8,8 @@ export
     wavelet
 using ..Util
 import Base.length
-
-if VERSION >= v"0.7.0-DEV.986"
-    using LinearAlgebra: norm
-end
+using Compat.LinearAlgebra
+using Compat: ComplexF64, undef
 
 # TYPE HIERARCHY
 
@@ -273,7 +271,7 @@ wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_
 function daubechies(N::Int)
     @assert N > 0
     # Create polynomial
-    C = Vector{Int}(N)
+    C = Vector{Int}(undef, N)
     @inbounds for n = 0:N-1
         C[N-n] = binomial(N-1+n, n)
     end
@@ -284,7 +282,7 @@ function daubechies(N::Int)
     # Find roots in z domain:
     # z + z^{-1} = 2 - 4*y
     # where y is a root from above
-    Z = zeros(Complex128, 2*N-2)
+    Z = zeros(ComplexF64, 2*N-2)
     @inbounds for i = 1:N-1
         Yi = Y[i]
         d = 2*sqrt( Yi*Yi - Yi )
@@ -303,7 +301,7 @@ function daubechies(N::Int)
 
     # Find coefficients of the polynomial
     # (1 + z)^N * \prod_i (z - z_i)
-    R = Vector{Complex128}(N + nr)
+    R = Vector{ComplexF64}(undef, N + nr)
     @inbounds for i = 1:N
         R[i] = -1
     end
@@ -335,8 +333,8 @@ function compan(C::AbstractVector)
     A = zeros(n-1, n-1)
 
     if n > 1
-        @inbounds A[1,:] = -C[2:end] ./ C[1]
-        @inbounds A[2:n:end] = 1
+        @inbounds A[1,:] .= -C[2:end] ./ C[1]
+        @inbounds A[2:n:end] .= 1
     end
     return A
 end
@@ -346,10 +344,10 @@ end
 # http://www.mathworks.se/help/matlab/ref/poly.html
 function vieta(R::AbstractVector)
     n = length( R )
-    C = zeros(Complex128, n+1)
+    C = zeros(ComplexF64, n+1)
     C[1] = 1
-    Ci::Complex128 = 0
-    Cig::Complex128 = 0
+    Ci::ComplexF64 = 0
+    Cig::ComplexF64 = 0
 
     @inbounds for k = 1:n
         Ci = C[1]

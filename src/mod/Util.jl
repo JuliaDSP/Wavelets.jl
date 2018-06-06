@@ -29,6 +29,9 @@ export  dyadicdetailindex,
 if VERSION >= v"0.7.0-DEV.986"
     using DSP: conv
 end
+using Compat.LinearAlgebra
+using Compat: copyto!, undef
+
 
 # WAVELET INDEXING AND SIZES
 
@@ -185,7 +188,7 @@ function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
     atype = typeof(a)
     s = length(a)
     shift = mod(shift,s)
-    shift == 0 && return copy!(b,a)
+    shift == 0 && return copyto!(b,a)
     shift = ifelse(s>>1 < shift, shift-s, shift)  # shift a smaller distance if possible
     if shift < 0
         for i = 1:s+shift
@@ -211,7 +214,7 @@ end
 function split!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = Vector{T}(nt)
+    tmp = Vector{T}(undef, nt)
     split!(a, n, tmp)
     return a
 end
@@ -233,7 +236,7 @@ function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Numbe
     for i=0:nt - 1  # evens to end
         @inbounds a[n-i] = a[n - i<<1]
     end
-    copy!(a,n>>1+1,tmp,1,nt)
+    copyto!(a,n>>1+1,tmp,1,nt)
     return a
 end
 
@@ -285,7 +288,7 @@ end
 function merge!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = Vector{T}(nt)
+    tmp = Vector{T}(undef, nt)
     merge!(a, n, tmp)
     return a
 end
@@ -298,7 +301,7 @@ function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Numbe
     nt = n>>2 + (n>>1)%2
     @assert nt <= length(tmp)
 
-    copy!(tmp,1,a,n>>1+1,nt)
+    copyto!(tmp,1,a,n>>1+1,nt)
     for i=nt-1:-1:0  # evens from end
         @inbounds a[n - 2*i] = a[n-i]
     end
@@ -399,7 +402,7 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
     @assert 0 <= L <= ns
     @assert (2^(ns-1)-1)<<1+1 <= nb
 
-    b = BitArray(nb)
+    b = BitArray(undef, nb)
     fill!(b, false)
 
     t = true
@@ -440,7 +443,7 @@ end
 #Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
 function testfunction(n::Int, ft::AbstractString)
     @assert n >= 1
-    f = Vector{Float64}(n)
+    f = Vector{Float64}(undef, n)
     range = 0:1/n:1-eps()
     i = 1
     if ft=="Blocks"

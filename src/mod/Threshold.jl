@@ -25,6 +25,9 @@ export
     LogEnergyEntropy
 using ..Util, ..WT, ..Transforms
 
+using Compat.LinearAlgebra
+using Compat: copyto!, Nothing, undef
+
 # THRESHOLD TYPES AND FUNCTIONS
 
 abstract type THType end
@@ -142,12 +145,12 @@ end
 
 # the non inplace functions
 function threshold(x::AbstractArray{T}, TH::THType, t::Real) where T<:Number
-    y = Vector{T}(size(x))
-    return threshold!(copy!(y,x), TH, t)
+    y = Vector{T}(undef, size(x))
+    return threshold!(copyto!(y,x), TH, t)
 end
 function threshold(x::AbstractArray{T}, TH::THType) where T<:Number
-    y = Vector{T}(size(x))
-    return threshold!(copy!(y,x), TH)
+    y = Vector{T}(undef, size(x))
+    return threshold!(copyto!(y,x), TH)
 end
 
 
@@ -168,9 +171,9 @@ end
 const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
-# estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Void})
+# estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Nothing})
 function denoise(x::AbstractArray,
-                wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET;
+                wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET;
                 L::Int=min(maxtransformlevels(x),6),
                 dnt::S=VisuShrink(size(x,1)),
                 estnoise::Function=noisest,
@@ -241,7 +244,7 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET, L::Integer = 1)
+function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET, L::Integer = 1)
     if wt == nothing
         y = x
     else
@@ -267,7 +270,7 @@ end
 nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
     c1 = ind2sub(nspin,i)
-    c = Vector{Int}(length(c1))
+    c = Vector{Int}(undef, length(c1))
     for k in 1:length(c1)
         c[k] = c1[k]-1
     end
@@ -383,9 +386,9 @@ function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVecto
 
     x = copy(y)
     n = length(y)
-    tmp = Vector{T}(n)
+    tmp = Vector{T}(undef, n)
     ntree = length(tree)
-    entr_bf = Vector{T}(ntree)
+    entr_bf = Vector{T}(undef, ntree)
     nrm = vecnorm(y)
 
     Lmax = maxtransformlevels(n)
@@ -405,7 +408,7 @@ function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVecto
             entr_bf[k] = coefentropy(dx, et, nrm)
 
             dwt!(dtmp, dx, wt, 1)
-            copy!(dx, dtmp)
+            copyto!(dx, dtmp)
 
             ix += nj
             k += 1
@@ -415,7 +418,7 @@ function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVecto
 
     # entropy of fully transformed signal (end nodes)
     n_af = 2^(Lmax-1)
-    entr_af = Vector{T}(n_af)
+    entr_af = Vector{T}(undef, n_af)
     n_coef_af = div(n, n_af)
     for i in 1:n_af
         range = (i-1)*n_coef_af+1 : i*n_coef_af

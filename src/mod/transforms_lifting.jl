@@ -12,7 +12,7 @@ reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
 # return scheme parameters adjusted for direction and type
 function makescheme(::Type{T}, scheme::GLS, fw::Bool) where T<:Number
     n = length(scheme.step)
-    stepseq = Vector{WT.LSStep{T}}(n)
+    stepseq = Vector{WT.LSStep{T}}(undef, n)
     for i = 1:n
         j = fw ? i : n+1-i
         stepseq[i] = WT.LSStep(scheme.step[j].steptype,
@@ -28,7 +28,7 @@ end
 # 1-D
 # inplace transform of y, no vector allocation
 function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::Vector{T} = Vector{T}(reqtmplength(y))) where T<:Number
+        tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
 
     n = length(y)
     0 <= L ||
@@ -123,7 +123,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(size(y,1))) where T<:Number
+function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
 
     n = size(y,1)
     iscube(y) ||
@@ -195,7 +195,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(size(y,1))) where T<:Number
+function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
 
     n = size(y,1)
     iscube(y) ||
@@ -278,7 +278,7 @@ end
 
 # WPT
 # 1-D
-function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T} = Vector{T}(reqtmplength(y))) where T<:Number
+function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
 
     n = length(y)
     isvalidtree(y, tree) ||
@@ -378,25 +378,46 @@ end
 end # eval begin
 end # for
 
-function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
-    # define index shift rhsis
-    pred = isa(steptype, typeof(WT.Predict))
-    if pred
-        rhsis = -shift+half
-    else
-        rhsis = -shift-half
-    end
+function irlimits(half::Int, nc::Int, shift::Int)
     # conditions for every element i in irange to be in bounds
     # 1 <= i <= half
     # 1 <= i+1-1-shift <= half
     # 1 <= i+nc-1-shift <= half
-    irmin = max(shift+1, 1-nc+shift)
-    irmax = min(half+1+shift-nc, half+shift)
+    return (max(shift+1, 1-nc+shift),
+            min(half+1+shift-nc, half+shift))
+end
+
+function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.UpdateStep)
+    # define index shift rhsis
+    rhsis = -shift-half
+    irmin, irmax = irlimits(half, nc, shift)
     if irmin > half || irmax < 1
         irange = 1:0  # empty
     else
-        irmin = max(irmin,1)
-        irmax = min(irmax,half)
+        irmin = max(irmin, 1)
+        irmax = min(irmax, half)
+        irange = irmin + half:irmax + half
+    end
+    # periodic boundary
+    if length(irange)==0
+        lhsr = 1 + half:half + half
+        rhsr = 1 + half:0 + half
+    else
+        lhsr = 1 + half:irmin - 1 + half
+        rhsr = irmax + 1 + half:half + half
+    end
+    return (lhsr, irange, rhsr, rhsis)
+end
+
+function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
+    # define index shift rhsis
+    rhsis = -shift+half
+    irmin, irmax = irlimits(half, nc, shift)
+    if irmin > half || irmax < 1
+        irange = 1:0  # empty
+    else
+        irmin = max(irmin, 1)
+        irmax = min(irmax, half)
         irange = irmin:irmax
     end
     # periodic boundary
@@ -404,13 +425,8 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.StepType)
         lhsr = 1:half
         rhsr = 1:0
     else
-        lhsr = 1:irmin-1
-        rhsr = irmax+1:half
-    end
-    if !pred  # shift ranges for update
-        irange += half
-        lhsr += half
-        rhsr += half
+        lhsr = 1:irmin - 1
+        rhsr = irmax + 1:half
     end
     return (lhsr, irange, rhsr, rhsis)
 end
@@ -420,7 +436,7 @@ for (step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)
                             (WT.UpdateStep,  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
 function lift_perboundary!(x::AbstractVector{T}, half::Int,
-                            c::Vector{T}, irange::Range, rhsis::Int, ::$step_type) where T<:Number
+                            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
     nc = length(c)
     for i in irange
         for k in 1:nc
@@ -434,7 +450,7 @@ end # for
 
 
 # main lift loop
-function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::Range, rhsis::Int) where T<:Number
+function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]

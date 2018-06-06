@@ -8,10 +8,13 @@ wtype = Any[WT.Daubechies, WT.Coiflet, WT.Haar, WT.Symlet, WT.Battle, WT.Vaidyan
 wnum = Any[collect(4:2:20),collect(2:5),[0],collect(4:10),[1,3,5],[0],[0]];
 wvm = Any[collect(2:1:10),collect(4:2:10),[0],collect(4:10),[2,4,6],[0],[0]];
 
+
+print("transforms: reading 1d and 2d data ...\n")
 name = "filter"
 data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
 data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_data.txt"),'\t')
 
+print("transforms: testing 1d and 2d data ...\n")
 stderr1 = 1e-9*sqrt(length(data))
 stderr2 = 1e-9*sqrt(length(data2))
 
@@ -46,22 +49,26 @@ for i in eachindex(wname)
 end
 
 # first test for non-square 2-D data
+print("transforms: non-square 2d data ...\n")
 data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_data.txt"))
 y2  = dwt(data2, wavelet(WT.haar), 1)
 ye2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_Haar0.txt"))
 @test_vecnorm_eq_eps y2 ye2 stderr2
 
-n = 64
+print("transforms: lifting vs filter ...\n")
+n = 32
 stderr1 = 1e-10*sqrt(n)
 stderr2 = 1e-10*sqrt(n*n)
 # 1-D, 2-D, 3-D lifting vs filtering / inverse vs original tests
 for wclass in (WT.db1, WT.db2)
+    print("transforms: wclass ...\n")
     wf = wavelet(wclass, WT.Filter)
     wls = wavelet(wclass, WT.Lifting)
     x = randn(n)
     x2 = copy(x)
 
     for L in (ndyadicscales(n),0,1,2)
+
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
 
@@ -79,6 +86,7 @@ for wclass in (WT.db1, WT.db2)
     x = randn(n,n)
     x2 = copy(x)
     for L in (ndyadicscales(n),0,1,2)
+
         yf = dwt(x, wf, L)
         yls = dwt(x, wls, L)
 
@@ -96,7 +104,12 @@ for wclass in (WT.db1, WT.db2)
     x = randn(n,n,n)
     x2 = copy(x)
     for L in (ndyadicscales(n),0,1,2)
+
         yf = dwt(x, wf, L)
+        #if L == 5
+        #    @profile dwt(x, wls, L)
+        #    Profile.print()
+        #end
         yls = dwt(x, wls, L)
 
         # filter vs lifting
@@ -133,7 +146,7 @@ print("transforms: types and sizes ...\n")
 function makedwt(ft::Type, n, wf, L)
 	x0 = rand(-5:5, n)
 	x = zeros(ft, n)
-	copy!(x,x0)
+	copyto!(x,x0)
 	return (x, dwt(x, wf, L))
 end
 
@@ -155,10 +168,10 @@ ft = Int32; x, y = makedwt(ft, sett...)
 
 # Complex types
 for wfc in (wavelet(WT.db2), wavelet(WT.db2, WT.Lifting))
-    xc = zeros(Complex128, n)
-    map!(i->rand(Complex128), xc, xc)
+    xc = zeros(ComplexF64, n)
+    map!(i->rand(ComplexF64), xc, xc)
     yc = dwt(xc, wfc, L)
-    @test Array{Complex128,1} == typeof(yc) && length(yc) == n
+    @test Array{ComplexF64,1} == typeof(yc) && length(yc) == n
     @test xc ≈ idwt(dwt(xc, wfc), wfc)
 end
 
