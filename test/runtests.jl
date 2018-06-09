@@ -2,7 +2,7 @@ using Wavelets
 using Base.Test
 using Compat.LinearAlgebra
 using Compat.DelimitedFiles
-using Compat: ComplexF64, copyto!
+using Compat: ComplexF64, copyto!, range
 
 # modified from Base.Test
 function test_vecnorm_eq(va, vb, Eps, astr, bstr)

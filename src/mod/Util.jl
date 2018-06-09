@@ -30,7 +30,7 @@ if VERSION >= v"0.7.0-DEV.986"
     using DSP: conv
 end
 using Compat.LinearAlgebra
-using Compat: copyto!, undef
+using Compat: copyto!, undef, rmul!, range
 
 
 # WAVELET INDEXING AND SIZES
@@ -436,7 +436,7 @@ function makewavelet(h::AbstractVector, N::Integer=8)
     end
     phi = phi[1:end-2^(N)+1]
     psi = psi[1:end-2^(N)+1]
-    return scale!(phi,sc/sqrt(2)), scale!(psi,sc/sqrt(2)), linspace(0,length(h)-1,length(psi))
+    return rmul!(phi,sc/sqrt(2)), rmul!(psi,sc/sqrt(2)), range(0, stop=length(h)-1, length=length(psi))
 end
 
 # return a vector of test function values on [0,1), see

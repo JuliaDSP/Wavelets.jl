@@ -26,7 +26,7 @@ export
 using ..Util, ..WT, ..Transforms
 
 using Compat.LinearAlgebra
-using Compat: copyto!, Nothing, undef
+using Compat: copyto!, Nothing, undef, rmul!
 
 # THRESHOLD TYPES AND FUNCTIONS
 
@@ -214,7 +214,7 @@ function denoise(x::AbstractArray,
                 arrayadd!(y, z)
             end
         end
-        scale!(y, 1/pns)
+        rmul!(y, 1/pns)
     else # !TI
         if wt == nothing
             y = copy(x)

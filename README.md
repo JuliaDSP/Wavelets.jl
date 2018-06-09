@@ -207,7 +207,7 @@ bestbasistree(y::AbstractVector, wt::DiscreteWavelet,
 Find best basis tree for `wpt`, and compare to `dwt` using biggest m-term approximations.
 ```julia
 wt = wavelet(WT.db4)
-x = sin(4*linspace(0,2*pi-eps(),1024))
+x = sin(4*range(0, stop=2*pi-eps(), length=1024))
 tree = bestbasistree(x, wt)
 xtb = wpt(x, wt, tree)
 xt = dwt(x, wt)

@@ -9,7 +9,7 @@ export
 using ..Util
 import Base.length
 using Compat.LinearAlgebra
-using Compat: ComplexF64, undef
+using Compat: ComplexF64, undef, rmul!
 
 # TYPE HIERARCHY
 
@@ -315,7 +315,7 @@ function daubechies(N::Int)
     HH = vieta( R )
 
     # Normalize coefficients
-    scale!(HH, 1/norm(HH))
+    rmul!(HH, 1/norm(HH))
     return real(HH)
 end
 
