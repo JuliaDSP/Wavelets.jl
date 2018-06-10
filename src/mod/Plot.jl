@@ -1,6 +1,8 @@
 module Plot
 export wplotdots, wplotim
 using ..Util, ..WT, ..Transforms
+using Compat.LinearAlgebra
+using Compat: Nothing, undef
 
 # PLOTTING UTILITIES
 
@@ -10,8 +12,8 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
 	n = length(x)
 	c = wcount(x, t, level=0)
-    d = Vector{Float64}(c)
-    l = Vector{Int}(c)
+    d = Vector{Float64}(undef, c)
+    l = Vector{Int}(undef, c)
     range = 0:1/n:1-eps()
     range *= r
 
@@ -44,7 +46,7 @@ function wplotim(x::AbstractVector)
 	        dr = dyadicdetailrange(j)
 	        m = 2^(J-j)
 	        for i in eachindex(dr)
-		        A[j+1,1+(i-1)*m:i*m] = x[dr[i]]
+		        A[j+1,1+(i-1)*m:i*m] .= x[dr[i]]
 	        end
         end
     end
@@ -53,7 +55,7 @@ end
 
 # return an array of scaled detail coefficients and unscaled scaling coefficients
 # ready to be plotted as an image
-function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Void}=nothing;
+function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing}=nothing;
                 wabs::Bool=true, power::Real=0.7, pnorm::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     dim = ndims(x)
@@ -81,10 +83,10 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Void}=n
     # detail coefs
     xts = x
     wabs && (broadcast!(abs,xts,xts))
-    xts[1:nsc,1:nsc,:] = 0
+    xts[1:nsc,1:nsc,:] .= 0
     scale01!(xts)
     for j=1:n, i=1:n
-        @inbounds xts[i,j,:] = vecnorm(xts[i,j,:],pnorm).^(power)
+        @inbounds xts[i,j,:] .= vecnorm(xts[i,j,:],pnorm).^(power)
     end
 
     # merge and reshape final image

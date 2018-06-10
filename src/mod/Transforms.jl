@@ -2,6 +2,7 @@ module Transforms
 export  dwt, idwt, dwt!, idwt!,
         wpt, iwpt, wpt!, iwpt!
 using ..Util, ..WT
+using Compat: AbstractRange, copyto!, undef
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
 const DWTArray = AbstractArray
@@ -108,7 +109,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     # filter
     function ($Xwt)(x::DWTArray{T}, filter::OrthoFilter,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
-        y = Array{T}(size(x))
+        y = Array{T}(undef, size(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     function ($Xwt!)(y::DWTArray{T}, x::DWTArray{T}, filter::OrthoFilter,
@@ -118,8 +119,8 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     # lifting
     function ($Xwt)(x::DWTArray{T}, scheme::GLS,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
-        y = Array{T}(size(x))
-        copy!(y, x)
+        y = Array{T}(undef, size(x))
+        copyto!(y, x)
         return ($_Xwt!)(y, scheme, L, $fw)
     end
     function ($Xwt!)(y::DWTArray{T}, scheme::GLS,
@@ -142,7 +143,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     # filter
     function ($Xwt)(x::WPTArray{T}, filter::OrthoFilter,
                     tree::BitVector=maketree(x, :full)) where T<:ValueType
-        y = Array{T}(size(x))
+        y = Array{T}(undef, size(x))
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
     function ($Xwt!)(y::WPTArray{T}, x::WPTArray{T},
@@ -160,8 +161,8 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     # lifting
     function ($Xwt)(x::WPTArray{T}, scheme::GLS,
                     tree::BitVector=maketree(x, :full)) where T<:ValueType
-        y = Array{T}(size(x))
-        copy!(y, x)
+        y = Array{T}(undef, size(x))
+        copyto!(y, x)
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
     function ($Xwt!)(y::WPTArray{T}, scheme::GLS) where T<:ValueType
@@ -209,7 +210,7 @@ for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
     # lifting
     function ($Xwt_oop!)(y::DWTArray{T}, x::DWTArray{T}, scheme::GLS,
                         L::Integer=maxtransformlevels(x)) where T<:ValueType
-        copy!(y, x)
+        copyto!(y, x)
         return ($Xwt!)(y, scheme, L)
     end
 end # begin
@@ -217,7 +218,7 @@ end # for
 
 # Array with shared memory
 function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
-    return unsafe_wrap(Array, pointer(A, i), n, false)::Vector{T}
+    return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
 end
 
 # linear indices of start of rows/cols/planes

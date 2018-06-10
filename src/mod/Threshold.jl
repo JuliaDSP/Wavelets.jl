@@ -25,6 +25,9 @@ export
     LogEnergyEntropy
 using ..Util, ..WT, ..Transforms
 
+using Compat.LinearAlgebra
+using Compat: copyto!, Nothing, undef, rmul!
+
 # THRESHOLD TYPES AND FUNCTIONS
 
 abstract type THType end
@@ -40,7 +43,7 @@ const DEFAULT_TH = HardTH()
 
 # biggest m-term approximation (best m-term approximation for orthogonal transforms)
 # result is m-sparse
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::BiggestTH, m::Int)
+function threshold!(x::AbstractArray{<:Number}, TH::BiggestTH, m::Int)
     @assert m >= 0
     n = length(x)
     m > n && (m = n)
@@ -54,7 +57,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::BiggestTH, m::Int)
 end
 
 # hard
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::HardTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, TH::HardTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -67,7 +70,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::HardTH, t::Real)
 end
 
 # soft
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::SoftTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, TH::SoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -83,7 +86,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::SoftTH, t::Real)
 end
 
 # semisoft
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::SemiSoftTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, TH::SemiSoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -101,7 +104,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::SemiSoftTH, t::Real)
 end
 
 # stein
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::SteinTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, TH::SteinTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -117,7 +120,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::SteinTH, t::Real)
 end
 
 # shrink negative elements to 0
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::NegTH)
+function threshold!(x::AbstractArray{<:Number}, TH::NegTH)
     @inbounds begin
         for i in eachindex(x)
             if x[i] < 0
@@ -129,7 +132,7 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::NegTH)
 end
 
 # shrink positive elements to 0
-function threshold!{T<:Number}(x::AbstractArray{T}, TH::PosTH)
+function threshold!(x::AbstractArray{<:Number}, TH::PosTH)
     @inbounds begin
         for i in eachindex(x)
             if x[i] > 0
@@ -141,13 +144,13 @@ function threshold!{T<:Number}(x::AbstractArray{T}, TH::PosTH)
 end
 
 # the non inplace functions
-function threshold{T<:Number}(x::AbstractArray{T}, TH::THType, t::Real)
-    y = Vector{T}(size(x))
-    return threshold!(copy!(y,x), TH, t)
+function threshold(x::AbstractArray{T}, TH::THType, t::Real) where T<:Number
+    y = Vector{T}(undef, size(x))
+    return threshold!(copyto!(y,x), TH, t)
 end
-function threshold{T<:Number}(x::AbstractArray{T}, TH::THType)
-    y = Vector{T}(size(x))
-    return threshold!(copy!(y,x), TH)
+function threshold(x::AbstractArray{T}, TH::THType) where T<:Number
+    y = Vector{T}(undef, size(x))
+    return threshold!(copyto!(y,x), TH)
 end
 
 
@@ -168,14 +171,14 @@ end
 const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
-# estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Void})
-function denoise{S<:DNFT}(x::AbstractArray,
-                        wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET;
-                        L::Int=min(maxtransformlevels(x),6),
-                        dnt::S=VisuShrink(size(x,1)),
-                        estnoise::Function=noisest,
-                        TI::Bool=false,
-                        nspin::Union{Int,Tuple}=tuple([8 for i=1:ndims(x)]...) )
+# estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Nothing})
+function denoise(x::AbstractArray,
+                wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET;
+                L::Int=min(maxtransformlevels(x),6),
+                dnt::S=VisuShrink(size(x,1)),
+                estnoise::Function=noisest,
+                TI::Bool=false,
+                nspin::Union{Int,Tuple}=tuple([8 for i=1:ndims(x)]...) ) where S<:DNFT
     iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
 
@@ -211,7 +214,7 @@ function denoise{S<:DNFT}(x::AbstractArray,
                 arrayadd!(y, z)
             end
         end
-        scale!(y, 1/pns)
+        rmul!(y, 1/pns)
     else # !TI
         if wt == nothing
             y = copy(x)
@@ -241,7 +244,7 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Void}=DEFAULT_WAVELET, L::Integer = 1)
+function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET, L::Integer = 1)
     if wt == nothing
         y = x
     else
@@ -267,7 +270,7 @@ end
 nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
     c1 = ind2sub(nspin,i)
-    c = Vector{Int}(length(c1))
+    c = Vector{Int}(undef, length(c1))
     for k in 1:length(c1)
         c[k] = c1[k]-1
     end
@@ -343,7 +346,7 @@ struct LogEnergyEntropy <: Entropy end
 # given x and y, where x has "more concentrated energy" than y
 # then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
 
-function coefentropy{T<:AbstractFloat}(x::T, et::ShannonEntropy, nrm::T)
+function coefentropy(x::T, et::ShannonEntropy, nrm::T) where T<:AbstractFloat
     s = (x/nrm)^2
     if s == 0.0
         return -zero(T)
@@ -351,7 +354,7 @@ function coefentropy{T<:AbstractFloat}(x::T, et::ShannonEntropy, nrm::T)
         return -s*log(s)
     end
 end
-function coefentropy{T<:AbstractFloat}(x::T, et::LogEnergyEntropy, nrm::T)
+function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where T<:AbstractFloat
     s = (x/nrm)^2
     if s == 0.0
         return -zero(T)
@@ -359,7 +362,7 @@ function coefentropy{T<:AbstractFloat}(x::T, et::LogEnergyEntropy, nrm::T)
         return -log(s)
     end
 end
-function coefentropy{T<:AbstractFloat}(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x))
+function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x)) where T<:AbstractFloat
     @assert nrm >= 0
     sum = zero(T)
     nrm == sum && return sum
@@ -372,10 +375,10 @@ end
 
 # find the best tree that is a subset of the input tree (use :full to find the best tree)
 # for wpt
-function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy())
+function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy()) where T<:AbstractFloat
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
-function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy())
+function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy()) where T<:AbstractFloat
 
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
 
@@ -383,9 +386,9 @@ function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavel
 
     x = copy(y)
     n = length(y)
-    tmp = Vector{T}(n)
+    tmp = Vector{T}(undef, n)
     ntree = length(tree)
-    entr_bf = Vector{T}(ntree)
+    entr_bf = Vector{T}(undef, ntree)
     nrm = vecnorm(y)
 
     Lmax = maxtransformlevels(n)
@@ -405,7 +408,7 @@ function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavel
             entr_bf[k] = coefentropy(dx, et, nrm)
 
             dwt!(dtmp, dx, wt, 1)
-            copy!(dx, dtmp)
+            copyto!(dx, dtmp)
 
             ix += nj
             k += 1
@@ -415,7 +418,7 @@ function bestbasistree{T<:AbstractFloat}(y::AbstractVector{T}, wt::DiscreteWavel
 
     # entropy of fully transformed signal (end nodes)
     n_af = 2^(Lmax-1)
-    entr_af = Vector{T}(n_af)
+    entr_af = Vector{T}(undef, n_af)
     n_coef_af = div(n, n_af)
     for i in 1:n_af
         range = (i-1)*n_coef_af+1 : i*n_coef_af
