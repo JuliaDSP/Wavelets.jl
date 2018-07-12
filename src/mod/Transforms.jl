@@ -1,6 +1,7 @@
 module Transforms
 export  dwt, idwt, dwt!, idwt!,
-        wpt, iwpt, wpt!, iwpt!
+        wpt, iwpt, wpt!, iwpt!,
+        modwt, imodwt
 using ..Util, ..WT
 using Compat: AbstractRange, copyto!, undef
 
@@ -236,5 +237,6 @@ include("transforms_filter.jl")
 # lifting transforms
 include("transforms_lifting.jl")
 
+include("transforms_maximal_overlap.jl")
 
 end # module
