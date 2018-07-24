@@ -7,7 +7,7 @@ scaling filters.
 
 Returns a tuple `(v, w)` of the scaling and detail coefficients at level `j+1`.
 """
-function modwt_step(v::Array{T,1}, j::Integer, h::Array{S,1},
+function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
         g::Array{S,1}) where {T <: Number, S <: Number}
     N = length(v)
     L = length(h)
@@ -33,7 +33,8 @@ end
 """
 Perform a maximal overlap discrete wavelet transform (MODWT) of the array
 `x`.  The wavelet type `wt` determines the transform type and the wavelet
-class, see `wavelet`.
+class, see `wavelet`. (Note that the wavelet filter coefficients are scaled
+by 1/√2 for the MODWT so that the transform maintains unit energy).
 
 The number of transform levels `L` can be any number <= `maxmodwttransformlevels(x)`
 (the default value).
@@ -42,10 +43,12 @@ Returns an `n × L+1` matrix (where `n` is the length of `x`) with the wavelet
 coefficients for level j in column j.  The scaling coefficients are in the
 last (L+1th) column.
 """
-function modwt(x::Array{T,1}, wt::OrthoFilter,
+function modwt(x::AbstractVector{T}, wt::OrthoFilter,
         L::Integer=maxmodwttransformlevels(x)) where T <: Number
-    @assert L <= maxmodwttransformlevels(x)
-    g, h = WT.makereverseqmfpair(wt)
+    L <= maxmodwttransformlevels(x) ||
+        throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
+    L >= 1 || throw(ArgumentError("L must be >= 1"))
+    g, h = WT.makeqmfpair(wt)
     g /= sqrt(2)
     h /= sqrt(2)
     N = length(x)
@@ -64,10 +67,12 @@ Perform one level of the inverse maximal overlap discrete wavelet transform
 and returns a vector of the `j-1`th level scaling coefficients. The vectors
 `h` and `g` are the MODWT detail and scaling filters.
 """
-function imodwt_step(v::Array{T,1}, w::Array{T,1}, j::Integer,
+function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
         h::Array{S,1}, g::Array{S,1}) where {T<:Number, S<:Number}
-    @assert length(v) == length(w)
-    @assert length(h) == length(g)
+    length(v) == length(w) ||
+        throw(DimensionMismatch("Input array sizes must match"))
+    length(h) == length(g) ||
+        throw(DimensionMismatch("Filter sizes must match"))
     N = length(v)
     L = length(h)
     v0 = zeros(N)
@@ -90,7 +95,7 @@ Perform an inverse maximal overlap discrete wavelet transform (MODWT) of `xw`,
 the inverse of `modwt(x, wt, L)`.
 """
 function imodwt(xw::Array{T, 2}, wt::OrthoFilter) where T <: Number
-    g, h = WT.makereverseqmfpair(wt)
+    g, h = WT.makeqmfpair(wt)
     g /= sqrt(2)
     h /= sqrt(2)
     N, L = size(xw)
