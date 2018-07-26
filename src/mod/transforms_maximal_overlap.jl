@@ -48,7 +48,7 @@ function modwt(x::AbstractVector{T}, wt::OrthoFilter,
     L <= maxmodwttransformlevels(x) ||
         throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
     L >= 1 || throw(ArgumentError("L must be >= 1"))
-    g, h = WT.makeqmfpair(wt)
+    g, h = WT.makereverseqmfpair(wt)
     g /= sqrt(2)
     h /= sqrt(2)
     N = length(x)
@@ -95,7 +95,7 @@ Perform an inverse maximal overlap discrete wavelet transform (MODWT) of `xw`,
 the inverse of `modwt(x, wt, L)`.
 """
 function imodwt(xw::Array{T, 2}, wt::OrthoFilter) where T <: Number
-    g, h = WT.makeqmfpair(wt)
+    g, h = WT.makereverseqmfpair(wt)
     g /= sqrt(2)
     h /= sqrt(2)
     N, L = size(xw)
