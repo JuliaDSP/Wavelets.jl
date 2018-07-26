@@ -3,7 +3,6 @@
 *.#*
 .DS_Store
 
-/*.tar.gz
 /tmp
 /dist
 
@@ -24,8 +23,14 @@
 *.user
 *.orig
 
+*.ps
+*.gz
+*.pdf
+*.log
+*.dvi
+*.aux
+
 /usr
 
 lena*
 testmod.jl
-

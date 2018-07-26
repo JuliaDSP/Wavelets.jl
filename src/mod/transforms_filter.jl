@@ -355,6 +355,12 @@ function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, 
     return y
 end
 
+@inline function filterstep(si, n, b, val)
+    for j = 2:n
+        @inbounds si[j-1] = si[j] + b[j] * val
+    end
+    @inbounds si[n] = b[n+1] * val
+end
 
 macro filtermainloop(si, silen, b, val)
     quote

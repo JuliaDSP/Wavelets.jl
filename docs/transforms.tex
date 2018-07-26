@@ -1,0 +1,91 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{mathtools}
+\usepackage{amssymb}
+
+\title{Wavelets.jl Wavelet Transforms}
+\author{Gudmundur Freyr Adalsteinsson} \date{\today}
+\begin{document}
+
+\maketitle
+
+\section{Introduction} \label{sec:int}
+
+This is a quick mathematical introduction to discrete wavelet transforms, and a technical specification of the implementation of the algorithms in the Wavelets.jl package.
+
+\section{Discrete Orthogonal Wavelet Transforms}
+
+Let the sequence $\{ \mathbf V_j \}_{j\in \mathbb Z}$ of subspaces of $\mathbf L^2(\mathbb R)$ be a multiresolution approximation. Let $\phi$ be a \emph{scaling function} wih (dyadic) dilations and translations denote by
+\begin{equation} \label{eq:psi}
+    \phi_{j,n}(t) = \frac{1}{\sqrt{2^j}} \phi\left(\frac{t-2^jn}{2^j}\right).
+\end{equation}
+With some condition on $\phi$ (details omitted here) the family $\{ \phi_{j,n} \}_{n\in \mathbb Z}$ is an orthonormal basis of $\mathbf V_j$. (Mallat)
+
+The dilations of $\phi$ can be related to its translations,
+\begin{equation}
+    \frac{1}{\sqrt{2}} \phi(t/2) = \sum_{n = -\infty}^{\infty} h[n]\,\phi(t - n)
+\end{equation}
+with
+\begin{equation}
+    h[n] = \left\langle \frac{1}{\sqrt{2}} \phi(t/2), \phi(t - n) \right\rangle.
+\end{equation}
+The scaling function $\phi$ is completely specified by the discrete \emph{conjugate mirror filter} $h$ defined above. A necessary and sufficient condition on $h$ is that $|\hat h(\omega)|^2 + |\hat h(\omega + \pi)|^2 = 2$ and $\hat h(0) = \sqrt{2}$. A discrete approximation, $a_j$, of a function $f$ can be obtained from the expansion coefficents of the orthogonal projection of $f$ over $\mathbf V_j$
+\begin{equation}
+    a_j[n] =  \langle f, \phi_{j,n} \rangle
+\end{equation}
+and
+\begin{equation}
+    P_{\mathbf V_j}f = \sum_{n = -\infty}^{\infty} a_j[n]\,\phi_{j,n}
+\end{equation}
+is an approximation of $f$ at scale $2^j$.
+
+Let $\mathbf W_j$ be the orthogonal complement of $\mathbf V_j$ in  $\mathbf V_{j-1}$. We can then decompose the projection over $\mathbf V_{j-1}f$
+\begin{equation}
+    P_{\mathbf V_{j-1}}f = P_{\mathbf V_j}f + P_{\mathbf W_j}f.
+\end{equation}
+A \emph{wavelet} $\psi$ is a function where
+\begin{equation}
+    \hat \psi(\omega) = \frac{1}{\sqrt 2} \hat g (\omega/2)\hat \phi (\omega/2)
+\end{equation}
+with
+\begin{equation}
+    \hat g(\omega) = e^{-i\omega} \hat h^{*}(\omega + \pi).
+\end{equation}
+Defining the dilations and translations of $\psi$ similarly to \eqref{eq:psi}
+\begin{equation}
+    \psi_{j,n}(t) = \frac{1}{\sqrt{2^j}} \psi\left(\frac{t-2^jn}{2^j}\right).
+\end{equation}
+The family $\{ \psi_{j,n} \}_{n\in \mathbb Z}$ is an orthonormal basis of $\mathbf W_j$ and $\{ \psi_{j,n} \}_{(j,n)\in \mathbb Z^2}$ is an orthonormal basis of $\mathbf L^2(\mathbb R)$. The mirror filter $g$ is explicitly defined as
+\begin{equation}
+    g[n] = \left\langle \frac{1}{\sqrt{2}} \psi(t/2), \phi(t - n) \right\rangle,
+\end{equation}
+the coefficients of
+\begin{equation}
+    \frac{1}{\sqrt{2}} \psi(t/2) = \sum_{n = -\infty}^{\infty} g[n]\,\phi(t - n).
+\end{equation}
+The filter $g$ is related to the filter $h$ by
+\begin{equation}
+    g[n] = (-1)^{1-n} h[1-n]
+\end{equation}
+and $h$ and $g$ can be viewed as low-pass and high-pass filters, respectively.
+
+We can now decompose a function $f \in \mathbf L^2(\mathbb R)$ as
+\begin{equation}
+    f = \sum_{j = -\infty}^{\infty}\sum_{n = -\infty}^{\infty} \langle f, \psi_{j,n} \rangle\, \psi_{j,n}.
+\end{equation}
+From the properties of $\{\mathbf V_j\}_j$ and $\{\mathbf W_j\}_j$ we can also write the decomposition in terms of both $\phi$ and $\psi$, for any $J$
+\begin{equation}
+    f =
+    \sum_{n = -\infty}^{\infty} a_J[n]\, \phi_{J,n} +
+    \sum_{j = -\infty}^{J}\sum_{n = -\infty}^{\infty} d_j[n]\, \psi_{j,n}
+\end{equation}
+where $a_j[n] =  \langle f, \phi_{j,n} \rangle$ and $d_j[n] =  \langle f, \psi_{j,n} \rangle$. When $f$ is sufficiently smooth that $f\in \mathbf V_L$ where $L>J$, then
+\begin{equation}
+    f =
+    \sum_{n = -\infty}^{\infty} a_J[n]\, \phi_{J,n} +
+    \sum_{j = L - 1}^{J}\sum_{n = -\infty}^{\infty} d_j[n]\, \psi_{j,n}
+\end{equation}
+%===================================================
+\end{document}
