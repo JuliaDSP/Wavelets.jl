@@ -12,6 +12,7 @@ export  dyadicdetailindex,
         detailrange,
         detailn,
         maxtransformlevels,
+        maxmodwttransformlevels,
         #
         mirror,
         upsample,
@@ -55,6 +56,9 @@ function maxtransformlevels(arraysize::Integer)
     end
     return tl - 1
 end
+
+maxmodwttransformlevels(x::AbstractArray) =  floor(Int, log2(length(x)))
+maxmodwttransformlevels(arraysize::Integer) =  floor(Int, log2(arraysize))
 
 # Dyadic
 # detail coef at level j location i (i starting at 1) -> vector index

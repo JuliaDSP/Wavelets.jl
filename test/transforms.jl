@@ -295,6 +295,33 @@ let
     end
 end
 
+
+
+let
+    print("transforms: MODWT...\n")
+
+    wf = wavelet(WT.db4)
+    srand(0)
+    # power-of-two
+    x = randn(128)
+    W = modwt(x, wf)
+    x_back = imodwt(W, wf)
+    @test x ≈ x_back
+
+    # non power-of-two
+    x = cumsum(randn(129))
+    W = modwt(x, wf)
+    x_back = imodwt(W, wf)
+    @test x ≈ x_back
+    @test size(W) == (length(x), maxmodwttransformlevels(x)+1)
+
+    # less than max number of levels
+    L = 4
+    Wl = modwt(x, wf, L)
+    @test W[:, 1:L-1] ≈ Wl[:, 1:L-1]
+end
+
+
 # ============= tranform low level functions ================
 #...
 
