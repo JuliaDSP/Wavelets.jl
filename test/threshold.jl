@@ -1,8 +1,5 @@
 
-print("threshold: execute functions ...\n")
-
-#threshold
-let
+@testset "Threshold" begin # TODO @test something
     x = randn(200)*2
     for th in (BiggestTH(), HardTH(), SoftTH(), SemiSoftTH(), SteinTH())
         threshold(x, th, 2)
@@ -12,8 +9,7 @@ let
     end
 end
 
-# denoising
-let
+@testset "Denoising" begin
     vs = VisuShrink(10)
     n = 2^8
     x0 = testfunction(n, "Doppler")
@@ -25,8 +21,7 @@ let
     y = denoise(randn(32,32), TI=true)
 end
 
-# best basis
-let
+@testset "Best basis" begin
     wt = wavelet(WT.db4)
     x = sin.(4*range(0, stop=2*pi-eps(), length=1024))
     tree = bestbasistree(x, wt)
@@ -39,8 +34,7 @@ let
     @test iwpt(xtb, wt, tree) ≈ x
 end
 
-#matching pursuit
-let
+@testset "Matching pursuit" begin
     N = 128
     M = 64
     y=randn(N)

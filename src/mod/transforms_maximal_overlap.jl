@@ -11,8 +11,8 @@ function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
         g::Array{S,1}) where {T <: Number, S <: Number}
     N = length(v)
     L = length(h)
-    v1 = zeros(v)
-    w1 = zeros(v)
+    v1 = zeros(T, N)
+    w1 = zeros(T, N)
     for t in 1:N
         k = t
         w1[t] = h[1] * v[k]
@@ -52,7 +52,7 @@ function modwt(x::AbstractVector{T}, wt::OrthoFilter,
     g /= sqrt(2)
     h /= sqrt(2)
     N = length(x)
-    W = zeros(N, L)
+    W = zeros(T, N, L)
     V = deepcopy(x)
     for j in 1:L
         V[:], W[:, j] = modwt_step(V, j, h, g)
@@ -75,7 +75,7 @@ function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
         throw(DimensionMismatch("Filter sizes must match"))
     N = length(v)
     L = length(h)
-    v0 = zeros(N)
+    v0 = zeros(T, N)
     for t in 1:N
         k = t
         v0[t] = h[1] * w[k] + g[1] * v[k]

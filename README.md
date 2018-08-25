@@ -216,13 +216,13 @@ m = 50
 threshold!(xtb, BiggestTH(), m)
 threshold!(xt, BiggestTH(), m)
 # compare sparse approximations in ell_2 norm
-vecnorm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
-vecnorm(x - idwt(xt, wt), 2)        # regular dwt
+norm(x - iwpt(xtb, wt, tree), 2) # best basis wpt
+norm(x - idwt(xt, wt), 2)        # regular dwt
 ```
 ```
-julia> vecnorm(x - iwpt(xtb, wt, tree), 2)
+julia> norm(x - iwpt(xtb, wt, tree), 2)
 0.008941070750964843
-julia> vecnorm(x - idwt(xt, wt), 2)
+julia> norm(x - idwt(xt, wt), 2)
 0.05964431178940861
 ```
 
