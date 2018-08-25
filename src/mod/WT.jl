@@ -1,11 +1,15 @@
 module WT
 export
     DiscreteWavelet,
+    ContinuousWavelet,
     FilterWavelet,
     LSWavelet,
     OrthoFilter,
     GLS,
-    wavelet
+    CFW,
+    wavelet,
+    eltypes
+
 using ..Util
 import Base.length
 using Compat.LinearAlgebra
@@ -14,7 +18,7 @@ using Compat: ComplexF64, undef, rmul!
 # TYPE HIERARCHY
 
 abstract type DiscreteWavelet{T} end
-#abstract ContinuousWavelet{T}
+abstract type ContinuousWavelet{T} end
 # discrete transforms via filtering
 abstract type FilterWavelet{T} <: DiscreteWavelet{T} end
 # discrete transforms via lifting
@@ -41,20 +45,22 @@ abstract type WaveletBoundary end
 # periodic (default)
 struct PerBoundary <: WaveletBoundary end
 # zero padding
-#struct ZPBoundary <: WaveletBoundary end
+struct ZPBoundary <: WaveletBoundary end
 # constant padding
 #struct CPBoundary <: WaveletBoundary end
+struct NullBoundary <: WaveletBoundary end
 # and so on...
 
 const Periodic = PerBoundary()
 const DEFAULT_BOUNDARY = PerBoundary()
-
+const padded = ZPBoundary()
+const NaivePer = NullBoundary()
 
 # WAVELET CLASSES
 
 """
-The `WaveletClass` type has subtypes `OrthoWaveletClass`
-and `BiOrthoWaveletClass`.
+The `WaveletClass` type has subtypes `OrthoWaveletClass`,
+ `BiOrthoWaveletClass`, and `ContinuousWaveletClass`
 
 The `WT` module has for convenience constants defined named
 as the class short name and optionally amended with a number
@@ -70,8 +76,9 @@ A class can also be explicitly constructed as e.g. `Daubechies{4}()`.
 abstract type WaveletClass end
 abstract type OrthoWaveletClass <: WaveletClass end
 abstract type BiOrthoWaveletClass <: WaveletClass end
+abstract type ContinuousWaveletClass <: WaveletClass end
 
-# Single classes
+# Single classes, orthogonal
 for (TYPE, NAMEBASE, MOMENTS) in (
         (:Haar, "haar", 1),
         (:Beylkin, "beyl", -1), # TODO moments
@@ -89,7 +96,52 @@ for (TYPE, NAMEBASE, MOMENTS) in (
     end
 end
 
+struct Morlet <: ContinuousWaveletClass
+    σ::Float64 # \sigma is the time/space trade-off. as sigma->0, the spacial resolution increases; below 5, there is a danger of being non-analytic. Default is 5
+    κσ::Float64
+    cσ::Float64
+end
+"""
+    morl = Morlet(σ::T) where T<: Real
+
+    return the Morlet wavelet with parameter σ, which controls the time-frequency trade-off. As σ goes to zero, all of the information becomes spatial. It is best to choose σ>5, as the wavelets are no longer analytic (try plotting some using the function daughter).
+"""
+function Morlet(σ::T) where T<:Real
+    κσ=exp(-σ^2/2)
+    cσ=1./sqrt(1+κσ^2-2*exp(-3*σ^2/4))
+    Morlet(σ,κσ,cσ)
+end
+Morlet() = Morlet(5.0)
+class(::Morlet) = "Morlet"; name(::Morlet) = "morl"; vanishingmoments(::Morlet)=0
+const morl = Morlet(5.0)
+
+# TODO: include a "mexh" wavelet, which is dog2.
+
 # Parameterized classes
+
+# continuous parameterized
+for (TYPE, NAMEBASE, MOMENTS, RANGE) in (
+        (:Paul, "paul", -1, 1:20), # moments? TODO: is this a good range of parameters?
+        (:DOG, "dog",  -1, 0:6), # moments?
+        )
+    @eval begin
+        struct $TYPE{N} <: ContinuousWaveletClass end
+        class(::$TYPE) = $(string(TYPE))
+        name(::$TYPE{N}) where N = string($NAMEBASE,N)
+        vanishingmoments(::$TYPE{N}) where N = -1
+        order(::$TYPE{N}) where N = N # either order for Paul wavelets, or number of derivatives for DOGs
+        function Daughter(a::$TYPE{N}) where N
+        end
+    end
+    for NUM in RANGE
+        CONSTNAME = Symbol(NAMEBASE,NUM)
+        @eval begin
+            const $CONSTNAME = $TYPE{$NUM}()                  # type shortcut
+        end
+    end
+end
+
+# discrete ortho classes
 for (TYPE, NAMEBASE, RANGE) in (
         (:Daubechies, "db", 1:10),
         (:Coiflet, "coif", 2:2:8),
@@ -219,7 +271,7 @@ length(s::LSStepParam) = length(s.coef)
 Wavelet type for discrete general (bi)orthogonal transforms
 by using a lifting scheme.
 
-**See also:** `OrthoFilter`, `wavelet`
+**See also:** `OrthoFilter`, `wavelet`, `CWT`
 """
 struct GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step    ::Vector{LSStep{Float64}}    # steps to be taken
@@ -237,23 +289,103 @@ end
 
 name(s::GLS) = s.name
 
+
+
+######################################
+######################################
+######################################
+######################################
 # IMPLEMENTATIONS OF ContinuousWavelet
 
-# ...
+struct CFW{T} <: ContinuousWavelet{T}
+    scalingFactor::Float64 # the number of wavelets per octave, ie the scaling is s=2^(j/scalingfactor)
+    fourierFactor::Float64
+    coi          ::Float64
+    α            ::Int64   # the order for a Paul and the number of derivatives for a DOG
+    σ            ::Array{Float64} # the morlet wavelet parameters (σ,κσ,cσ). NaN if not morlet.
+    name         ::String
+    # function CFW{T}(scalingfactor, fourierfactor, coi, daughterfunc, name) where T<: WaveletBoundary
+        # new(scalingfactor, fourierfactor, coi, daughterfunc, name)
+    # end
+end
+# CFW{T}(scalingfactor::Float64, fourierfactor::Expr, coi::Expr, daughterfunc::Expr, name::String) where T<: WaveletBoundary = CFW{T}(scalingfactor, fourierfactor, coi, daughterfunc, name)
+
+
+"""
+
+The constructor for the CFW struct. w is a type of continuous wavelet, scalingFactor is the number of wavelets between the octaves ``2^J`` and ``2^{J+1}`` (defaults to 8, which is most appropriate for music and other audio). The default boundary condition is periodic, which is implemented by appending a flipped version of the vector at the end (to eliminate edge discontinuities). Alternatives are ZPBoundary, which pads with enough zeros to get to the nearest power of 2 (here the results returned by caveats are relevant, see Torrence and Compo '97), and NullBoundary, which assumes the data is inherently periodic.
+"""
+function CFW(w::WC, scalingfactor::S=8, a::T=DEFAULT_BOUNDARY) where {WC<:WaveletClass, T<:WaveletBoundary, S<:Real}
+    if scalingfactor<=0
+        error("scaling factor must be positive")
+    end
+    namee = WT.name(w)[1:3]
+    tdef = get(CONT_DEFS, namee, nothing)
+    tdef == nothing && error("transform definition not found; you gave $(namee)")
+    # do some substitution of model parameters
+    if namee=="mor"
+        tdef = [eval(parse(replace(tdef[1],"σ",w.σ))), eval(parse(tdef[2])), -1, [w.σ,w.κσ,w.cσ] , name(w)]
+    elseif namee[1:3]=="dog" || namee[1:3]=="pau"
+        tdef = [eval(parse(replace(tdef[1], "α", order(w)))), eval(parse(replace(tdef[2], "α", order(w)))), order(w), [NaN], name(w)]
+    else
+        error("I'm not sure how you got here. Apparently the WaveletClass you gave doesn't have a name. Sorry about that")
+    end
+    return CFW{T}(Float64(scalingfactor), tdef...)
+end
+name(s::CFW) = s.name
+"""
+    daughter = Daughter(this::CFW, s::Real, ω::Array{Float64,1})
+
+given a CFW object, return a rescaled version of the mother wavelet, in the fourier domain. ω is the frequency, which is fftshift-ed. s is the scale variable
+"""
+function Daughter(this::CFW, s::Real, ω::Array{Float64,1})
+    if this.name=="morl"
+        daughter = this.σ[3]*(π)^(1/4)*(exp.(-(this.σ[1]-ω/s).^2/2)-this.σ[2]*exp.(-1/2*(ω/s).^2))
+    elseif this.name[1:3]=="dog"
+        daughter = normalize(im^(this.α)*sqrt(gamma((this.α)+1/2))*(ω/s).^(this.α).*exp.(-(ω/s).^2/2))
+    elseif this.name[1:4]=="paul"
+        daughter = zeros(length(ω))
+        daughter[ω.>=0]=(2^this.α)/sqrt((this.α)*gamma(2*(this.α)))*((ω[ω.>=0]/s).^(this.α).*exp.(-(ω[ω.>=0]/s)))
+    end
+    return daughter
+end
+
+
+const CONT_DEFS = Dict{String,Tuple{String, String, String}}(
+"mor" => ("(4*π)/(σ + sqrt(2 + σ.^2))", #FourierFactorFunction-- this will only work for σ≫1. Otherwise, you need a recursive algorithm to derive it.
+      "1/sqrt(2)", #COIFunction
+      "daughter = cσ*(π)^(1/4)*(exp.(-(σ-ω/s).^2/2)-κσ*exp.(-1/2*(ω/s).^2))", #This is based on the version in Wavelab, that corresponds to the Morlet wavelet on Wikipedia. It satisfies the admissibility condition exactly
+      ),
+"pau"=> ("4*π/(2*α+1)", #FourierFactorFunction
+            "1*sqrt(2)", #COIFunction
+            "daughter = ones(length(ω)); daughter[ω.<0]=0; daughter = daughter.*2α/sqrt(α*gamma(2*α)).*(ω/s).^α.*exp.(-(ω/s))", #DaughterFunction
+      ),
+"dog" => ("2*π*sqrt(2./(2*α+1))", #FourierFactorFunction
+      "1/sqrt(2)", #COIFunction
+      "daughter = normalize(im^α*sqrt(gamma(α+1/2))*(ω/s).^α.*exp.(-(ω/s).^2/2))",
+      )
+)
+
+function eltypes(::CFW{T}) where T
+    T
+end
 
 # TRANSFORM TYPE CONSTRUCTORS
 
 """
-    wavelet(c[, t=WT.Filter][, boundary=WT.Periodic])
+    wavelet(c[, t=WT.Filter][, boundary=WT.Periodic][, s=Real])
 
 Construct wavelet type where `c` is a wavelet class,
 `t` is the transformation type (`WT.Filter` or `WT.Lifting`),
-and `boundary` is the type of boundary treatment.
+and `boundary` is the type of boundary treatment. In the continuous case, s>0
+is the number of wavelets between the octaves ``2^J`` and ``2^{J+1}``
+(defaults to 8, which is most appropriate for music and other audio).
 
 # Examples
 ```julia
 wavelet(WT.coif6)
 wavelet(WT.db1, WT.Lifting)
+wavelet(WT.morl,4)
 ```
 
 **See also:** `WT.WaveletClass`
@@ -263,7 +395,12 @@ function wavelet end
 wavelet(c::WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = wavelet(c, Filter, boundary)
 wavelet(c::OrthoWaveletClass, t::FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = OrthoFilter(c, boundary)
 wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = GLS(c, boundary)
-
+function wavelet(c::T,s::S, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {T<:WT.ContinuousWaveletClass, S<:Real}
+    CFW(c,s,boundary)
+end
+function wavelet(c::T, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where T<:WT.ContinuousWaveletClass
+    CFW(c,8,boundary)
+end
 # ------------------------------------------------------------
 
 # Compute filters from the Daubechies class

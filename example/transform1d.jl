@@ -5,6 +5,8 @@ using PyPlot
 J = 11
 n = 2^J
 x = testfunction(n,"Bumps")
+supertype(typeof(WT.cdf97))
+wavelet(WT.cdf97, WT.Filter)
 y = dwt(x, wavelet(WT.cdf97, WT.Filter))
 d,l = wplotdots(y, 0.1, n)
 A = wplotim(y)
@@ -24,5 +26,3 @@ ax[3][:set_ylabel](L"level $j$")
 f[:set_size_inches](6,5)
 
 savefig("transform1d_bumps.png")
-
-

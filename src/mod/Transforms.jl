@@ -1,7 +1,7 @@
 module Transforms
 export  dwt, idwt, dwt!, idwt!,
         wpt, iwpt, wpt!, iwpt!,
-        modwt, imodwt
+        modwt, imodwt, cwt
 using ..Util, ..WT
 using Compat: AbstractRange, copyto!, undef
 
@@ -131,6 +131,80 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
 end # begin
 end # for
 
+# CWT (continuous wavelet transform)
+# cwt(Y::AbstractVector, ::ContinuousWavelet)
+
+"""
+wave = cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+
+return the continuous wavelet transform wave, which is (nscales)×(signalLength), of type c of Y. J1 is the total number of scales; default (when J1=NaN, or is negative) is just under the maximum possible number, i.e. the log base 2 of the length of the signal, times the number of wavelets per octave. If you have sampling information, you will need to scale wave by δt^(1/2).
+"""
+function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+    n1 = length(Y);
+
+    # J1 is the total number of elements
+    if isnan(J1) || (J1<0)
+        J1=floor(Int64,(log2(n1))*c.scalingFactor);
+    end
+    #....construct time series to analyze, pad if necessary
+    if eltypes(c) == WT.padded
+        base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
+        x = [Y; zeros(2^(base2+1)-n1)];
+    elseif eltypes(c) == WT.DEFAULT_BOUNDARY
+        x = [Y; flipdim(Y,1)]
+    else
+        x= Y
+    end
+
+    n = length(x);
+    #....construct wavenumber array used in transform [Eqn(5)]
+
+    ω = [0:ceil(Int, n/2); -floor(Int,n/2)+1:-1]*2π
+
+    #....compute FFT of the (padded) time series
+    x̂ = fft(x);    # [Eqn(3)]
+
+    wave = zeros(Complex{T}, J1+1, n);  # define the wavelet array
+
+    # loop through all scales and compute transform
+    for a1 in 0:J1
+        daughter = WT.Daughter(c, 2.0^(a1/c.scalingFactor), ω)
+        wave[a1+1,:] = ifft(x̂.*daughter)  # wavelet transform[Eqn(4)]
+    end
+    wave = wave[:,1:n1]  # get rid of padding before returning
+
+    return wave
+end
+"""
+period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+
+returns the period, the scales, and the cone of influence for the given wavelet transform. If you have sampling information, you will need to scale the vector scale appropriately by 1/δt, and the actual transform by δt^(1/2).
+"""
+function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+    # J1 is the total number of elements
+    if isnan(J1) || (J1<0)
+        J1=floor(Int64,(log2(n1))*c.scalingFactor);
+    end
+    println("$(J1 == NaN)")
+    #....construct time series to analyze, pad if necessary
+    if eltypes(c) == WT.ZPBoundary
+        base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
+        n = length(Y)+2^(base2+1)-n1
+    elseif eltypes(c) == WT.PerBoundary
+        n = length(Y)*2
+    end
+    ω = [0:floor(Int, n/2); -floor(Int,n/2)+1:-1]*2π
+    period = c.fourierFactor*2.^((0:J1)/c.scalingFactor)
+    scale = [1E-5; 1:((n1+1)/2-1); flipdim((1:(n1/2-1)),1); 1E-5]
+    coi = c.coi*scale  # COI [Sec.3g]
+    return period, scale, coi
+end
+cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = cwt(Y,CFW(w))
+caveats(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = caveats(Y,CFW(w))
+cwt(Y::AbstractArray{T}) where T<:Real = cwt(Y,WT.Morlet())
+caveats(Y::AbstractArray{T}) where T<:Real = caveats(Y,WT.Morlet())
+
+
 
 # WPT (wavelet packet transform)
 
@@ -187,13 +261,10 @@ end # for
 #swt(::AbstractVector, ::DiscreteWavelet)
 #iswt(::AbstractVector, ::DiscreteWavelet)
 
-# CWT (continuous wavelet transform)
-#cwt(::AbstractVector, ::ContinuousWavelet)
-#icwt(::AbstractVector, ::ContinuousWavelet)
+# CWT (continuous wavelet transform directly) TODO: direct if sufficiently small
 
-# CWTFT (continuous wavelet transform via FFT)
-#cwtft(::AbstractVector, ::ContinuousWavelet)
-#icwtft(::AbstractVector, ::ContinuousWavelet)
+# TODO: continuous inverse, when defined
+#icwt(::AbstractVector, ::ContinuousWavelet)
 
 # Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)

@@ -235,6 +235,60 @@ let
     @test_throws EE wavelet("db2", "ppppp")
 end
 
+# continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
+for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
+    for s=1:2:8
+        for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
+            xc = rand(Float64,13)
+            yc = cwt(xc,wfc)
+            @test Array{Complex128,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,13)
+        end
+    end
+end
+
+# 2-d
+sett = ((n,n),wf,L)
+ft = Float64; x, y = makedwt(ft, sett...)
+@test Array{ft,2} == typeof(y) && length(y) == n*n
+ft = Float32; x, y = makedwt(ft, sett...)
+@test Array{ft,2} == typeof(y) && length(y) == n*n
+ft = Int64; x, y = makedwt(ft, sett...)
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
+ft = Int32; x, y = makedwt(ft, sett...)
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
+@test dwt(x,wf) ≈ dwt(float(x),wf)
+
+# non-Array type
+wt = wavelet(WT.db2, WT.Lifting)
+x = randn(16, 16)
+xs = view(copy(x), 1:16, 1:16)
+@test dwt(x,wt,2) ≈ dwt(xs,wt,2)
+
+# util functions
+for class in (WT.haar, WT.db2, WT.cdf97)
+    WT.class(class)
+    WT.name(class)
+    WT.vanishingmoments(class)
+end
+class = WT.db1
+wt = wavelet(class, WT.Filter)
+@test length(wt) == 2
+@test wt.qmf*0.7 ≈ WT.scale(wt, 0.7).qmf
+
+# inplace methods
+class = WT.db1
+wt = wavelet(class, WT.Filter)
+x = randn(8)
+y = similar(x)
+@test dwt!(y, x, wt) ≈ dwt(x, wt)
+
+wt = wavelet(class, WT.Lifting)
+x = randn(8)
+y = copy(x)
+@test dwt!(x, wt) ≈ dwt(y, wt)
+
+
+
 let
     print("transforms: WPT ...\n")
     wf = wavelet(WT.db2, WT.Filter)
