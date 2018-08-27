@@ -26,7 +26,9 @@ export
 using ..Util, ..WT, ..Transforms
 
 using Compat.LinearAlgebra
+using Compat.Statistics: median!
 using Compat: copyto!, Nothing, undef, rmul!
+import Compat
 
 # THRESHOLD TYPES AND FUNCTIONS
 
@@ -191,7 +193,7 @@ function denoise(x::AbstractArray,
         if ndims(x) == 1
             z = similar(x)
             for i = 1:pns
-                shift = nspin2circ(nspin, i)[1]
+                shift = i - 1
                 Util.circshift!(z, x, shift)
 
                 Transforms.dwt_oop!(xt, z, wt, L)
@@ -261,15 +263,11 @@ function mad!(y::AbstractArray)
     end
     return median!(y)
 end
-#function mad(x::AbstractArray)
-#    y = copy(x)
-#    mad!(y)
-#end
 
 # convert index i to a circshift array starting at 0 shift
 nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
-    c1 = ind2sub(nspin,i)
+    c1 = Compat.CartesianIndices(nspin)[i].I
     c = Vector{Int}(undef, length(c1))
     for k in 1:length(c1)
         c[k] = c1[k]-1
@@ -302,7 +300,7 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     spat = zeros(eltype(x), length(y))  # sparse for atom computation
     nmax == -1 && (nmax = length(y))
 
-    while vecnorm(r) > tol && n <= nmax
+    while Compat.norm(r) > tol && n <= nmax
         # find largest inner product
         !oop && (ftr = ft(r))
         oop  && ft(ftr, r, tmp)
@@ -362,7 +360,7 @@ function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where T<:AbstractFloat
         return -log(s)
     end
 end
-function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=vecnorm(x)) where T<:AbstractFloat
+function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=Compat.norm(x)) where T<:AbstractFloat
     @assert nrm >= 0
     sum = zero(T)
     nrm == sum && return sum
@@ -389,7 +387,7 @@ function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVecto
     tmp = Vector{T}(undef, n)
     ntree = length(tree)
     entr_bf = Vector{T}(undef, ntree)
-    nrm = vecnorm(y)
+    nrm = Compat.norm(y)
 
     Lmax = maxtransformlevels(n)
     L = Lmax
