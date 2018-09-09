@@ -1,21 +1,17 @@
 
-# ============= accuracy tests ================
-
-let
-    print("transforms: accuracy tests ...\n")
+@testset "Accuracy" begin
     # test against data made by data/make_filter_data.m in Octave
     wname = Any["Daubechies","Coiflet","Haar","Symmlet","Battle","Vaidyanathan","Beylkin"];
     wtype = Any[WT.Daubechies, WT.Coiflet, WT.Haar, WT.Symlet, WT.Battle, WT.Vaidyanathan, WT.Beylkin];
     wnum = Any[collect(4:2:20),collect(2:5),[0],collect(4:10),[1,3,5],[0],[0]];
     wvm = Any[collect(2:1:10),collect(4:2:10),[0],collect(4:10),[2,4,6],[0],[0]];
 
-
-    print("transforms: reading 1d and 2d data ...\n")
+    #print("transforms: reading 1d and 2d data ...\n")
     name = "filter"
     data = vec(readdlm(joinpath(dirname(@__FILE__), "data", "filter1d_data.txt"),'\t'))
     data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_data.txt"),'\t')
 
-    print("transforms: testing 1d and 2d data ...\n")
+    #print("transforms: testing 1d and 2d data ...\n")
     stderr1 = 1e-9*sqrt(length(data))
     stderr2 = 1e-9*sqrt(length(data2))
 
@@ -37,36 +33,33 @@ let
             y = dwt(data, wt)
             y2 = dwt(data2, wt)
 
-            @test_vecnorm_eq_eps y ye stderr1
-            @test_vecnorm_eq_eps y2 ye2 stderr2
+            @test (@vecnorm_eq_eps y ye stderr1)
+            @test (@vecnorm_eq_eps y2 ye2 stderr2)
             # a few bad cases have quite large norms
             if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
-                @test abs(vecnorm(data)-vecnorm(y)) < 1e-9
-                @test abs(vecnorm(data2)-vecnorm(y2)) < 1e-9
-                @test_vecnorm_eq_eps idwt(y,wt) data stderr1*100
-                @test_vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100
+                @test abs(Compat.norm(data)-Compat.norm(y)) < 1e-9
+                @test abs(Compat.norm(data2)-Compat.norm(y2)) < 1e-9
+                @test (@vecnorm_eq_eps idwt(y,wt) data stderr1*100)
+                @test (@vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100)
             end
         end
     end
 end
 
-let
-    print("transforms: non-square 2d data ...\n")
+@testset "Accuracy non-square" begin
     data2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_data.txt"))
     y2  = dwt(data2, wavelet(WT.haar), 1)
     ye2 = readdlm(joinpath(dirname(@__FILE__), "data", "filter2d_nonsquare_Haar0.txt"))
     stderr2 = 1e-9*sqrt(length(ye2))
-    @test_vecnorm_eq_eps y2 ye2 stderr2
+    @test (@vecnorm_eq_eps y2 ye2 stderr2)
 end
 
-let
-    print("transforms: lifting vs filter ...\n")
+@testset "Lifting vs filter" begin
     n = 32
     stderr1 = 1e-10*sqrt(n)
     stderr2 = 1e-10*sqrt(n*n)
     # 1-D, 2-D, 3-D lifting vs filtering / inverse vs original tests
-    for wclass in (WT.db1, WT.db2)
-        print("transforms: wclass ...\n")
+    @testset "wclass $wclass" for wclass in (WT.db1, WT.db2)
         wf = wavelet(wclass, WT.Filter)
         wls = wavelet(wclass, WT.Lifting)
         x = randn(n)
@@ -78,14 +71,14 @@ let
             yls = dwt(x, wls, L)
 
             # filter vs lifting
-            @test_vecnorm_eq_eps yf yls stderr1
+            @test (@vecnorm_eq_eps yf yls stderr1)
 
             ytf = idwt(yf, wf, L)
             ytls = idwt(yls, wls, L)
 
             # inverse vs original
-            @test_vecnorm_eq_eps ytf x stderr1
-            @test_vecnorm_eq_eps ytls x stderr1
+            @test (@vecnorm_eq_eps ytf x stderr1)
+            @test (@vecnorm_eq_eps ytls x stderr1)
         end
 
         x = randn(n,n)
@@ -96,14 +89,14 @@ let
             yls = dwt(x, wls, L)
 
             # filter vs lifting
-            @test_vecnorm_eq_eps yf yls stderr2
+            @test (@vecnorm_eq_eps yf yls stderr2)
 
             ytf = idwt(yf, wf, L)
             ytls = idwt(yls, wls, L)
 
             # inverse vs original
-            @test_vecnorm_eq_eps ytf x stderr2
-            @test_vecnorm_eq_eps ytls x stderr2
+            @test (@vecnorm_eq_eps ytf x stderr2)
+            @test (@vecnorm_eq_eps ytls x stderr2)
         end
 
         x = randn(n,n,n)
@@ -118,37 +111,23 @@ let
             yls = dwt(x, wls, L)
 
             # filter vs lifting
-            @test_vecnorm_eq_eps yf yls stderr2
+            #@test (@vecnorm_eq_eps yf yls stderr2)
+            @test yf ≈ yls rtol=stderr2
 
             ytf = idwt(yf, wf, L)
             ytls = idwt(yls, wls, L)
 
             # inverse vs original
-            @test_vecnorm_eq_eps ytf x stderr2
-            @test_vecnorm_eq_eps ytls x stderr2
+            #@test (@vecnorm_eq_eps ytf x stderr2)
+            #@test (@vecnorm_eq_eps ytls x stderr2)
+            @test ytf ≈ x rtol=stderr2
+            @test ytls ≈ x rtol=stderr2
 
         end
     end
 end
 
-# ============= transform functionality ================
-print("transforms: transform functionality ...\n")
-
-#=
-# "inplace" for filter
-wf = wavelet(WT.db2, WT.Filter)
-x = randn(16)
-@test_approx_eq dwt(x,wf,2) dwt!(copy(x),wf,2)
-
-# "out of place" for LS
-wt = GLS(WT.db2)
-x = randn(16)
-@test_approx_eq dwt(x,wt,2) dwt!(similar(x),x,wt,2)
-=#
-
-# ============= types and sizes ================
-let
-    print("transforms: types and sizes ...\n")
+@testset "Types and sizes" begin
     function makedwt(ft::Type, n, wf, L)
     	x0 = rand(-5:5, n)
     	x = zeros(ft, n)
@@ -160,16 +139,15 @@ let
     n = 8
     wf = wavelet(WT.db2)
     L = 2
-    sett = (n,wf,L)
 
-    ft = Float64; x, y = makedwt(ft, sett...)
-    @test Array{ft,1} == typeof(y) && length(y) == n
-    ft = Float32; x, y = makedwt(ft, sett...)
-    @test Array{ft,1} == typeof(y) && length(y) == n
-    ft = Int64; x, y = makedwt(ft, sett...)
-    @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
-    ft = Int32; x, y = makedwt(ft, sett...)
-    @test Array{typeof(float(x[1])),1} == typeof(y) && length(y) == n
+    x, y = makedwt(Float64, n, wf, L)
+    @test Vector{Float64} == typeof(y) && length(y) == n
+    x, y = makedwt(Float32, n, wf, L)
+    @test Vector{Float32} == typeof(y) && length(y) == n
+    x, y = makedwt(Int64, n, wf, L)
+    @test Vector{typeof(float(x[1]))} == typeof(y) && length(y) == n
+    x, y = makedwt(Int32, n, wf, L)
+    @test Vector{typeof(float(x[1]))} == typeof(y) && length(y) == n
     @test dwt(x,wf) ≈ dwt(float(x),wf)
 
     # Complex types
@@ -177,7 +155,7 @@ let
         xc = zeros(ComplexF64, n)
         map!(i->rand(ComplexF64), xc, xc)
         yc = dwt(xc, wfc, L)
-        @test Array{ComplexF64,1} == typeof(yc) && length(yc) == n
+        @test Vector{ComplexF64} == typeof(yc) && length(yc) == n
         @test xc ≈ idwt(dwt(xc, wfc), wfc)
     end
 
@@ -205,27 +183,25 @@ let
         WT.name(class)
         WT.vanishingmoments(class)
     end
-    class = WT.db1
-    wt = wavelet(class, WT.Filter)
+
+    wt = wavelet(WT.db1, WT.Filter)
     @test length(wt) == 2
     @test wt.qmf*0.7 ≈ WT.scale(wt, 0.7).qmf
 
     # inplace methods
-    class = WT.db1
-    wt = wavelet(class, WT.Filter)
+    wt = wavelet(WT.db1, WT.Filter)
     x = randn(8)
     y = similar(x)
     @test dwt!(y, x, wt) ≈ dwt(x, wt)
 
-    wt = wavelet(class, WT.Lifting)
+    wt = wavelet(WT.db1, WT.Lifting)
     x = randn(8)
     y = copy(x)
     @test dwt!(x, wt) ≈ dwt(y, wt)
 end
 
-let
-    print("transforms: error tests ...\n")
-    struct wunknownt <: DiscreteWavelet{Float64} end
+struct wunknownt <: DiscreteWavelet{Float64} end
+@testset "Errors" begin
     uwt = wunknownt()
     EE = Exception
     @test_throws EE dwt(randn(4),uwt)
@@ -289,8 +265,7 @@ y = copy(x)
 
 
 
-let
-    print("transforms: WPT ...\n")
+@testset "WPT" begin
     wf = wavelet(WT.db2, WT.Filter)
     x = randn(16)
 
@@ -349,13 +324,8 @@ let
     end
 end
 
-
-
-let
-    print("transforms: MODWT...\n")
-
+@testset "MODWT" begin
     wf = wavelet(WT.db4)
-    srand(0)
     # power-of-two
     x = randn(128)
     W = modwt(x, wf)
@@ -375,12 +345,7 @@ let
     @test W[:, 1:L-1] ≈ Wl[:, 1:L-1]
 end
 
-
-# ============= tranform low level functions ================
-#...
-
-let
-    print("transforms: wavelet types ...\n")
+@testset "Wavelet types" begin
     wt = wavelet(WT.db2, WT.Filter)
     @test length(wt) == 4
     same = WT.name(wt) == "db2"

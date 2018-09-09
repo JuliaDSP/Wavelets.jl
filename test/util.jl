@@ -1,9 +1,5 @@
-using Wavelets
-using Base.Test
 
-print("util ...\n")
-
-let
+@testset "Indexing" begin
     @test dyadicdetailn(0) == 1
     @test dyadicdetailn(1) == 2
     @test dyadicdetailindex(0,1) == 2
@@ -31,8 +27,7 @@ let
     @test detailn(n, L) == dyadicdetailn(tl2dyadiclevel(n,L))
 end
 
-# UTILITY FUNCTIONS
-let
+@testset "Util functions" begin
     @test mirror([1]) == [1]
     @test mirror([2,3]) == [2,-3]
     @test mirror([2,3,4]) == [2,-3,4]

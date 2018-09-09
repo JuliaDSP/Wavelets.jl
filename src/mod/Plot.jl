@@ -3,6 +3,7 @@ export wplotdots, wplotim
 using ..Util, ..WT, ..Transforms
 using Compat.LinearAlgebra
 using Compat: Nothing, undef
+import Compat
 
 # PLOTTING UTILITIES
 
@@ -86,7 +87,7 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing
     xts[1:nsc,1:nsc,:] .= 0
     scale01!(xts)
     for j=1:n, i=1:n
-        @inbounds xts[i,j,:] .= vecnorm(xts[i,j,:],pnorm).^(power)
+        @inbounds xts[i,j,:] .= Compat.norm(xts[i,j,:],pnorm).^(power)
     end
 
     # merge and reshape final image
