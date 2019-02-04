@@ -49,12 +49,15 @@ struct ZPBoundary <: WaveletBoundary end
 # constant padding
 #struct CPBoundary <: WaveletBoundary end
 struct NullBoundary <: WaveletBoundary end
+# symmetric boundary (as in the DCTII)
+struct SymBoundary <: WaveletBoundary end
 # and so on...
 
 const Periodic = PerBoundary()
 const DEFAULT_BOUNDARY = PerBoundary()
 const padded = ZPBoundary()
 const NaivePer = NullBoundary()
+const SymBound = SymBoundary()
 
 # WAVELET CLASSES
 
@@ -108,7 +111,7 @@ end
 """
 function Morlet(σ::T) where T<:Real
     κσ=exp(-σ^2/2)
-    cσ=1./sqrt(1+κσ^2-2*exp(-3*σ^2/4))
+    cσ=1. /sqrt(1+κσ^2-2*exp(-3*σ^2/4))
     Morlet(σ,κσ,cσ)
 end
 Morlet() = Morlet(5.0)
@@ -301,7 +304,7 @@ struct CFW{T} <: ContinuousWavelet{T}
     scalingFactor::Float64 # the number of wavelets per octave, ie the scaling is s=2^(j/scalingfactor)
     fourierFactor::Float64
     coi          ::Float64
-    α            ::Int64   # the order for a Paul and the number of derivatives for a DOG
+    α            ::Int   # the order for a Paul and the number of derivatives for a DOG
     σ            ::Array{Float64} # the morlet wavelet parameters (σ,κσ,cσ). NaN if not morlet.
     name         ::String
     # function CFW{T}(scalingfactor, fourierfactor, coi, daughterfunc, name) where T<: WaveletBoundary
@@ -324,9 +327,9 @@ function CFW(w::WC, scalingfactor::S=8, a::T=DEFAULT_BOUNDARY) where {WC<:Wavele
     tdef == nothing && error("transform definition not found; you gave $(namee)")
     # do some substitution of model parameters
     if namee=="mor"
-        tdef = [eval(parse(replace(tdef[1],"σ",w.σ))), eval(parse(tdef[2])), -1, [w.σ,w.κσ,w.cσ] , name(w)]
+        tdef = [eval(Meta.parse(replace(tdef[1],"σ" => w.σ))), eval(Meta.parse(tdef[2])), -1, [w.σ,w.κσ,w.cσ] , name(w)]
     elseif namee[1:3]=="dog" || namee[1:3]=="pau"
-        tdef = [eval(parse(replace(tdef[1], "α", order(w)))), eval(parse(replace(tdef[2], "α", order(w)))), order(w), [NaN], name(w)]
+        tdef = [eval(Meta.parse(replace(tdef[1], "α"=> order(w)))), eval(Meta.parse(replace(tdef[2], "α"=> order(w)))), order(w), [NaN], name(w)]
     else
         error("I'm not sure how you got here. Apparently the WaveletClass you gave doesn't have a name. Sorry about that")
     end
@@ -340,9 +343,9 @@ given a CFW object, return a rescaled version of the mother wavelet, in the four
 """
 function Daughter(this::CFW, s::Real, ω::Array{Float64,1})
     if this.name=="morl"
-        daughter = this.σ[3]*(π)^(1/4)*(exp.(-(this.σ[1]-ω/s).^2/2)-this.σ[2]*exp.(-1/2*(ω/s).^2))
+        daughter = this.σ[3]*(π)^(1/4)*(exp.(-(this.σ[1].-ω/s).^2/2)-this.σ[2]*exp.(-1/2*(ω/s).^2))
     elseif this.name[1:3]=="dog"
-        daughter = normalize(im^(this.α)*sqrt(gamma((this.α)+1/2))*(ω/s).^(this.α).*exp.(-(ω/s).^2/2))
+        daughter = normalize(im^(this.α)*sqrt(gamma((this.α).+1/2))*(ω/s).^(this.α).*exp.(-(ω/s).^2/2))
     elseif this.name[1:4]=="paul"
         daughter = zeros(length(ω))
         daughter[ω.>=0]=(2^this.α)/sqrt((this.α)*gamma(2*(this.α)))*((ω[ω.>=0]/s).^(this.α).*exp.(-(ω[ω.>=0]/s)))
@@ -360,7 +363,7 @@ const CONT_DEFS = Dict{String,Tuple{String, String, String}}(
             "1*sqrt(2)", #COIFunction
             "daughter = ones(length(ω)); daughter[ω.<0]=0; daughter = daughter.*2α/sqrt(α*gamma(2*α)).*(ω/s).^α.*exp.(-(ω/s))", #DaughterFunction
       ),
-"dog" => ("2*π*sqrt(2./(2*α+1))", #FourierFactorFunction
+"dog" => ("2*π*sqrt(2 ./(2*α+1))", #FourierFactorFunction
       "1/sqrt(2)", #COIFunction
       "daughter = normalize(im^α*sqrt(gamma(α+1/2))*(ω/s).^α.*exp.(-(ω/s).^2/2))",
       )

@@ -40,8 +40,7 @@
                 @test abs(Compat.norm(data)-Compat.norm(y)) < 1e-9
                 @test abs(Compat.norm(data2)-Compat.norm(y2)) < 1e-9
                 @test (@vecnorm_eq_eps idwt(y,wt) data stderr1*100)
-                @test (@vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100)
-            end
+                @test (@vecnorm_eq_eps idwt(y2,wt) data2 stde            end
         end
     end
 end
@@ -144,7 +143,7 @@ end
     @test Vector{Float64} == typeof(y) && length(y) == n
     x, y = makedwt(Float32, n, wf, L)
     @test Vector{Float32} == typeof(y) && length(y) == n
-    x, y = makedwt(Int64, n, wf, L)
+    x, y = makedwt(Int, n, wf, L)
     @test Vector{typeof(float(x[1]))} == typeof(y) && length(y) == n
     x, y = makedwt(Int32, n, wf, L)
     @test Vector{typeof(float(x[1]))} == typeof(y) && length(y) == n
@@ -165,7 +164,7 @@ end
     @test Array{ft,2} == typeof(y) && length(y) == n*n
     ft = Float32; x, y = makedwt(ft, sett...)
     @test Array{ft,2} == typeof(y) && length(y) == n*n
-    ft = Int64; x, y = makedwt(ft, sett...)
+    ft = Int; x, y = makedwt(ft, sett...)
     @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
     ft = Int32; x, y = makedwt(ft, sett...)
     @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
@@ -217,7 +216,7 @@ for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
         for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
             xc = rand(Float64,13)
             yc = cwt(xc,wfc)
-            @test Array{Complex128,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,13)
+            @test Array{ComplexF64,2}==typeof(yc) && size(yc) == (floor(Int,log2(length(xc))*s)+1,13)
         end
     end
 end
@@ -228,7 +227,7 @@ ft = Float64; x, y = makedwt(ft, sett...)
 @test Array{ft,2} == typeof(y) && length(y) == n*n
 ft = Float32; x, y = makedwt(ft, sett...)
 @test Array{ft,2} == typeof(y) && length(y) == n*n
-ft = Int64; x, y = makedwt(ft, sett...)
+ft = Int; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
 ft = Int32; x, y = makedwt(ft, sett...)
 @test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n

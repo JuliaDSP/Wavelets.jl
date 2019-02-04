@@ -4,8 +4,10 @@ export  dwt, idwt, dwt!, idwt!,
         modwt, imodwt, cwt
 using ..Util, ..WT
 using Compat: AbstractRange, copyto!, undef
+using FFTW
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
+# TODO change integer dependent wavelets to parametric types (see "Value types", https://docs.julialang.org/en/v1/manual/types/index.html#%22Value-types%22-1)
 const DWTArray = AbstractArray
 const WPTArray = AbstractVector
 const ValueType = Union{AbstractFloat, Complex}
@@ -144,7 +146,7 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
 
     # J1 is the total number of elements
     if isnan(J1) || (J1<0)
-        J1=floor(Int64,(log2(n1))*c.scalingFactor);
+        J1=floor(Int,(log2(n1))*c.scalingFactor);
     end
     #....construct time series to analyze, pad if necessary
     if eltypes(c) == WT.padded
@@ -183,7 +185,7 @@ returns the period, the scales, and the cone of influence for the given wavelet 
 function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
     # J1 is the total number of elements
     if isnan(J1) || (J1<0)
-        J1=floor(Int64,(log2(n1))*c.scalingFactor);
+        J1=floor(Int,(log2(n1))*c.scalingFactor);
     end
     println("$(J1 == NaN)")
     #....construct time series to analyze, pad if necessary
@@ -194,7 +196,7 @@ function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:R
         n = length(Y)*2
     end
     ω = [0:floor(Int, n/2); -floor(Int,n/2)+1:-1]*2π
-    period = c.fourierFactor*2.^((0:J1)/c.scalingFactor)
+    period = c.fourierFactor*2 .^((0:J1)/c.scalingFactor)
     scale = [1E-5; 1:((n1+1)/2-1); flipdim((1:(n1/2-1)),1); 1E-5]
     coi = c.coi*scale  # COI [Sec.3g]
     return period, scale, coi
