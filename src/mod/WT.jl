@@ -14,6 +14,7 @@ using ..Util
 import Base.length
 using Compat.LinearAlgebra
 using Compat: ComplexF64, undef, rmul!
+using SpecialFunctions
 
 # TYPE HIERARCHY
 
