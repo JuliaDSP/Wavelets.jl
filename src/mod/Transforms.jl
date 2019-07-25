@@ -183,6 +183,7 @@ period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<
 returns the period, the scales, and the cone of influence for the given wavelet transform. If you have sampling information, you will need to scale the vector scale appropriately by 1/δt, and the actual transform by δt^(1/2).
 """
 function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+    n1 = length(Y);
     # J1 is the total number of elements
     if isnan(J1) || (J1<0)
         J1=floor(Int,(log2(n1))*c.scalingFactor);
@@ -197,7 +198,7 @@ function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:R
     end
     ω = [0:floor(Int, n/2); -floor(Int,n/2)+1:-1]*2π
     period = c.fourierFactor*2 .^((0:J1)/c.scalingFactor)
-    scale = [1E-5; 1:((n1+1)/2-1); flipdim((1:(n1/2-1)),1); 1E-5]
+    scale = [1E-5; 1:((n1+1)/2-1); reverse((1:(n1/2-1)),dims=1); 1E-5]
     coi = c.coi*scale  # COI [Sec.3g]
     return period, scale, coi
 end
