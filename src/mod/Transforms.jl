@@ -143,11 +143,24 @@ return the continuous wavelet transform wave, which is (nscales)×(signalLength)
 """
 function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
     n1 = length(Y);
-
-    # J1 is the total number of elements
-    if isnan(J1) || (J1<0)
-        J1=floor(Int,(log2(n1))*c.scalingFactor);
+    # don't alter scaling with sampling information if it doesn't exists
+    fλ = (4*π) / (c.σ[1] + sqrt(2 + c.σ[1]^2))
+    if isnan(dt) || (dt<0)
+        dt = 1
     end
+    # smallest resolvable scale
+    if isnan(s0) || (s0<0)
+        s0 = 2 * dt / fλ
+    end
+    # J1 is the total number of scales
+    if J1<0
+        J1 = Int(round(log2(n1 * dt / s0) * c.scalingFactor))
+    end
+    # scales from Mallat 1999
+    sj = s0 * 2.0.^(collect(0:J1)./c.scalingFactor)
+    # Fourier equivalent frequencies
+    freqs = 1 ./ (fλ .* sj)
+
     #....construct time series to analyze, pad if necessary
     if eltypes(c) == WT.padded
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
@@ -159,23 +172,27 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
     end
 
     n = length(x);
-    #....construct wavenumber array used in transform [Eqn(5)]
 
-    ω = [0:ceil(Int, n/2); -floor(Int,n/2)+1:-1]*2π
+    #....construct wavenumber array used in transform [Eqn(5)]
+    ω = fftfreq(n, 1/dt)*2π
 
     #....compute FFT of the (padded) time series
     x̂ = fft(x);    # [Eqn(3)]
 
-    wave = zeros(Complex{T}, J1+1, n);  # define the wavelet array
+    # define the wavelet array
+    wave = zeros(Complex{T}, J1+1, n);
+    # daugher wavelets for all scales
+    daughter = sqrt.(sj .* ω[2] .* n) .* conj.(π^(-1/4).*exp.(-0.5 * ((sj .* ω') .- c.σ[1]).^2))
+    # compute transform and return to time-domain
+    wave = ifft(x̂ .* daughter', 1)
 
-    # loop through all scales and compute transform
-    for a1 in 0:J1
-        daughter = WT.Daughter(c, 2.0^(a1/c.scalingFactor), ω)
-        wave[a1+1,:] = ifft(x̂.*daughter)  # wavelet transform[Eqn(4)]
-    end
-    wave = wave[:,1:n1]  # get rid of padding before returning
+    # Determines the cone-of-influence. Note that it is returned as a function
+    # of time in Fourier periods. Uses triangualr Bartlett window with
+    # non-zero end-points.
+    coi = (n1 / 2 .- abs.(collect(0:n1-1) .- (n1 - 1) ./ 2))
+    coi = (fλ * dt / sqrt(2)).*coi
 
-    return wave
+    return wave, sj, freqs, coi
 end
 """
 period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
@@ -202,8 +219,9 @@ function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:R
     coi = c.coi*scale  # COI [Sec.3g]
     return period, scale, coi
 end
-cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = cwt(Y,CFW(w))
-caveats(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = caveats(Y,CFW(w))
+cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, V<:Real} = cwt(Y,CFW(w),J1=J1,dt=dt,s0=s0)
+cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass, scalingFactor::U=8; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, U<:Real, V<:Real} = cwt(Y,CFW(w,scalingFactor), J1=J1,dt=dt,s0=s0)
+caveats(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = caveats(Y,CFW(w),J1=J1)
 cwt(Y::AbstractArray{T}) where T<:Real = cwt(Y,WT.Morlet())
 caveats(Y::AbstractArray{T}) where T<:Real = caveats(Y,WT.Morlet())
 
