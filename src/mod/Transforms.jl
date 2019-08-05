@@ -192,7 +192,7 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
     coi = (n1 / 2 .- abs.(collect(0:n1-1) .- (n1 - 1) ./ 2))
     coi = (fλ * dt / sqrt(2)).*coi
 
-    return reverse(wave', dims=1), sj, freqs, coi
+    return reverse(reverse(wave', dims=1), dims=2), sj, freqs, coi
 end
 """
 period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
