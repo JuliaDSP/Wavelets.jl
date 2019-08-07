@@ -179,12 +179,14 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
     #....compute FFT of the (padded) time series
     x̂ = fft(x);    # [Eqn(3)]
 
-    # define the wavelet array
-    wave = zeros(Complex{T}, J1+1, n);
-    # daugher wavelets for all scales
-    daughter = sqrt.(sj .* ω[2] .* n) .* conj.(π^(-1/4).*exp.(-0.5 * ((sj .* ω') .- c.σ[1]).^2))
-    # compute transform and return to time-domain
-    wave = ifft(x̂ .* daughter', 1)
+    wave = zeros(Complex{T}, J1+1, n);  # define the wavelet array
+    # iterate over scales
+    for scale=1:J1+1
+        # define daughter wavelet (in frequency domain) for each scale
+        daughter = sqrt.(sj[scale] .* ω[2] .* n) .* conj.(π^(-1/4).*exp.(-0.5 * ((sj[scale] .* ω) .- c.σ[1]).^2))
+        # convolve in frequency domain, perform ifft
+        wave[scale, :] = ifft(x̂ .* daughter, 1)
+    end
 
     # Determines the cone-of-influence. Note that it is returned as a function
     # of time in Fourier periods. Uses triangualr Bartlett window with
@@ -192,7 +194,7 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
     coi = (n1 / 2 .- abs.(collect(0:n1-1) .- (n1 - 1) ./ 2))
     coi = (fλ * dt / sqrt(2)).*coi
 
-    return reverse(reverse(wave', dims=1), dims=2), sj, freqs, coi
+    return wave, sj, freqs, coi
 end
 """
 period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
@@ -224,6 +226,23 @@ cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass, scalingFactor::U=8; J1::I
 caveats(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = caveats(Y,CFW(w),J1=J1)
 cwt(Y::AbstractArray{T}) where T<:Real = cwt(Y,WT.Morlet())
 caveats(Y::AbstractArray{T}) where T<:Real = caveats(Y,WT.Morlet())
+
+"""
+icwt(WT::AbstractArray{T}, c::CFW{W}, sj::AbstractArray; dt::S=NaN, dj::V=1/12) where {T<:Complex{Real}, S<:Real, V<:Real, W<:WT.WaveletBoundary}
+
+return the inverse continuous wavelet transform
+"""
+function icwt(WT::AbstractArray, c::CFW{W}, sj::AbstractArray; dt::S=NaN, dj::V=1/12) where {S<:Real, V<:Real, W<:WT.WaveletBoundary}
+    # Torrence and Compo (1998), eq. (11)
+    iW = (dj * sqrt(dt) / 0.776 * psi(c, 0)) .* sum((real.(WT) ./ sqrt.(sj)), dims=1)
+
+    return iW
+end
+cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass, sj::AbstractArray; dt::S=NaN, dj::V=NaN) where {T<:Real, S<:Real, V<:Real} = cwt(Y,CFW(w),sj,dt=dt,dj=dj)
+
+function psi(c::CFW{W}, t::Int64) where W<:WT.WaveletBoundary
+    return π^(-0.25) * exp.(im*c.σ[1]*t - t^2 / 2)
+end
 
 
 
