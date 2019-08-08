@@ -219,7 +219,7 @@ end
 
 function cwt(Y::AbstractArray{T}, c::CFW{W}) where {T<:Number, S<:Real,
                                                      W<:WT.WaveletBoundary}
-    daughters = computeWavelets(Y, c) 
+    daughters = computeWavelets(size(Y, 1), c) 
     return cwt(Y, c, daughters)
 end
 

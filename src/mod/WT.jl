@@ -315,7 +315,7 @@ struct Dirac <: Average end
 struct Mother <: Average end
 
 
-struct CFW{T, S} <: ContinuousWavelet{T, S}
+struct CFW{T, S, N} <: ContinuousWavelet{T, S}
     scalingFactor::S # the number of wavelets per octave, ie the scaling
                            # is s=2^(j/scalingfactor)
     decreasing::S # the amount that scalingFactor decreases per octave,
@@ -338,11 +338,10 @@ struct CFW{T, S} <: ContinuousWavelet{T, S}
     frameBound     ::S       # if positive, set the frame bound of the
                              # transform to be frameBound. Otherwise leave it
                              # so that each wavelet has an L2 norm of 1 
-    normalization  ::S       # the normalization that is preserved for the
+    normalization  ::N       # the normalization that is preserved for the
                              # wavelets as the scale changes. The conjugate
                              # p-norm is preserved for the  signal. Should be
-                             # larger than 1, can be Infinity, meaning the
-                             # wavelets are all the same height
+                             # larger than 1
 end
 
 """ 
@@ -372,11 +371,13 @@ refers to which p-norm is preserved as the scale changes. `normalization==2` is
 the default scaling, while `normalization==Inf` gives all the same maximum
 value, thus acting more like windows.
 """
-function CFW(wave::WC, scalingFactor::S=8.0, averagingType::A = Mother,
-             boundary::T=WT.DEFAULT_BOUNDARY,
+function CFW(wave::WC, scalingFactor::S=8.0, boundary::T=WT.DEFAULT_BOUNDARY,
+             averagingType::A = Mother(),
              averagingLength::Int = 2,
-             frameBound::S=S(1), normalization::S=S(Inf), decreasing::S=S(1)) where {WC<:WT.WaveletClass, A <: Average,
-                                                                                      T<:WT.WaveletBoundary, S<:Real}
+             frameBound::S=S(1), normalization::N=Inf, decreasing::S=S(1)) where {WC<:WT.WaveletClass, A <: Average,
+                                                                                  T<:WT.WaveletBoundary,
+                                                                                  S<:Real,
+                                                                                  N<:Real} 
     @assert scalingFactor > 0
     @assert normalization >= 1
     nameWavelet = WT.name(wave)[1:3]
@@ -390,8 +391,11 @@ function CFW(wave::WC, scalingFactor::S=8.0, averagingType::A = Mother,
     else
         error("I'm not sure how you got here. Apparently the WaveletClass you gave doesn't have a name. Sorry about that")
     end
-    return CFW{T, S}(scalingFactor, decreasing, tdef..., averagingLength,
-                     averagingType, frameBound, normalization)
+    if any([!(eltype(tdef)<:Int) for t in tdef])
+        newType = Float64
+    end
+    return CFW{T, newType, N}(scalingFactor, decreasing, tdef..., averagingLength,
+                              averagingType, frameBound, normalization)
 end
 name(s::CFW) = s.name
 
@@ -410,10 +414,10 @@ function getJ1(c,nScales, backOffset, n1)
     return J1
 end
 
-function eltypes(::CFW{W, T}) where {W, T}
+function eltypes(::CFW{W, T, N}) where {W, T, N}
     T
 end
-function boundaryType(::CFW{W, T}) where {W, T}
+function boundaryType(::CFW{W, T, N}) where {W, T, N}
     W
 end
 
@@ -470,7 +474,7 @@ the scale of the averaging function to be
 `s*gamma((c.α+2)/2)/sqrt(gamma((c.α+1)/2)*(gamma((c.α+3)/2)-gamma((c.α+2)/2)))`
 
 """
-function findAveraging(c::CFW{B,T}, ω, averagingType::Mother) where {B, T}
+function findAveraging(c::CFW{B,T, N}, ω, averagingType::Mother) where {B, T, N}
     s = 2^(c.averagingLength)
     if c.name=="morl"
         s0 = c.σ[1] *s/3
@@ -547,15 +551,12 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
     else
         daughters = zeros(T, n, totalWavelets)
     end
-    println("size of daughters is $(size(daughters))")
     for curOctave = 1:round(Int, nOctaves)
         nPrevWavelets = isAve + sum(nWaveletsInOctave[1:curOctave-1]) # the 1
                                                  # is for the averaging wavelet
-        println("previously saw $nPrevWavelets. Now fitting $(nWaveletsInOctave[curOctave])  in between $(2^(curOctave-c.averagingLength)) and $(2^(curOctave+1-c.averagingLength))")
         linearSpacing = 
         sRange = (2 .^ (range(0, 1, length = nWaveletsInOctave[curOctave]+1) .+
                        curOctave .+ c.averagingLength .- 1))[1:end-1]
-        println("srange is $(sRange)")
         for (curWave, s) in enumerate(sRange)
             daughters[:, curWave + nPrevWavelets] = Daughter(c, s,
                                                              nWaveletsInOctave[curOctave],
@@ -629,7 +630,7 @@ function wavelet(c::T,s::S, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {T
     CFW(c,s,boundary)
 end
 function wavelet(c::T, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where T<:WT.ContinuousWaveletClass
-    CFW(c,8,boundary)
+    CFW(c,8, boundary)
 end
 # ------------------------------------------------------------
 
