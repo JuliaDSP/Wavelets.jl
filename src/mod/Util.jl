@@ -1,31 +1,32 @@
 module Util
 export  dyadicdetailindex,
-        dyadicdetailrange,
-        dyadicscalingrange,
-        dyadicdetailn,
-        ndyadicscales,
-        maxdyadiclevel,
-        tl2dyadiclevel,
-        dyadiclevel2tl,
-        # non-dyadic
-        detailindex,
-        detailrange,
-        detailn,
-        maxtransformlevels,
-        maxmodwttransformlevels,
-        #
-        mirror,
-        upsample,
-        downsample,
-        iscube,
-        isdyadic,
-        sufficientpoweroftwo,
-        wcount,
-        stridedcopy!,
-        isvalidtree,
-        maketree,
-        makewavelet,
-        testfunction
+    dyadicdetailrange,
+    dyadicscalingrange,
+    dyadicdetailn,
+    ndyadicscales,
+    maxdyadiclevel,
+    tl2dyadiclevel,
+    dyadiclevel2tl,
+    # non-dyadic
+    detailindex,
+    detailrange,
+    detailn,
+    maxtransformlevels,
+    maxmodwttransformlevels,
+    #
+    mirror,
+    upsample,
+    downsample,
+    iscube,
+    isdyadic,
+    sufficientpoweroftwo,
+    wcount,
+    stridedcopy!,
+    isvalidtree,
+    maketree,
+    makewavelet,
+    testfunction
+
 
 if VERSION >= v"0.7.0-DEV.986"
     using DSP: conv

@@ -136,47 +136,94 @@ end # for
 # CWT (continuous wavelet transform)
 # cwt(Y::AbstractVector, ::ContinuousWavelet)
 
-"""
-wave = cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+@doc """
+     wave = cwt(Y::AbstractArray{T}, c::CFW{W}, averagingLength::Int; J1::S=NaN, averagingType::Symbol=:Mother) where {T<:Number, S<:Real, W<:WT.WaveletBoundary}
 
-return the continuous wavelet transform wave, which is (nscales)×(signalLength), of type c of Y. J1 is the total number of scales; default (when J1=NaN, or is negative) is just under the maximum possible number, i.e. the log base 2 of the length of the signal, times the number of wavelets per octave. If you have sampling information, you will need to scale wave by δt^(1/2).
-"""
-function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
-    n1 = length(Y);
+  return the continuous wavelet transform along the first axis with averaging.
+  `wave`, is (signalLength)×(nscales+1)×(previous dimensions), of type T of
+  Y. averagingLength defines the number of octaves (powers of 2) that are
+  replaced by an averaging function. This has form averagingType, which can be
+  one of `Mother()` or `Dirac()`- in the `Mother()` case, it uses the same form
+  as for the wavelets, while the `Dirac` uses a constant window. J1 is the
+  total number of scales; default (when J1=NaN, or is negative) is just under
+  the maximum possible number, i.e. the log base 2 of the length of the signal,
+  times the number of wavelets per octave. If you have sampling information,
+  you will need to scale wave by δt^(1/2).
 
-    # J1 is the total number of elements
-    if isnan(J1) || (J1<0)
-        J1=floor(Int,(log2(n1))*c.scalingFactor);
+  """
+function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
+             fftPlan::FFTW.rFFTWPlan{T,A,B,C} = plan_rfft([1])) where {T<:Real,
+                                                                       S<:Real, U<:Number,
+                                                                       W<:WT.WaveletBoundary,
+                                                                       N, M,A,B,C} 
+    # TODO: complex input version of this
+    @assert typeof(N)<:Integer
+    @assert typeof(M)<:Integer
+    @assert M==1 || M==2
+    # vectors behave a bit strangely, so we reshape them
+    if N==1
+        Y= reshape(Y,(length(Y), 1))
     end
+
+    n1 = size(Y, 1);
+    
+    nOctaves = log2(max(n1, 2)) - c.averagingLength
+    nWaveletsInOctave = reverse([max(1, round(Int, c.scalingFactor/x^(c.decreasing))) for x = 1:round(Int, nOctaves)])
+    nScales = sum(nWaveletsInOctave)
+    
     #....construct time series to analyze, pad if necessary
-    if eltypes(c) == WT.padded
+    if boundaryType(c)() == WT.padded
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
-        x = [Y; zeros(2^(base2+1)-n1)];
-    elseif eltypes(c) == WT.DEFAULT_BOUNDARY
-        x = [Y; flipdim(Y,1)]
+        x = cat(Y, zeros(2^(base2+1)-n1,size(Y)[2:end]), dims=1)
+    elseif boundaryType(c)() == WT.DEFAULT_BOUNDARY
+        x = cat(Y, reverse(Y,dims = length(size(Y))), dims = length(size(Y)))
     else
-        x= Y
+        x = Y
     end
 
-    n = length(x);
-    #....construct wavenumber array used in transform [Eqn(5)]
+    # check if the plan we were given is a dummy or not
+    if size(fftPlan)==(1,)
+        fftPlan = plan_rfft(x[:, [1 for i=1:length(size(x))-1]...])
+    end
+    n = size(x, 1)
+    x̂ = zeros(Complex{eltype(x)}, div(size(x,1),2), size(x)[1:end-1]...)
+    x̂ = fftPlan * x    # [Eqn(3)]
+    
+    # reshapeSize = (ones(Int, length(size(x))-1)..., size(daughters, 1))
+    # If the vector isn't long enough to actually have any other scales, just
+    # return the averaging
+    if round(nOctaves) < 0
+        wave = zeros(T, size(x)..., 1)
+        mother = daughters[:, 1]
+        wave = fftPlan \ (x̂ .* mother)
+        return wave
+    end
 
-    ω = [0:ceil(Int, n/2); -floor(Int,n/2)+1:-1]*2π
-
-    #....compute FFT of the (padded) time series
-    x̂ = fft(x);    # [Eqn(3)]
-
-    wave = zeros(Complex{T}, J1+1, n);  # define the wavelet array
-
+    wave = zeros(T, size(x, 1), nScales, size(x)[2:end]);  # result array
+    # array
+    outer = axes(x)[2:end]
     # loop through all scales and compute transform
-    for a1 in 0:J1
-        daughter = WT.Daughter(c, 2.0^(a1/c.scalingFactor), ω)
-        wave[a1+1,:] = ifft(x̂.*daughter)  # wavelet transform[Eqn(4)]
+    for j in 1:size(daughters,2)
+        daughter = reshape(daughters[:, j], reshapeSize)
+        wave[:, j, outer...] = fftPlan \ (x̂ .* daughter)  # wavelet transform
     end
-    wave = wave[:,1:n1]  # get rid of padding before returning
-
+    # get rid of padding before returning
+    ax = axes(wave)
+    if length(ax) > 2
+        wave = wave[1:n1, ax[2:end]...] 
+    else
+        wave = wave[1:n1, ax[end]]  
+    end
     return wave
 end
+
+function cwt(Y::AbstractArray{T}, c::CFW{W}) where {T<:Number, S<:Real,
+                                                     W<:WT.WaveletBoundary}
+    daughters = computeWavelets(Y, c) 
+    return cwt(Y, c, daughters)
+end
+
+
 """
 period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
 
@@ -189,10 +236,10 @@ function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:R
     end
     println("$(J1 == NaN)")
     #....construct time series to analyze, pad if necessary
-    if eltypes(c) == WT.ZPBoundary
+    if boundaryType(c) == WT.ZPBoundary
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
         n = length(Y)+2^(base2+1)-n1
-    elseif eltypes(c) == WT.PerBoundary
+    elseif boundaryType(c) == WT.PerBoundary
         n = length(Y)*2
     end
     ω = [0:floor(Int, n/2); -floor(Int,n/2)+1:-1]*2π
