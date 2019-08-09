@@ -137,11 +137,11 @@ end # for
 # cwt(Y::AbstractVector, ::ContinuousWavelet)
 
 """
-wave = cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+wave = cwt(Y::AbstractArray{T}, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, V<:Real, W<:WT.WaveletBoundary}
 
 return the continuous wavelet transform wave, which is (nscales)×(signalLength), of type c of Y. J1 is the total number of scales; default (when J1=NaN, or is negative) is just under the maximum possible number, i.e. the log base 2 of the length of the signal, times the number of wavelets per octave. If you have sampling information, you will need to scale wave by δt^(1/2).
 """
-function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real, W<:WT.WaveletBoundary}
+function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, V<:Real, W<:WT.WaveletBoundary}
     n1 = length(Y);
     # don't alter scaling with sampling information if it doesn't exists
     fλ = (4*π) / (c.σ[1] + sqrt(2 + c.σ[1]^2))
@@ -156,6 +156,7 @@ function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:Real,
     if J1<0
         J1 = Int(round(log2(n1 * dt / s0) * c.scalingFactor))
     end
+
     # scales from Mallat 1999
     sj = s0 * 2.0.^(collect(0:J1)./c.scalingFactor)
     # Fourier equivalent frequencies
@@ -222,7 +223,6 @@ function caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<:Real, S<:R
     return period, scale, coi
 end
 cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, V<:Real} = cwt(Y,CFW(w),J1=J1,dt=dt,s0=s0)
-cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass, scalingFactor::U=8; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Real, S<:Real, U<:Real, V<:Real} = cwt(Y,CFW(w,scalingFactor), J1=J1,dt=dt,s0=s0)
 caveats(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass; J1::S=NaN) where {T<: Real, S<: Real} = caveats(Y,CFW(w),J1=J1)
 cwt(Y::AbstractArray{T}) where T<:Real = cwt(Y,WT.Morlet())
 caveats(Y::AbstractArray{T}) where T<:Real = caveats(Y,WT.Morlet())
@@ -243,7 +243,6 @@ cwt(Y::AbstractArray{T}, w::WT.ContinuousWaveletClass, sj::AbstractArray; dt::S=
 function psi(c::CFW{W}, t::Int64) where W<:WT.WaveletBoundary
     return π^(-0.25) * exp.(im*c.σ[1]*t - t^2 / 2)
 end
-
 
 
 # WPT (wavelet packet transform)
