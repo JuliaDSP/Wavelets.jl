@@ -152,10 +152,11 @@ end # for
 
   """
 function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
-             fftPlan::FFTW.rFFTWPlan{T,A,B,C} = plan_rfft([1])) where {T<:Real,
-                                                                       S<:Real, U<:Number,
-                                                                       W<:WT.WaveletBoundary,
-                                                                       N, M,A,B,C} 
+             rfftPlan::FFTW.rFFTWPlan{T} = plan_rfft([1]),
+             fftPlan::FFTW.FFTWPlan{T} = plan_rfft([1])) where {T<:Real,
+                                                                S<:Real, U<:Number,
+                                                                W<:WT.WaveletBoundary,
+                                                                N, M} 
     # TODO: complex input version of this
     @assert typeof(N)<:Integer
     @assert typeof(M)<:Integer
@@ -176,50 +177,59 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
         x = cat(Y, zeros(2^(base2+1)-n1,size(Y)[2:end]), dims=1)
     elseif boundaryType(c)() == WT.DEFAULT_BOUNDARY
-        x = cat(Y, reverse(Y,dims = length(size(Y))), dims = length(size(Y)))
+        x = cat(Y, reverse(Y,dims = 1), dims = 1)
     else
         x = Y
     end
 
-    # check if the plan we were given is a dummy or not
+    # check if the plans we were given are dummies or not
     if size(fftPlan)==(1,)
-        fftPlan = plan_rfft(x[:, [1 for i=1:length(size(x))-1]...])
+        rfftPlan = plan_rfft(x, 1)
+        fftPlan = plan_fft(x, 1)
     end
     n = size(x, 1)
-    x̂ = zeros(Complex{eltype(x)}, div(size(x,1),2), size(x)[1:end-1]...)
-    x̂ = fftPlan * x    # [Eqn(3)]
+
+    x̂ = rfftPlan * x    # [Eqn(3)]
     
-    # reshapeSize = (ones(Int, length(size(x))-1)..., size(daughters, 1))
+    reshapeSize = (ones(Int, length(size(x))-1)..., size(daughters, 1))
     # If the vector isn't long enough to actually have any other scales, just
     # return the averaging
     if round(nOctaves) < 0
-        wave = zeros(T, size(x)..., 1)
-        mother = daughters[:, 1]
-        wave = fftPlan \ (x̂ .* mother)
+        outer = axes(x)[2:end]
+        wave = zeros(Complex{T}, size(x)..., 1)
+        wave[1:n1+1, outer..., j] = x̂ .* daughters[:,1]
+        wave = fftPlan \ wave
         return wave
     end
 
-    wave = zeros(T, size(x, 1), nScales, size(x)[2:end]);  # result array
-    # array
+    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1);  # result array;
+    fourierDomain = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1)
+    # faster if we put the example index on the outside
     outer = axes(x)[2:end]
     # loop through all scales and compute transform
     for j in 1:size(daughters,2)
         daughter = reshape(daughters[:, j], reshapeSize)
-        wave[:, j, outer...] = fftPlan \ (x̂ .* daughter)  # wavelet transform
+        wave[1:n1+1, outer..., j] = x̂ .* daughters[:,j]
+        fourierDomain[1:n1+1, outer..., j] = x̂ .* daughters[:,j]
+        wave[:, outer..., j] = fftPlan \ (wave[:, outer..., j])  # wavelet transform
     end
-    # get rid of padding before returning
+    wave = reshape(wave, size(x,1), nScales+1, size(x)[2:end]...)
     ax = axes(wave)
     if length(ax) > 2
         wave = wave[1:n1, ax[2:end]...] 
     else
         wave = wave[1:n1, ax[end]]  
     end
+    
+    if N==1
+        wave = dropdims(wave, dims=3)
+    end
     return wave
 end
 
 function cwt(Y::AbstractArray{T}, c::CFW{W}) where {T<:Number, S<:Real,
                                                      W<:WT.WaveletBoundary}
-    daughters = computeWavelets(size(Y, 1), c) 
+    daughters,ω = computeWavelets(size(Y, 1)+1, c) 
     return cwt(Y, c, daughters)
 end
 

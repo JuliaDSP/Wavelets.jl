@@ -124,11 +124,11 @@ function Morlet(σ::T) where T<:Real
     cσ=1. /sqrt(1+κσ^2-2*exp(-3*σ^2/4))
     Morlet(σ,κσ,cσ)
 end
-Morlet() = Morlet(5.0)
+Morlet() = Morlet(5.8)
 class(::Morlet) = "Morlet"; name(::Morlet) = "morl"; vanishingmoments(::Morlet)=0
 const morl = Morlet()
 
-# TODO: include a "mexh" wavelet, which is dog2.
+# TODO: include a sombrero wavelet, which is dog2.
 
 # Parameterized classes
 
@@ -374,10 +374,10 @@ value, thus acting more like windows.
 function CFW(wave::WC, scalingFactor::S=8.0, boundary::T=WT.DEFAULT_BOUNDARY,
              averagingType::A = Mother(),
              averagingLength::Int = 2,
-             frameBound::S=S(1), normalization::N=Inf, decreasing::S=S(1)) where {WC<:WT.WaveletClass, A <: Average,
+             frameBound::S=S(-1), normalization::N=Inf, decreasing::S=S(1)) where {WC<:WT.WaveletClass, A <: Average,
                                                                                   T<:WT.WaveletBoundary,
                                                                                   S<:Real,
-                                                                                  N<:Real} 
+                                                                                  N<:Real}
     @assert scalingFactor > 0
     @assert normalization >= 1
     nameWavelet = WT.name(wave)[1:3]
@@ -427,7 +427,7 @@ end
 
 given a CFW object, return a rescaled version of the mother wavelet, in the fourier domain. ω is the frequency, which is fftshift-ed. s is the scale variable
 """
-function Daughter(this::CFW, s::Real, nInOctave::Int, ω::Array{Float64,1})
+function Daughter(this::CFW, s::Real, nInOctave::Int, ω::AbstractArray{<:Real,1})
     if this.name == "morl"
         constant = this.σ[3]*(π)^(1/4)
         gauss = exp.(-(this.σ[1].-ω/s).^2/2*nInOctave)
@@ -481,7 +481,7 @@ function findAveraging(c::CFW{B,T, N}, ω, averagingType::Mother) where {B, T, N
         ω_shift = ω .+ c.σ[1] * s0
     elseif c.name[1:4] == "paul"
         s0 = s*sqrt(c.α+1)
-        ω_shift = ω + (c.α .+ 1) * s0
+        ω_shift = ω .+ (c.α .+ 1) * s0
     elseif c.name[1:3] == "dog"
         s0 = s*gamma((c.α+2)/2) / sqrt(gamma((c.α+1)/2) * (gamma((c.α+3)/2) -
                                                            gamma((c.α+2)/2)))
@@ -522,17 +522,19 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to n1
         n= 2^(base2+1)
     elseif boundaryType(c)() == WT.DEFAULT_BOUNDARY
-        n = 2*n1
+        # n1+1 rather than just n1 because this is going to be used in an rfft
+        # for real data
+        n = n1
     else
-        n=n1
+        n= n1>>1 +1
     end
-    ω = [0:ceil(Int, n/2); -floor(Int,n/2)+1:-1]*2π
+    ω = (0:ceil(Int, n-1))*2π
     
     # if the nOctaves is small enough there are none not covered by the
     # averaging, just use that
     if round(nOctaves) < 0
-        father = zeros(T, n1+1, 1)
-        father[:,1] = findAveraging(c,ω)[1:(n1+1)]
+        father = zeros(T, n, 1)
+        father[:,1] = findAveraging(c,ω)
         return father
     end
 
@@ -544,7 +546,6 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
                                  x=1:round(Int, nOctaves)])
     totalWavelets = round(Int, sum(nWaveletsInOctave) + isAve)
 
-    # n1+1 rather than just n1 because this is going to be used in an rfft
     # daughters = zeros(T, n1+1, totalWavelets)
     if c.name[1:3] == "dog" && parse(Int, c.name[4:end])%2==1
         daughters = zeros(Complex{T}, n, totalWavelets)
@@ -556,7 +557,7 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
                                                  # is for the averaging wavelet
         linearSpacing = 
         sRange = (2 .^ (range(0, 1, length = nWaveletsInOctave[curOctave]+1) .+
-                       curOctave .+ c.averagingLength .- 1))[1:end-1]
+                        curOctave .+ c.averagingLength .- 1))[1:end-1]
         for (curWave, s) in enumerate(sRange)
             daughters[:, curWave + nPrevWavelets] = Daughter(c, s,
                                                              nWaveletsInOctave[curOctave],
@@ -622,14 +623,25 @@ wavelet(WT.morl,4)
 """
 function wavelet end
 
-wavelet(c::WaveletClass, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = wavelet(c, Filter, boundary)
+wavelet(c::K, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {K<:Union{BiOrthoWaveletClass, OrthoWaveletClass}}= wavelet(c, Filter, boundary)
 wavelet(c::OrthoWaveletClass, t::FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = OrthoFilter(c, boundary)
 wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = GLS(c, boundary)
 
+
+function wavelet(cw::T; s::S=8.0, boundary::WaveletBoundary=DEFAULT_BOUNDARY,
+                 averagingType::A=Mother(), averagingLength::Int = 2,
+                 frameBound::S=1, normalization::N=Inf, decreasing::S=1) where {T<:WT.ContinuousWaveletClass,
+                                                                                      A<:Average,
+                                                                                      S<:Real, N<:Real} 
+    return CFW(cw,s, boundary, averagingType, averagingLength, S(frameBound),
+               normalization, decreasing)
+end
 function wavelet(c::T,s::S, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {T<:WT.ContinuousWaveletClass, S<:Real}
     CFW(c,s,boundary)
 end
-function wavelet(c::T, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where T<:WT.ContinuousWaveletClass
+
+
+function wavelet(c::T, boundary::WaveletBoundary) where T<:WT.ContinuousWaveletClass
     CFW(c,8, boundary)
 end
 # ------------------------------------------------------------
