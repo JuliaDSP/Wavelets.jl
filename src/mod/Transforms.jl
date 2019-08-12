@@ -137,7 +137,13 @@ end # for
 # cwt(Y::AbstractVector, ::ContinuousWavelet)
 
 @doc """
-     wave = cwt(Y::AbstractArray{T}, c::CFW{W}, averagingLength::Int; J1::S=NaN, averagingType::Symbol=:Mother) where {T<:Number, S<:Real, W<:WT.WaveletBoundary}
+     wave = cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WT}, daughters, rfftPlan =
+             plan_rfft([1]), fftPlan = plan_fft([1])) where {N, T<:Real,
+                                                             S<:Real,
+                                                             U<:Number,
+                                                             W<:WT.WaveletBoundary,
+                                                             WT<:Union{<:WT.Morlet,
+                                                                       <:WT.Paul}}
 
   return the continuous wavelet transform along the first axis with averaging.
   `wave`, is (signalLength)×(nscales+1)×(previous dimensions), of type T of
@@ -151,16 +157,18 @@ end # for
   you will need to scale wave by δt^(1/2).
 
   """
-function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
-             rfftPlan::FFTW.rFFTWPlan{T} = plan_rfft([1]),
-             fftPlan::FFTW.FFTWPlan{T} = plan_rfft([1])) where {T<:Real,
-                                                                S<:Real, U<:Number,
-                                                                W<:WT.WaveletBoundary,
-                                                                N, M} 
+function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WT}, daughters, rfftPlan =
+             plan_rfft([1]), fftPlan = plan_fft([1])) where {N, T<:Real,
+                                                             S<:Real,
+                                                             U<:Number,
+                                                             W<:WT.WaveletBoundary,
+                                                             WT<:Union{<:WT.Morlet,
+                                                                       <:WT.Paul}}
+    # This is for analytic wavelets, so we need to treat the positive and
+    # negative frequencies differently, even for real data
+
     # TODO: complex input version of this
     @assert typeof(N)<:Integer
-    @assert typeof(M)<:Integer
-    @assert M==1 || M==2
     # vectors behave a bit strangely, so we reshape them
     if N==1
         Y= reshape(Y,(length(Y), 1))
@@ -168,11 +176,104 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
 
     n1 = size(Y, 1);
     
-    nOctaves = log2(max(n1, 2)) - c.averagingLength
-    nWaveletsInOctave = reverse([max(1, round(Int, c.scalingFactor/x^(c.decreasing))) for x = 1:round(Int, nOctaves)])
-    nScales = sum(nWaveletsInOctave)
-    
+    nScales = getNScales(n1, c)
     #....construct time series to analyze, pad if necessary
+    x = reflect(Y, c)
+
+    # check if the plans we were given are dummies or not
+    if size(rfftPlan)==(1,)
+        rfftPlan = plan_rfft(x, 1)
+    end
+    if size(fftPlan)==(1,)
+        fftPlan = plan_fft(x, 1)
+    end
+    n = size(x, 1)
+
+    x̂ = rfftPlan * x
+    
+    # If the vector isn't long enough to actually have any other scales, just
+    # return the averaging
+    if nScales <= 0
+        actuallyTransform!(wave, daughters[:,1:1], x̂, fftPlan, c.waveType)
+        return wave
+    end
+
+
+
+    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1);  # result array;
+    # faster if we put the example index on the outside loop through all scales
+    # and compute transform
+    actuallyTransform!(wave, daughters,x̂, fftPlan, c.waveType, c.averagingType)
+    wave = reshape(wave, size(x,1), nScales+1, size(x)[2:end]...)
+    ax = axes(wave)
+    wave = wave[1:n1, ax[2:end]...] 
+    
+    if N==1
+        wave = dropdims(wave, dims=3)
+    end
+
+    return wave
+end
+
+
+function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WT}, daughters, rfftPlan =
+             plan_rfft([1])) where {N, T<:Real, S<:Real, U<:Number,
+                                    W<:WT.WaveletBoundary, WT<:WT.Dog}
+    # Dog doesn't need a fft because it is strictly real
+    # TODO: complex input version of this
+    @assert typeof(N)<:Integer
+    # vectors behave a bit strangely, so we reshape them
+    if N==1
+        Y= reshape(Y,(length(Y), 1))
+    end
+
+    n1 = size(Y, 1);
+    
+    nScales = getNScales(n1, c)
+    #....construct time series to analyze, pad if necessary
+    x = reflect(Y, c)
+
+    # check if the plans we were given are dummies or not
+    if size(rfftPlan)==(1,)
+        rfftPlan = plan_rfft(x, 1)
+    end
+    n = size(x, 1)
+
+    x̂ = rfftPlan * x
+    
+    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1);  # result array;
+    # faster if we put the example index on the outside loop through all scales
+    # and compute transform
+
+    # If the vector isn't long enough to actually have any other scales, just
+    # return the averaging
+    if nScales <= 0
+        daughters = daughters[:,1:1]
+    end
+
+    actuallyTransform!(wave, daughters,x̂, rfftPlan, c.waveType)
+    wave = reshape(wave, size(x,1), nScales+1, size(x)[2:end]...)
+    ax = axes(wave)
+    wave = wave[1:n1, ax[2:end]...] 
+
+    if N==1
+        wave = dropdims(wave, dims=3)
+    end
+
+    return real.(wave)
+end
+
+
+
+function getNScales(n1, c)
+    nOctaves = log2(max(n1, 2)) - c.averagingLength
+    nWaveletsInOctave = reverse([max(1, round(Int,
+                                              c.scalingFactor/x^(c.decreasing)))
+                                 for x = 1:round(Int, nOctaves)])
+    nScales = max(sum(nWaveletsInOctave), 0)
+end
+
+function reflect(Y, c)
     if boundaryType(c)() == WT.padded
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
         x = cat(Y, zeros(2^(base2+1)-n1,size(Y)[2:end]), dims=1)
@@ -181,55 +282,52 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W}, daughters::Array{T, M},
     else
         x = Y
     end
-
-    # check if the plans we were given are dummies or not
-    if size(fftPlan)==(1,)
-        rfftPlan = plan_rfft(x, 1)
-        fftPlan = plan_fft(x, 1)
-    end
-    n = size(x, 1)
-
-    x̂ = rfftPlan * x    # [Eqn(3)]
-    
-    reshapeSize = (ones(Int, length(size(x))-1)..., size(daughters, 1))
-    # If the vector isn't long enough to actually have any other scales, just
-    # return the averaging
-    if round(nOctaves) < 0
-        outer = axes(x)[2:end]
-        wave = zeros(Complex{T}, size(x)..., 1)
-        wave[1:n1+1, outer..., j] = x̂ .* daughters[:,1]
-        wave = fftPlan \ wave
-        return wave
-    end
-
-    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1);  # result array;
-    fourierDomain = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales+1)
-    # faster if we put the example index on the outside
-    outer = axes(x)[2:end]
-    # loop through all scales and compute transform
-    for j in 1:size(daughters,2)
-        daughter = reshape(daughters[:, j], reshapeSize)
-        wave[1:n1+1, outer..., j] = x̂ .* daughters[:,j]
-        fourierDomain[1:n1+1, outer..., j] = x̂ .* daughters[:,j]
-        wave[:, outer..., j] = fftPlan \ (wave[:, outer..., j])  # wavelet transform
-    end
-    wave = reshape(wave, size(x,1), nScales+1, size(x)[2:end]...)
-    ax = axes(wave)
-    if length(ax) > 2
-        wave = wave[1:n1, ax[2:end]...] 
-    else
-        wave = wave[1:n1, ax[end]]  
-    end
-    
-    if N==1
-        wave = dropdims(wave, dims=3)
-    end
-    return wave
+    return x
 end
 
+function actuallyTransform!(wave, daughters, x̂, fftPlan, analytic::Union{<:WT.Morlet,
+                                                                         <:WT.Paul},
+                            averagingType::Union{WT.Father, WT.Dirac})
+    outer = axes(x̂)[2:end]
+    n1 = size(x̂, 1)
+    # the averaging function isn't analytic, so we need to do both positive and
+    # negative frequencies
+    tmpWave = x̂ .* daughters[:,1]
+    wave[(n1+1):end, outer..., 1] = reverse(conj.(tmpWave[2:end-1, outer...]),dims=1)
+    wave[1:n1, outer..., 1] = tmpWave
+    wave[:, outer..., 1] = fftPlan \ (wave[:, outer..., 1])  # wavelet transform
+    for j in 2:size(daughters,2)
+        wave[1:n1, outer..., j] = x̂ .* daughters[:,j]
+        wave[:, outer..., j] = fftPlan \ (wave[:, outer..., j])  # wavelet transform
+    end
+end
+function actuallyTransform!(wave, daughters, x̂, fftPlan, analytic::Union{<:WT.Morlet,
+                                                                         <:WT.Paul},
+                            averagingType::WT.NoAve)
+    outer = axes(x̂)[2:end]
+    n1 = size(x̂, 1)
+    # the averaging function isn't analytic, so we need to do both positive and
+    # negative frequencies
+    for j in 1:size(daughters,2)
+        wave[1:n1, outer..., j] = x̂ .* daughters[:,j]
+        wave[:, outer..., j] = fftPlan \ (wave[:, outer..., j])  # wavelet transform
+    end
+end
+
+function actuallyTransform!(wave, daughters, x̂, rfftPlan, analytic::Union{<:WT.Dog})
+    outer = axes(x̂)[2:end]
+    n1 = size(x̂, 1)
+    for j in 1:size(daughters,2)
+        wave[1:n1, outer..., j] = x̂ .* daughters[:,j]
+        wave[:, outer..., j] = rfftPlan \ (wave[1:n1, outer..., j])  # wavelet transform
+    end
+end
+
+
+
 function cwt(Y::AbstractArray{T}, c::CFW{W}) where {T<:Number, S<:Real,
-                                                     W<:WT.WaveletBoundary}
-    daughters,ω = computeWavelets(size(Y, 1)+1, c) 
+                                                    W<:WT.WaveletBoundary}
+    daughters,ω = computeWavelets(size(Y, 1), c) 
     return cwt(Y, c, daughters)
 end
 
