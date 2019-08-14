@@ -15,7 +15,8 @@ export
     Father,
     Dirac,
     Daughter,
-    findAveraging
+    findAveraging,
+    show
 
 
 using ..Util
@@ -110,7 +111,7 @@ for (TYPE, NAMEBASE, MOMENTS) in (
 end
 
 struct Morlet <: ContinuousWaveletClass
-    σ::Float64 # \sigma is the time/space trade-off. as sigma->0, the spacial resolution increases; below 5, there is a danger of being non-analytic. Default is 5
+    σ::Float64 # \sigma is the time/space trade-off. as sigma->0, the spacial resolution increases; below 5, there is a danger of being non-analytic. Default is 5.8
     κσ::Float64
     cσ::Float64
 end
@@ -127,6 +128,7 @@ end
 Morlet() = Morlet(5.8)
 class(::Morlet) = "Morlet"; name(::Morlet) = "morl"; vanishingmoments(::Morlet)=0
 const morl = Morlet()
+Base.show(io::IO, x::Morlet) = print(io,"Morlet mean $(x.σ)")
 
 # TODO: include a sombrero wavelet, which is dog2.
 
@@ -146,6 +148,7 @@ for (TYPE, NAMEBASE, MOMENTS, RANGE) in (
         name(::$TYPE{N}) where N = string($NAMEBASE,N)
         vanishingmoments(::$TYPE{N}) where N = -1
         order(::$TYPE{N}) where N = N # either order for Paul wavelets, or number of derivatives for DOGs
+        Base.show(io::IO, x::$TYPE{N}) where N = print(io,$NAMEBASE * " order $(N)")
     end
     for NUM in RANGE
         CONSTNAME = Symbol(NAMEBASE,NUM)
@@ -316,6 +319,15 @@ struct Dirac <: Average end
 struct Father <: Average end
 struct NoAve <: Average end
 
+function Base.show(io::IO, cf::Dirac)
+    print(io, "Dirac")
+end
+function Base.show(io::IO, cf::Father)
+    print(io, "Father Wavelet")
+end
+function Base.show(io::IO, cf::NoAve)
+    print(io, "No Averaging")
+end
 
 struct CFW{W, S, WT<:ContinuousWaveletClass, N} <: ContinuousWavelet{W, S}
     scalingFactor::S # the number of wavelets per octave, ie the scaling
@@ -405,22 +417,6 @@ function CFW(wave::WC, scalingFactor::S=8, boundary::T=WT.DEFAULT_BOUNDARY,
 end
 name(s::CFW) = name(s.waveType)
 
-function numScales(c::CFW, n::S) where S<:Integer
-    if isnan(nScales) || nScales<0
-        nScales = floor(Int,(log2(max(n,1))-2)*c.scalingFactor)-backOffset-c.averagingLength
-    end
-    return nScales
-end
-
-function getJ1(c,nScales, backOffset, n1)
-    if nScales<0 || isnan(nScales)
-        nScales = numScales(c, n1; backOffset=0)
-    end
-    J1= nScales+c.averagingLength-1
-    return J1
-end
-
-
 function eltypes(::CFW{W, T, WT, N}) where {W, T, WT, N}
     T
 end
@@ -430,6 +426,13 @@ end
 function waveletType(::CFW{W, T, WT, N}) where {W, T, WT, N}
     WT
 end
+
+function Base.show(io::IO, cf::CFW{W,S,WT,N}) where {W,S,WT,N}
+    print("CFW[$(cf.waveType), $(cf.averagingType), decreasing rate = "*
+          "$(cf.decreasing), aveLen = $(cf.averagingLength), frame = "*
+          "$(cf.frameBound), norm=$(cf.normalization)]")
+end
+
 
 
 """
@@ -556,21 +559,22 @@ end
   """
 function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
                                                                    W<:WT.WaveletBoundary}
-    n1 = n1+1
     nOctaves = log2(max(n1, 2)) - c.averagingLength
+
     # padding determines the actual number of elements
     if boundaryType(c)() == WT.padded
-        base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to n1
-        n= 2^(base2+1)
+        base2 = round(Int,log(n1 + 1)/log(2));   # power of 2 nearest to n1
+        n = 2^(base2+1)
+        n = n>>1 + 1
     elseif boundaryType(c)() == WT.DEFAULT_BOUNDARY
         # n1+1 rather than just n1 because this is going to be used in an rfft
         # for real data
-        n = n1
+        n = n1 + 1
     else
-        n= n1>>1 +1
+        n= n1>>1 + 1
     end
     # indicates whether we should keep a spot for the father wavelet
-    isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: NoAve)) ? 1 : 0 
+    isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: NoAve)) ? 1 : 0
 
 
 
@@ -584,7 +588,7 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
     # if the nOctaves is small enough there are none not covered by the
     # averaging, just use that
     if round(nOctaves) < 0
-        father = findAveraging(c,ω)
+        father = findAveraging(c,ω, c.averagingType)
         return father
     end
 
@@ -633,16 +637,19 @@ end
 
 # it's ok to just hand the total size, even if we're not transforming across
 # all dimensions
+function computeWavelets(Y::Tuple, c::CFW{W}; T=Float64) where {S<:Real,
+                                                     W<:WT.WaveletBoundary}
+    return computeWavelets(Y[1], c; T=T)
+end
 function computeWavelets(Y::AbstractArray{<:Integer}, c::CFW{W}; T=Float64) where {S<:Real,
                                                      W<:WT.WaveletBoundary}
-    return computeWavelets(Y[1], c; nScales=nScales, backOffset=backOffset, T=T)
+    return computeWavelets(Y[1], c, T=T)
 end
 
 # also ok to just hand the whole thing being transformed
 function computeWavelets(Y::AbstractArray{<:Number}, c::CFW{W}; T=Float64) where {S<:Real,
                                                      W<:WT.WaveletBoundary}
-    return computeWavelets(size(Y)[1], c; nScales=nScales,
-                           backOffset=backOffset, T=T)
+    return computeWavelets(size(Y)[1], c, T=T)
 end
 
 
@@ -696,16 +703,12 @@ wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_
 
 function wavelet(cw::T; s::S=8, boundary::WaveletBoundary=DEFAULT_BOUNDARY,
                  averagingType::A=Father(), averagingLength::Int = 2,
-                 frameBound::S=1, normalization::N=Inf, decreasing::S=1) where {T<:WT.ContinuousWaveletClass,
-                                                                                      A<:Average,
-                                                                                      S<:Real, N<:Real} 
+                 frameBound::S=1, normalization::N=Inf, decreasing::S=1) where {T<:ContinuousWaveletClass,
+                                                                                A<:Average,
+                                                                                S<:Real, N<:Real} 
     return CFW(cw,s, boundary, averagingType, averagingLength, S(frameBound),
                normalization, decreasing)
 end
-function wavelet(c::T,s::S, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {T<:WT.ContinuousWaveletClass, S<:Real}
-    CFW(c,s,boundary)
-end
-
 
 function wavelet(c::T, boundary::WaveletBoundary) where T<:WT.ContinuousWaveletClass
     CFW(c,8, boundary)
