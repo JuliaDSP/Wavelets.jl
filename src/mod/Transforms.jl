@@ -178,6 +178,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
     nScales = getNScales(n1, c)
     #....construct time series to analyze, pad if necessary
     x = reflect(Y, c)
+
     # check if the plans we were given are dummies or not
     if size(rfftPlan)==(1,)
         rfftPlan = plan_rfft(x, 1)
@@ -198,15 +199,18 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
     isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: WT.NoAve)) ? 1 : 0
 
     wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales + isAve);  # result array;
+    #println("size(wave)")
     # faster if we put the example index on the outside loop through all scales
     # and compute transform
     actuallyTransform!(wave, daughters,x̂, fftPlan, c.waveType, c.averagingType)
-    wave = reshape(wave, size(x,1), nScales + isAve, size(x)[2:end]...)
+    #wave = permutedims(wave, [1, ndims(wave), ])
+    wave = permutedims(wave, [1, ndims(wave), (2:(ndims(wave)-1))...])
+    #wave = reshape(wave, size(x,1), nScales + isAve, size(x)[2:end]...)
     ax = axes(wave)
     wave = wave[1:n1, ax[2:end]...] 
     
     if N==1
-        wave = dropdims(wave, dims=3)
+        wave = dropdims(wave, dims=2)
     end
 
     return wave
@@ -236,14 +240,6 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
     end
     n = size(x, 1)
 
-    x̂ = rfftPlan * x
-    
-    isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: WT.NoAve)) ? 1 : 0
-
-    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales + isAve);  # result array;
-    # faster if we put the example index on the outside loop through all scales
-    # and compute transform
-
     # If the vector isn't long enough to actually have any other scales, just
     # return the averaging. Or if there's only averaging
     if nScales <= 0 || size(daughters,2) == 1
@@ -251,13 +247,23 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
         nScales = 0
     end
 
+    x̂ = rfftPlan * x
+    
+    isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: WT.NoAve)) ? 1 : 0
+
+    wave = zeros(Complex{T}, size(x)..., nScales + isAve);  # result array;
+    # faster if we put the example index on the outside loop through all scales
+    # and compute transform
+
+
     actuallyTransform!(wave, daughters,x̂, rfftPlan, c.waveType)
-    wave = reshape(wave, size(x,1), nScales + isAve, size(x)[2:end]...)
+    #println("size(wave) = $(size(wave)), $(nScales + isAve), $(isAve)")
+    wave = permutedims(wave, [1, ndims(wave), (2:(ndims(wave)-1))...])
     ax = axes(wave)
     wave = wave[1:n1, ax[2:end]...] 
 
     if N==1
-        wave = dropdims(wave, dims=3)
+        wave = dropdims(wave, dims=2)
     end
 
     return real.(wave)

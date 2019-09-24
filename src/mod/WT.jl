@@ -537,6 +537,7 @@ function findAveraging(c::CFW{<:WaveletBoundary, T}, ω,
     averaging = zeros(T, size(ω))
     upperBound = getUpperBound(c, s)
     averaging[abs.(ω) .<= upperBound] .= 1
+    return averaging
 end
 
 function getUpperBound(c::CFW{W, T, <:Morlet, N}, s) where {W,T,N}
@@ -602,11 +603,12 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
                         curOctave .+ c.averagingLength .- 1))[1:end-1]
         for (curWave, s) in enumerate(sRange)
             daughters[:, curWave + nPrevWavelets] = Mother(c, s,
-                                                             nWaveletsInOctave[curOctave],
-                                                             ω)#[1:(n1+1)]
+                                                           nWaveletsInOctave[curOctave],
+                                                           ω)#[1:(n1+1)]
         end
     end
     if c.averagingLength > 0 # should we include the father?
+        #println("c = $(c), $(c.averagingType), size(ω)= $(size(ω))")
         daughters[:, 1] = findAveraging(c, ω, c.averagingType)#[1:(n1+1)]
     end
 
