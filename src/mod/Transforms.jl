@@ -199,18 +199,14 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
     isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: WT.NoAve)) ? 1 : 0
 
     wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales + isAve);  # result array;
-    #println("size(wave)")
     # faster if we put the example index on the outside loop through all scales
     # and compute transform
     actuallyTransform!(wave, daughters,x̂, fftPlan, c.waveType, c.averagingType)
-    #wave = permutedims(wave, [1, ndims(wave), ])
     wave = permutedims(wave, [1, ndims(wave), (2:(ndims(wave)-1))...])
-    #wave = reshape(wave, size(x,1), nScales + isAve, size(x)[2:end]...)
     ax = axes(wave)
     wave = wave[1:n1, ax[2:end]...] 
-    
     if N==1
-        wave = dropdims(wave, dims=2)
+        wave = dropdims(wave, dims=3)
     end
 
     return wave

@@ -554,10 +554,10 @@ end
 
 
 @doc """
-      computeWavelets(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN,
-      backOffset::Int=0) where {T<:Number, S<:Real, W<:WT.WaveletBoundary} 
-  just precomputes the wavelets used by transform c::CFW{W}. For details, see cwt
-  """
+      (daughters, ω) = computeWavelets(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN,
+                                       backOffset::Int=0) where {T<:Number, S<:Real, W<:WT.WaveletBoundary} 
+just precomputes the wavelets used by transform c::CFW{W}. For details, see cwt
+"""
 function computeWavelets(n1::Integer, c::CFW{W}; T=Float64) where {S<:Real,
                                                                    W<:WT.WaveletBoundary}
     nOctaves = log2(max(n1, 2)) - c.averagingLength
@@ -704,7 +704,7 @@ wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_
 
 
 function wavelet(cw::T; s::S=8, boundary::WaveletBoundary=DEFAULT_BOUNDARY,
-                 averagingType::A=Father(), averagingLength::Int = 2,
+                 averagingType::A=Father(), averagingLength::Int = 4,
                  frameBound::S=1, normalization::N=Inf, decreasing::S=1) where {T<:ContinuousWaveletClass,
                                                                                 A<:Average,
                                                                                 S<:Real, N<:Real} 
