@@ -397,9 +397,13 @@ function isvalidtree(x::AbstractVector, b::BitVector)
     end
     return true
 end
-# return a tree (BitVector)
-# s=:full, all nodes for first L levels equal 1, others 0
-# s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
+@doc """
+    maketree(x::Vector, s::Symbol=:full)
+    maketree(n::Int, L::Int, s::Symbol=:full)
+return a tree (BitVector)
+s=:full, all nodes for first L levels equal 1, others 0
+s=:dwt, nodes corresponding to a dwt for first L levels equal 1, others 0
+"""
 maketree(x::Vector, s::Symbol=:full) = maketree(length(x), maxtransformlevels(x), s)
 function maketree(n::Int, L::Int, s::Symbol=:full)
     ns = maxtransformlevels(n)
@@ -425,8 +429,11 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
     return b
 end
 
-# return scaling and wavelet functions and location vector, made from filter h
-# iterated with a cascade algorithm with N steps
+@doc """
+    makewavelet(h::AbstractVector, N::Integer=8)
+return scaling and wavelet functions and location vector, made from filter h
+iterated with a cascade algorithm with N steps
+"""
 makewavelet(h, arg...) = makewavelet(h.qmf, arg...)
 function makewavelet(h::AbstractVector, N::Integer=8)
     @assert N>=0
@@ -444,8 +451,16 @@ function makewavelet(h::AbstractVector, N::Integer=8)
     return rmul!(phi,sc/sqrt(2)), rmul!(psi,sc/sqrt(2)), range(0, stop=length(h)-1, length=length(psi))
 end
 
-# return a vector of test function values on [0,1), see
-#Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
+"""
+    testfunction(n::Int, ft::AbstractString)
+return a vector of test function values on [0,1), see Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
+
+Options for ft are
+* Blocks
+* Bumps
+* HeaviSine
+* Doppler
+"""
 function testfunction(n::Int, ft::AbstractString)
     @assert n >= 1
     f = Vector{Float64}(undef, n)

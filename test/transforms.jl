@@ -211,16 +211,6 @@ struct wunknownt <: DiscreteWavelet{Float64} end
     @test_throws EE wavelet("db2", "ppppp")
 end
 
-# continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
-for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
-    for s=1:2:8
-        for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
-            xc = rand(Float64,13)
-            yc = cwt(xc,wfc)
-            @test Array{ComplexF64,2}==typeof(yc) && size(yc) == (floor(Int64,log2(length(xc))*s)+1,13)
-        end
-    end
-end
 
 # 2-d
 sett = ((n,n),wf,L)
@@ -263,6 +253,32 @@ x = randn(8)
 y = copy(x)
 @test dwt!(x, wt) ≈ dwt(y, wt)
 
+# continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
+@testset "Continuous Wavelet Transform" begin
+    for xSize = (13, 16)
+        for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
+            for s=1:2:8
+                for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
+                    xc = rand(Float64,xSize)
+                    yc = cwt(xc,wfc)
+                    if typeof(wfc.waveType) <: Union{WT.Morlet, WT.Paul}
+                        @test Array{ComplexF64,2}==typeof(yc)
+                    else
+                        @test Array{Float64,2}==typeof(yc)
+                    end
+                    nOctaves= log2(xSize); 
+                    nWaveletsInOctave = reverse([max(1, round(Int, s / x^(1))) for
+                                                 x=1:round(Int, nOctaves)])
+                    totalWavelets = round(Int, sum(nWaveletsInOctave))
+                    @test size(yc) == (xSize, totalWavelets)
+                end
+            end
+        end
+    end
+end
+# TODO: test actual values
+#       test averaging types
+#            various extra dimensions
 
 
 @testset "WPT" begin
