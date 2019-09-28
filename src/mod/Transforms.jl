@@ -171,7 +171,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
     # vectors behave a bit strangely, so we reshape them
     if N==1
         Y= reshape(Y,(length(Y), 1))
-
+    end
     n1 = size(Y, 1);
     
     nScales = getNScales(n1, c)
@@ -258,7 +258,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
     wave = wave[1:n1, ax[2:end]...] 
 
     if N==1
-        wave = dropdims(wave, dims=2)
+        wave = dropdims(wave, dims=3)
     end
 
     return real.(wave)
@@ -327,7 +327,7 @@ end
 
 
 
-function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Number, S<:Real,
+function cwt(Y::AbstractArray{T}, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {T<:Number, S<:Real, V<: Real,
                                                                                         W<:WT.WaveletBoundary}
     daughters,ω = computeWavelets(size(Y, 1), c; J1=J1, dt=dt, s0=s0) 
     return cwt(Y, c, daughters)
@@ -339,7 +339,7 @@ period,scale, coi = caveats(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN) where {T<
 
 returns the period, the scales, and the cone of influence for the given wavelet transform. If you have sampling information, you will need to scale the vector scale appropriately by 1/δt, and the actual transform by δt^(1/2).
 """
-function caveats(n1, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {S<:Real, W<:WT.WaveletBoundary}
+function caveats(n1, c::CFW{W}; J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {S<:Real, W<:WT.WaveletBoundary, V <: Real}
     # don't alter scaling with sampling information if it doesn't exists
     fλ = (4*π) / (c.σ[1] + sqrt(2 + c.σ[1]^2))
     if isnan(dt) || (dt<0)

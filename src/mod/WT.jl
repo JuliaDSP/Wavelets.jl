@@ -516,10 +516,10 @@ function locationShift(c::CFW{W, T, <:Morlet, N}, s, ω) where {W,T,N}
 end
 
 function locationShift(c::CFW{W, T, <:Dog, N}, s, ω) where {W,T,N}
-        s0 = s*gamma((c.α+2)/2) / sqrt(gamma((c.α+1)/2) * (gamma((c.α+3)/2) -
-                                                           gamma((c.α+2)/2)))
-        μ = sqrt(2)*s0*gamma((c.α+2)/2)/gamma((c.α+1)/2)
-        ω_shift = ω .+ μ
+    s0 = s*gamma((c.α+2)/2) / sqrt(gamma((c.α+1)/2)) * (gamma((c.α+3)/2) -
+                                                        gamma((c.α+2)/2))
+    μ = sqrt(2)*s0*gamma((c.α+2)/2)/gamma((c.α+1)/2)
+    ω_shift = ω .+ μ
     return (s0, ω_shift)
 end
 
@@ -553,12 +553,12 @@ end
 
 
 @doc """
-      (daughters, ω) = computeWavelets(Y::AbstractArray{T}, c::CFW{W}; J1::S=NaN,
-                                       backOffset::Int=0) where {T<:Number, S<:Real, W<:WT.WaveletBoundary} 
+      (daughters, ω) = computeWavelets(n1::Integer, c::CFW{W}; T=Float64, J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {S<:Real,
+                                                                   W<:WT.WaveletBoundary, V}
 just precomputes the wavelets used by transform c::CFW{W}. For details, see cwt
 """
 function computeWavelets(n1::Integer, c::CFW{W}; T=Float64, J1::Int64=-1, dt::S=NaN, s0::V=NaN) where {S<:Real,
-                                                                   W<:WT.WaveletBoundary}
+                                                                   W<:WT.WaveletBoundary, V}
     # don't alter scaling with sampling information if it doesn't exists
     fλ = (4*π) / (c.σ[1] + sqrt(2 + c.σ[1]^2))
     if isnan(dt) || (dt<0)
@@ -569,14 +569,14 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64, J1::Int64=-1, dt::S=
         s0 = 2 * dt / fλ
     end
     # J1 is the total number of scales
-    if J1<0
-        J1 = Int(round(log2(n1 * dt / s0) * c.scalingFactor))
-    end
+    # if J1<0
+    #     J1 = Int(round(log2(n1 * dt / s0) * c.scalingFactor))
+    # end
 
     # scales from Mallat 1999
-    sj = s0 * 2.0.^(collect(0:J1)./c.scalingFactor)
+    #sj = s0 * 2.0.^(collect(0:J1)./c.scalingFactor)
     # Fourier equivalent frequencies
-    freqs = 1 ./ (fλ .* sj)
+    #freqs = 1 ./ (fλ .* sj)
 
     nOctaves = log2(max(n1, 2)) - c.averagingLength
 

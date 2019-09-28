@@ -213,6 +213,16 @@ end
 
 
 # 2-d
+function makedwt(ft::Type, n, wf, L)
+    x0 = rand(-5:5, n)
+    x = zeros(ft, n)
+    copyto!(x,x0)
+    return (x, dwt(x, wf, L))
+end
+
+n=8
+wf = wavelet(WT.db2)
+L = 2
 sett = ((n,n),wf,L)
 ft = Float64; x, y = makedwt(ft, sett...)
 @test Array{ft,2} == typeof(y) && length(y) == n*n
@@ -255,10 +265,10 @@ y = copy(x)
 
 # continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
 @testset "Continuous Wavelet Transform" begin
-    for xSize = (13, 16)
+    for xSize = (33, 67)
         for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
             for s=1:2:8
-                for wfc in (wavelet(WT.morl,s,boundary), wavelet(WT.dog0,s,boundary), wavelet(WT.paul4,s,boundary))
+                for wfc in (wavelet(WT.morl,s=s,boundary=boundary), wavelet(WT.dog0,s=s,boundary=boundary), wavelet(WT.paul4,s=s,boundary=boundary))
                     xc = rand(Float64,xSize)
                     yc = cwt(xc,wfc)
                     if typeof(wfc.waveType) <: Union{WT.Morlet, WT.Paul}
@@ -266,7 +276,8 @@ y = copy(x)
                     else
                         @test Array{Float64,2}==typeof(yc)
                     end
-                    nOctaves= log2(xSize); 
+                    println("s=$(s)")
+                    nOctaves= log2(xSize) - wfc.averagingLength; 
                     nWaveletsInOctave = reverse([max(1, round(Int, s / x^(1))) for
                                                  x=1:round(Int, nOctaves)])
                     totalWavelets = round(Int, sum(nWaveletsInOctave))
