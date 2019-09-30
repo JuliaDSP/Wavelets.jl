@@ -175,7 +175,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
     
     nScales = getNScales(n1, c)
     #....construct time series to analyze, pad if necessary
-    x = reflect(Y, c)
+    x = reflect(Y, boundaryType(c)()) #this function is defined below
 
     # check if the plans we were given are dummies or not
     if size(rfftPlan)==(1,)
@@ -196,7 +196,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan::Abs
 
     isAve = (c.averagingLength > 0 && !(typeof(c.averagingType) <: WT.NoAve)) ? 1 : 0
 
-    wave = zeros(Complex{T}, size(x, 1), size(x)[2:end]..., nScales + isAve);  # result array;
+    wave = zeros(Complex{T}, size(x)..., nScales + isAve);  # result array;
     # faster if we put the example index on the outside loop through all scales
     # and compute transform
     actuallyTransform!(wave, daughters,x̂, fftPlan, c.waveType, c.averagingType)
@@ -226,7 +226,7 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
     
     nScales = getNScales(n1, c)
     #....construct time series to analyze, pad if necessary
-    x = reflect(Y, c)
+    x = reflect(Y, boundaryType(c)())
 
     # check if the plans we were given are dummies or not
     if size(rfftPlan)==(1,)
@@ -251,7 +251,6 @@ function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
 
 
     actuallyTransform!(wave, daughters,x̂, rfftPlan, c.waveType)
-    #println("size(wave) = $(size(wave)), $(nScales + isAve), $(isAve)")
     wave = permutedims(wave, [1, ndims(wave), (2:(ndims(wave)-1))...])
     ax = axes(wave)
     wave = wave[1:n1, ax[2:end]...] 
@@ -273,12 +272,12 @@ function getNScales(n1, c)
     nScales = max(sum(nWaveletsInOctave), 0)
 end
 
-function reflect(Y, c)
+function reflect(Y, bt)
     n1 = size(Y, 1)
-    if boundaryType(c)() == WT.padded
+    if bt == WT.padded
         base2 = round(Int,log(n1)/log(2));   # power of 2 nearest to N
         x = cat(Y, zeros(2^(base2+1)-n1, size(Y)[2:end]...), dims=1)
-    elseif boundaryType(c)() == WT.DEFAULT_BOUNDARY
+    elseif bt == WT.DEFAULT_BOUNDARY
         x = cat(Y, reverse(Y,dims = 1), dims = 1)
     else
         x = Y
@@ -291,10 +290,11 @@ function actuallyTransform!(wave, daughters, x̂, fftPlan, analytic::Union{<:WT.
                             averagingType::Union{WT.Father, WT.Dirac})
     outer = axes(x̂)[2:end]
     n1 = size(x̂, 1)
+    isSourceOdd = mod(size(wave,1)+1,2)
     # the averaging function isn't analytic, so we need to do both positive and
     # negative frequencies
     tmpWave = x̂ .* daughters[:,1]
-    wave[(n1+1):end, outer..., 1] = reverse(conj.(tmpWave[2:end-1, outer...]),dims=1)
+    wave[(n1+1):end, outer..., 1] = reverse(conj.(tmpWave[2:end-isSourceOdd, outer...]),dims=1)
     wave[1:n1, outer..., 1] = tmpWave
     wave[:, outer..., 1] = fftPlan \ (wave[:, outer..., 1])  # wavelet transform
     for j in 2:size(daughters,2)
