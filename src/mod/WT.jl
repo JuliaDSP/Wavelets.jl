@@ -22,8 +22,8 @@ export
 using ..Util
 import Base.length
 using SpecialFunctions
-using Compat.LinearAlgebra
-using Compat: ComplexF64, undef, rmul!
+using LinearAlgebra
+
 
 # TYPE HIERARCHY
 

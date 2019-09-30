@@ -25,10 +25,8 @@ export
     LogEnergyEntropy
 using ..Util, ..WT, ..Transforms
 
-using Compat.LinearAlgebra
-using Compat.Statistics: median!
-using Compat: copyto!, Nothing, undef, rmul!
-import Compat
+using LinearAlgebra
+using Statistics
 
 # THRESHOLD TYPES AND FUNCTIONS
 

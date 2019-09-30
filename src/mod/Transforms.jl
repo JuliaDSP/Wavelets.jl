@@ -3,7 +3,6 @@ export  dwt, idwt, dwt!, idwt!,
         wpt, iwpt, wpt!, iwpt!,
         modwt, imodwt, cwt
 using ..Util, ..WT
-using Compat: AbstractRange, copyto!, undef
 using FFTW
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.

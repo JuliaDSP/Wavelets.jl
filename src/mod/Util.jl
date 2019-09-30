@@ -31,7 +31,7 @@ export  dyadicdetailindex,
 if VERSION >= v"0.7.0-DEV.986"
     using DSP: conv
 end
-using Compat.LinearAlgebra
+using LinearAlgebra
 using Compat: copyto!, undef, rmul!, range
 
 
