@@ -617,7 +617,7 @@ function computeWavelets(n1::Integer, c::CFW{W}; T=Float64, J1::Int64=-1, dt::S=
     for curOctave = 1:round(Int, nOctaves)
         nPrevWavelets = isAve + sum(nWaveletsInOctave[1:curOctave-1]) # the 1
                                                  # is for the averaging wavelet
-        sRange = (2 .^ (range(0, 1, length = nWaveletsInOctave[curOctave]+1) .+
+        sRange = (2 .^ (range(0, stop=1, length = nWaveletsInOctave[curOctave]+1) .+
                         curOctave .+ c.averagingLength .- 1))[1:end-1]
         for (curWave, s) in enumerate(sRange)
             daughters[:, curWave + nPrevWavelets] = Mother(c, s,
