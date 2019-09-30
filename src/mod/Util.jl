@@ -32,7 +32,6 @@ if VERSION >= v"0.7.0-DEV.986"
     using DSP: conv
 end
 using LinearAlgebra
-using Compat: copyto!, undef, rmul!, range
 
 
 # WAVELET INDEXING AND SIZES

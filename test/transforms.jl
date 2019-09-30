@@ -37,8 +37,8 @@
             @test (@vecnorm_eq_eps y2 ye2 stderr2)
             # a few bad cases have quite large norms
             if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
-                @test abs(Compat.norm(data)-Compat.norm(y)) < 1e-9
-                @test abs(Compat.norm(data2)-Compat.norm(y2)) < 1e-9
+                @test abs(norm(data)-norm(y)) < 1e-9
+                @test abs(norm(data2)-norm(y2)) < 1e-9
                 @test (@vecnorm_eq_eps idwt(y,wt) data stderr1*100)
                 @test (@vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100)
             end
