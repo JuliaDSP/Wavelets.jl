@@ -1,6 +1,7 @@
 __precompile__()
 
 module Wavelets
+using SpecialFunctions
 
 include("mod/Util.jl")
 include("mod/WT.jl")

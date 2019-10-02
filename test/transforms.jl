@@ -37,8 +37,8 @@
             @test (@vecnorm_eq_eps y2 ye2 stderr2)
             # a few bad cases have quite large norms
             if wname[i] != "Battle" && (wname[i] != "Coiflet" && wvm[i][num]==10)
-                @test abs(Compat.norm(data)-Compat.norm(y)) < 1e-9
-                @test abs(Compat.norm(data2)-Compat.norm(y2)) < 1e-9
+                @test abs(norm(data)-norm(y)) < 1e-9
+                @test abs(norm(data2)-norm(y2)) < 1e-9
                 @test (@vecnorm_eq_eps idwt(y,wt) data stderr1*100)
                 @test (@vecnorm_eq_eps idwt(y2,wt) data2 stderr2*100)
             end
@@ -210,6 +210,86 @@ struct wunknownt <: DiscreteWavelet{Float64} end
     @test_throws EE wavelet("db2asdsad")
     @test_throws EE wavelet("db2", "ppppp")
 end
+
+
+# 2-d
+function makedwt(ft::Type, n, wf, L)
+    x0 = rand(-5:5, n)
+    x = zeros(ft, n)
+    copyto!(x,x0)
+    return (x, dwt(x, wf, L))
+end
+
+n=8
+wf = wavelet(WT.db2)
+L = 2
+sett = ((n,n),wf,L)
+ft = Float64; x, y = makedwt(ft, sett...)
+@test Array{ft,2} == typeof(y) && length(y) == n*n
+ft = Float32; x, y = makedwt(ft, sett...)
+@test Array{ft,2} == typeof(y) && length(y) == n*n
+ft = Int64; x, y = makedwt(ft, sett...)
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
+ft = Int32; x, y = makedwt(ft, sett...)
+@test Array{typeof(float(x[1])),2} == typeof(y) && length(y) == n*n
+@test dwt(x,wf) ≈ dwt(float(x),wf)
+
+# non-Array type
+wt = wavelet(WT.db2, WT.Lifting)
+x = randn(16, 16)
+xs = view(copy(x), 1:16, 1:16)
+@test dwt(x,wt,2) ≈ dwt(xs,wt,2)
+
+# util functions
+for class in (WT.haar, WT.db2, WT.cdf97)
+    WT.class(class)
+    WT.name(class)
+    WT.vanishingmoments(class)
+end
+class = WT.db1
+wt = wavelet(class, WT.Filter)
+@test length(wt) == 2
+@test wt.qmf*0.7 ≈ WT.scale(wt, 0.7).qmf
+
+# inplace methods
+class = WT.db1
+wt = wavelet(class, WT.Filter)
+x = randn(8)
+y = similar(x)
+@test dwt!(y, x, wt) ≈ dwt(x, wt)
+
+wt = wavelet(class, WT.Lifting)
+x = randn(8)
+y = copy(x)
+@test dwt!(x, wt) ≈ dwt(y, wt)
+
+# continuous 1-d; different scalings should lead to different sizes, different boundary condtions shouldn't
+@testset "Continuous Wavelet Transform" begin
+    for xSize = (33, 67)
+        for boundary = (WT.DEFAULT_BOUNDARY, WT.padded, WT.NaivePer)
+            for s=1:2:8
+                for wfc in (wavelet(WT.morl,s=s,boundary=boundary), wavelet(WT.dog0,s=s,boundary=boundary), wavelet(WT.paul4,s=s,boundary=boundary))
+                    xc = rand(Float64,xSize)
+                    yc = cwt(xc,wfc)
+                    if typeof(wfc.waveType) <: Union{WT.Morlet, WT.Paul}
+                        @test Array{ComplexF64,2}==typeof(yc)
+                    else
+                        @test Array{Float64,2}==typeof(yc)
+                    end
+                    nOctaves= log2(xSize) - wfc.averagingLength; 
+                    nWaveletsInOctave = reverse([max(1, round(Int, s / x^(1))) for
+                                                 x=1:round(Int, nOctaves)])
+                    totalWavelets = round(Int, sum(nWaveletsInOctave))
+                    @test size(yc) == (xSize, totalWavelets+1)
+                end
+            end
+        end
+    end
+end
+# TODO: test actual values
+#       test averaging types
+#            various extra dimensions
+
 
 @testset "WPT" begin
     wf = wavelet(WT.db2, WT.Filter)
