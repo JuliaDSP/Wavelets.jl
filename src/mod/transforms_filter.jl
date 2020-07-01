@@ -82,7 +82,7 @@ function unsafe_dwt1level!(y::AbstractVector{<:Number}, x::AbstractVector{<:Numb
     return y
 end
 
-function dwt_transform_strided!(y::Array{<:Number}, x::AbstractArray{<:Number},
+function dwt_transform_strided!(y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
                             msub::Int, nsub::Int, stride::Int, idx_func::Function,
                             tmpvec::Vector{T}, tmpvec2::Vector{T},
                             filter::OrthoFilter, fw::Bool,
@@ -95,7 +95,7 @@ function dwt_transform_strided!(y::Array{<:Number}, x::AbstractArray{<:Number},
     end
 end
 
-function dwt_transform_cols!(y::Array{<:Number}, x::AbstractArray{<:Number},
+function dwt_transform_cols!(y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
                             msub::Int, nsub::Int, idx_func::Function,
                             tmpvec::Vector{T},
                             filter::OrthoFilter, fw::Bool,
