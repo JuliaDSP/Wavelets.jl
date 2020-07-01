@@ -363,7 +363,7 @@ function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVect
 end
 
 
-function stridedcopy!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where T<:Number
+function stridedcopy!(b::AbstractVector{<:Number}, a::AbstractArray{<:Number}, ia::Integer, inca::Integer, n::Integer)
     @assert ia+(n-1)*inca <= length(a) && n <= length(b)
 
     @inbounds for i = 1:n
@@ -371,7 +371,7 @@ function stridedcopy!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, in
     end
     return b
 end
-function stridedcopy!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where T<:Number
+function stridedcopy!(b::AbstractArray{<:Number}, ib::Integer, incb::Integer, a::AbstractVector{<:Number}, n::Integer)
     @assert ib+(n-1)*incb <= length(b) && n <= length(a)
 
     @inbounds for i = 1:n
