@@ -12,7 +12,7 @@
 # writes to y
 function _dwt!(y::AbstractVector{Ty}, x::AbstractVector{Tx},
                 filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
-	T = promote_type(Tx, Ty)
+    T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter)-1) # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
@@ -62,8 +62,8 @@ function _dwt!(y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
 end
 function unsafe_dwt1level!(y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
                             filter::OrthoFilter, fw::Bool,
-                            dcfilter::Vector{T}, scfilter::Vector{T},
-                            si::Vector{T}) where T<:Number
+                            dcfilter::FVector{T}, scfilter::FVector{T},
+                            si::FVector{T}) where T<:Number
     n = length(x)
     l = 1
     filtlen = length(filter)
@@ -84,9 +84,9 @@ end
 
 function dwt_transform_strided!(y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
                             msub::Int, nsub::Int, stride::Int, idx_func::Function,
-                            tmpvec::Vector{T}, tmpvec2::Vector{T},
+                            tmpvec::FVector{T}, tmpvec2::FVector{T},
                             filter::OrthoFilter, fw::Bool,
-                            dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}) where T<:Number
+                            dcfilter::FVector{T}, scfilter::FVector{T}, si::FVector{T}) where T<:Number
     for i=1:msub
         xi = idx_func(i)
         stridedcopy!(tmpvec, x, xi, stride, nsub)
@@ -97,9 +97,9 @@ end
 
 function dwt_transform_cols!(y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
                             msub::Int, nsub::Int, idx_func::Function,
-                            tmpvec::Vector{T},
+                            tmpvec::FVector{T},
                             filter::OrthoFilter, fw::Bool,
-                            dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}) where T<:Number
+                            dcfilter::FVector{T}, scfilter::FVector{T}, si::FVector{T}) where T<:Number
     for i=1:nsub
         xi = idx_func(i)
         copyto!(tmpvec, 1, x, xi, msub)
@@ -113,7 +113,7 @@ end
 function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
                 filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
     m, n = size(x)
-	T = promote_type(Tx, Ty)
+    T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter)-1)       # tmp filter vector
     tmpbuffer = Vector{T}(undef, max(n<<1, m))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
@@ -192,7 +192,7 @@ end
 function _dwt!(y::AbstractArray{Ty, 3}, x::AbstractArray{Tx, 3},
                filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
     m, n, d = size(x)
-	T = promote_type(Tx, Ty)
+    T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter)-1)            # tmp filter vector
     tmpbuffer = Vector{T}(undef, max(m, n<<1, d<<1))   # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
