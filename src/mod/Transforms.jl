@@ -11,6 +11,8 @@ const DWTArray = AbstractArray
 const WPTArray = AbstractVector
 const ValueType = Union{AbstractFloat, Complex}
 
+const FVector = StridedVector # e.g., work space vectors
+
 # DWT
 
 """
@@ -114,8 +116,8 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
         y = Array{T}(undef, size(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
-    function ($Xwt!)(y::DWTArray{T}, x::DWTArray{T}, filter::OrthoFilter,
-                    L::Integer=maxtransformlevels(x)) where T<:ValueType
+    function ($Xwt!)(y::DWTArray{<:ValueType}, x::DWTArray{<:ValueType}, filter::OrthoFilter,
+                    L::Integer=maxtransformlevels(x))
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     # lifting
@@ -485,7 +487,10 @@ end # for
 
 # Array with shared memory
 function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
-    return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
+   return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
+end
+function unsafe_vectorslice(A::StridedArray{T}, i::Int, n::Int) where T
+    return @view A[i:(i-1+n)]
 end
 
 # linear indices of start of rows/cols/planes

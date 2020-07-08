@@ -79,7 +79,9 @@ end
 # tmp: size at least n>>2
 # oopc: use oop computation, if false iy and incy are assumed to be 1
 # oopv: the out of place location
-function unsafe_dwt1level!(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool, oopv::Vector{T}, scheme::GLS, fw::Bool, stepseq::Vector, norm1::T, norm2::T, tmp::Vector{T}) where T<:Number
+function unsafe_dwt1level!(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool,
+    oopv::FVector{T}, scheme::GLS, fw::Bool, stepseq::FVector, norm1::T, norm2::T,
+    tmp::FVector{T}) where T<:Number
     if !oopc
         oopv = y
     end
