@@ -332,7 +332,7 @@ function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, 
         Lfw = (fw ? Lmax-L : L-1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw)-1
-        dx = unsafe_vectorslice(snew, 1, nj)
+        dx = first ? x : unsafe_vectorslice(snew, 1, nj) # dx will be overwritten if first
 
         while ix <= n
             if tree[treeind+k]
