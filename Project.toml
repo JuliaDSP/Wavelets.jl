@@ -1,6 +1,6 @@
 name = "Wavelets"
 uuid = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
-author = ["Gudmundur Adalsteinsson "]
+author = ["Gudmundur Adalsteinsson"]
 version = "0.9.2"
 
 [deps]
@@ -16,7 +16,7 @@ DSP = "0.5.1, 0.6"
 FFTW = "0.3, 1"
 Reexport = "0.2"
 SpecialFunctions = "0.7.1, 0.8, 0.9, 0.10"
-julia = " 1"
+julia = "1"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
