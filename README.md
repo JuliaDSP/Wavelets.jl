@@ -15,6 +15,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 * Plotting/visualization utilities for 1-D and 2-D signals.
 
+* For continuous wavelet transforms see the related package [ContinuousWavelets.jl](github.com/dsweber2/ContinuousWavelets.jl). 
 See license (MIT) in LICENSE.md.
 
 
@@ -273,5 +274,4 @@ To-do list
 * Define more lifting schemes
 * WPT in 2-D
 * Stationary transform
-* Continuous wavelets
 * Wavelet scalogram
