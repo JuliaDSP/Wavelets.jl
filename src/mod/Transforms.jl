@@ -186,13 +186,8 @@ end # for
 #idwtc(::AbstractArray, ::DiscreteWavelet)
 
 # SWT (stationary wavelet transform)
-#swt(::AbstractVector, ::DiscreteWavelet)
-#iswt(::AbstractVector, ::DiscreteWavelet)
-
-# CWT (continuous wavelet transform directly) TODO: direct if sufficiently small
-
-# TODO: continuous inverse, when defined
-#icwt(::AbstractVector, ::ContinuousWavelet)
+# swt(::AbstractVector, ::DiscreteWavelet)
+# iswt(::AbstractVector, ::DiscreteWavelet)
 
 # Int -> Float
 for Xwt in (:dwt, :idwt, :dwtc, :idwtc, :wpt, :iwpt)
