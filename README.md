@@ -273,9 +273,10 @@ To-do list
 * Define more lifting schemes
 * WPT in 2-D
 * Wavelet scalogram
+
 Related Wavelet Packages
 ----------------
-* The Continuous Wavelet Transform can be found in [ContinuousWavelets.jl](github.com/dsweber2/ContinuousWavelets.jl)
+* The Continuous Wavelet Transform can be found in [ContinuousWavelets.jl](https://github.com/UCD4IDS/ContinuousWavelets.jl)
 * [WaveletsExt](https://github.com/UCD4IDS/WaveletsExt.jl) which contains:
  - Stationary transform
  - Wavelet Packet Decomposition
