@@ -80,7 +80,7 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing
     scale01!(scs)
 
     # detail coefs
-    xts = x
+    xts = copy(x)
     wabs && (broadcast!(abs,xts,xts))
     xts[1:nsc,1:nsc,:] .= 0
     scale01!(xts)
