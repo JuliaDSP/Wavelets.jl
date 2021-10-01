@@ -17,6 +17,7 @@ A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transform
 
 See license (MIT) in LICENSE.md.
 
+Other related packages include [WaveletsExt.jl](https://github.com/UCD4IDS/WaveletsExt.jl) and [ContinuousWavelets.jl](https://github.com/UCD4IDS/ContinuousWavelets.jl).
 
 Usage
 ---------
