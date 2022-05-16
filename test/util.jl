@@ -22,6 +22,7 @@
     L = 2
     @test maxtransformlevels(n) == ndyadicscales(n)
     @test maxtransformlevels(n) == maxmodwttransformlevels(n)
+    @test maxtransformlevels(zeros(Int,24,12)) == 2
     @test detailindex(n, L, 3) == dyadicdetailindex(tl2dyadiclevel(n,L), 3)
     @test detailrange(n, L) == dyadicdetailrange(tl2dyadiclevel(n,L))
     @test detailn(n, L) == dyadicdetailn(tl2dyadiclevel(n,L))

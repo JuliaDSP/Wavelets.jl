@@ -47,7 +47,7 @@ detailrange(x::AbstractArray, l::Integer) = detailrange(size(x,1), l)
 detailn(arraysize::Integer, l::Integer) = round(Int, arraysize/2^l)
 detailn(x::AbstractArray, l::Integer) = detailn(size(x,1), l)
 # max levels to transform
-maxtransformlevels(x::AbstractArray) = maxtransformlevels(minimum(size(x)))
+maxtransformlevels(x::AbstractArray) = minimum(maxtransformlevels.(size(x)))
 function maxtransformlevels(arraysize::Integer)
     arraysize > 1 || return 0
     tl = 0
