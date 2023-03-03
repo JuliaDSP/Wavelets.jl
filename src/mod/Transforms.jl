@@ -214,7 +214,7 @@ end
 
 
 function cwt(Y::AbstractArray{T,N}, c::CFW{W, S, WaTy}, daughters, rfftPlan =
-             plan_rfft([1])) where {N, T<:Real, S<:Real, U<:Number,
+             plan_rfft([1])) where {N, T<:Real, S<:Real,
                                     W<:WT.WaveletBoundary, WaTy<:WT.Dog}
     # Dog doesn't need a fft because it is strictly real
     # TODO: complex input version of this
