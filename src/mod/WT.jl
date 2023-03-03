@@ -657,18 +657,15 @@ end
 
 # it's ok to just hand the total size, even if we're not transforming across
 # all dimensions
-function computeWavelets(Y::Tuple, c::CFW{W}; T=Float64) where {S<:Real,
-                                                     W<:WT.WaveletBoundary}
+function computeWavelets(Y::Tuple, c::CFW{W}; T=Float64) where {W<:WT.WaveletBoundary}
     return computeWavelets(Y[1], c; T=T)
 end
-function computeWavelets(Y::AbstractArray{<:Integer}, c::CFW{W}; T=Float64) where {S<:Real,
-                                                     W<:WT.WaveletBoundary}
+function computeWavelets(Y::AbstractArray{<:Integer}, c::CFW{W}; T=Float64) where {W<:WT.WaveletBoundary}
     return computeWavelets(Y[1], c, T=T)
 end
 
 # also ok to just hand the whole thing being transformed
-function computeWavelets(Y::AbstractArray{<:Number}, c::CFW{W}; T=Float64) where {S<:Real,
-                                                     W<:WT.WaveletBoundary}
+function computeWavelets(Y::AbstractArray{<:Number}, c::CFW{W}; T=Float64) where {W<:WT.WaveletBoundary}
     return computeWavelets(size(Y)[1], c, T=T)
 end
 
