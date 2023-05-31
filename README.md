@@ -273,6 +273,14 @@ To-do list
 * Boundary orthogonal wavelets
 * Define more lifting schemes
 * WPT in 2-D
-* Stationary transform
-* Continuous wavelets
 * Wavelet scalogram
+
+Related Wavelet Packages
+----------------
+* The Continuous Wavelet Transform can be found in [ContinuousWavelets.jl](https://github.com/UCD4IDS/ContinuousWavelets.jl)
+* [WaveletsExt](https://github.com/UCD4IDS/WaveletsExt.jl) which contains:
+ - Stationary transform
+ - Wavelet Packet Decomposition
+ - Autocorrelation Wavelet Transform
+ - Joint Best Basis and Least Statistically-Dependent Basis
+ - Local Discriminant Basis
