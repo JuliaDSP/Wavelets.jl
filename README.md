@@ -1,6 +1,6 @@
 <img src="wavelets.png" alt="Wavelets">
 
-[![Build Status](https://travis-ci.org/JuliaDSP/Wavelets.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/Wavelets.jl)
+[![Build Status](https://github.com/JuliaDSP/Wavelets.jl/workflows/CI/badge.svg)](https://github.com/JuliaDSP/Wavelets.jl/actions/workflows/CI.yml)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaDSP/Wavelets.jl?branch=master)
 
 A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-D, 2-D, 3-D, by filtering or lifting). The package includes discrete wavelet transforms, column-wise discrete wavelet transforms, and wavelet packet transforms.
@@ -278,7 +278,7 @@ To-do list
 Related Wavelet Packages
 ----------------
 * The Continuous Wavelet Transform can be found in [ContinuousWavelets.jl](https://github.com/UCD4IDS/ContinuousWavelets.jl)
-* [WaveletsExt](https://github.com/UCD4IDS/WaveletsExt.jl) which contains:
+* [WaveletsExt.jl](https://github.com/UCD4IDS/WaveletsExt.jl) which contains:
  - Stationary transform
  - Wavelet Packet Decomposition
  - Autocorrelation Wavelet Transform
