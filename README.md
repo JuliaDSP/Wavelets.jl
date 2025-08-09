@@ -1,4 +1,5 @@
-<img src="wavelets.png" alt="Wavelets">
+![Wavelets.jl logo](waveletsjl_logo_transparent.svg)
+
 
 [![Build Status](https://github.com/JuliaDSP/Wavelets.jl/workflows/CI/badge.svg)](https://github.com/JuliaDSP/Wavelets.jl/actions/workflows/CI.yml)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/Wavelets.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaDSP/Wavelets.jl?branch=master)
