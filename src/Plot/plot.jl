@@ -1,11 +1,7 @@
-module Plot
-export
-    wplotdots,
-    wplotim
-
-
-using ..Util, ..WT, ..Transforms
-using LinearAlgebra
+using ..Util
+using ..WT
+using ..Transforms
+using LinearAlgebra: norm
 
 # PLOTTING UTILITIES
 
@@ -146,7 +142,4 @@ function scale01!(z)
     # and in that case we return the unscaled z
     mi, ma = extrema(z)
     ma - mi ≈ 0 ? z : (z .- mi) ./ (ma - mi)
-end
-
-
 end

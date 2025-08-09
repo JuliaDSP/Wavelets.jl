@@ -1,3 +1,5 @@
+using ..WT
+
 
 """
 Perform one level of the maximal overlap discrete wavelet transform (MODWT) on
@@ -8,7 +10,7 @@ scaling filters.
 Returns a tuple `(v, w)` of the scaling and detail coefficients at level `j+1`.
 """
 function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
-        g::Array{S,1}) where {T <: Number, S <: Number}
+    g::Array{S,1}) where {T<:Number,S<:Number}
     N = length(v)
     L = length(h)
     v1 = zeros(T, N)
@@ -18,7 +20,7 @@ function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
         w1[t] = h[1] * v[k]
         v1[t] = g[1] * v[k]
         for n in 2:L
-            k -= 2^(j-1)
+            k -= 2^(j - 1)
             if k <= 0
                 k = mod1(k, N)
             end
@@ -44,7 +46,7 @@ coefficients for level j in column j.  The scaling coefficients are in the
 last (L+1th) column.
 """
 function modwt(x::AbstractVector{T}, wt::OrthoFilter,
-        L::Integer=maxmodwttransformlevels(x)) where T <: Number
+    L::Integer=maxmodwttransformlevels(x)) where {T<:Number}
     L <= maxmodwttransformlevels(x) ||
         throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
     L >= 1 || throw(ArgumentError("L must be >= 1"))
@@ -68,7 +70,7 @@ and returns a vector of the `j-1`th level scaling coefficients. The vectors
 `h` and `g` are the MODWT detail and scaling filters.
 """
 function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
-        h::Array{S,1}, g::Array{S,1}) where {T<:Number, S<:Number}
+    h::Array{S,1}, g::Array{S,1}) where {T<:Number,S<:Number}
     length(v) == length(w) ||
         throw(DimensionMismatch("Input array sizes must match"))
     length(h) == length(g) ||
@@ -80,7 +82,7 @@ function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
         k = t
         v0[t] = h[1] * w[k] + g[1] * v[k]
         for n in 2:L
-            k += 2^(j-1)
+            k += 2^(j - 1)
             if k > N
                 k = mod1(k, N)
             end
@@ -94,7 +96,7 @@ end
 Perform an inverse maximal overlap discrete wavelet transform (MODWT) of `xw`,
 the inverse of `modwt(x, wt, L)`.
 """
-function imodwt(xw::Array{T, 2}, wt::OrthoFilter) where T <: Number
+function imodwt(xw::Array{T,2}, wt::OrthoFilter) where {T<:Number}
     g, h = WT.makereverseqmfpair(wt)
     g /= sqrt(2)
     h /= sqrt(2)
