@@ -27,8 +27,13 @@ end
 
 # 1-D
 # inplace transform of y, no vector allocation
-function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
-    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))) where {T<:Number}
+function _dwt!(
+    y::AbstractVector{T},
+    scheme::GLS,
+    L::Integer,
+    fw::Bool,
+    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))
+) where {T<:Number}
 
     n = length(y)
     0 <= L ||
@@ -74,14 +79,28 @@ function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
     end
     return y
 end
-# 1-D, unsafe simple 1 level transform
-# inplace transform of y, no vector allocation
-# tmp: size at least n>>2
-# oopc: use oop computation, if false iy and incy are assumed to be 1
-# oopv: the out of place location
-function unsafe_dwt1level!(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool,
-    oopv::FVector{T}, scheme::GLS, fw::Bool, stepseq::FVector, norm1::T, norm2::T,
-    tmp::FVector{T}) where {T<:Number}
+
+"""
+1-D, unsafe simple 1 level transform
+inplace transform of y, no vector allocation
+tmp: size at least n>>2
+oopc: use oop computation, if false iy and incy are assumed to be 1
+oopv: the out of place location
+"""
+function unsafe_dwt1level!(
+    y::AbstractArray{T},
+    iy::Integer,
+    incy::Integer,
+    oopc::Bool,
+    oopv::FVector{T},
+    scheme::GLS,
+    fw::Bool,
+    stepseq::FVector,
+    norm1::T,
+    norm2::T,
+    tmp::FVector{T}
+) where {T<:Number}
+
     if !oopc
         oopv = y
     end
@@ -121,11 +140,21 @@ function unsafe_dwt1level!(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc
     return y
 end
 
-# 2-D
-# inplace transform of y, no vector allocation
-# tmp: size at least n>>2
-# tmpvec: size at least n
-function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))) where {T<:Number}
+
+"""
+2-D
+inplace transform of y, no vector allocation
+tmp: size at least n>>2
+tmpvec: size at least n
+"""
+function _dwt!(
+    y::Matrix{T},
+    scheme::GLS,
+    L::Integer,
+    fw::Bool,
+    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)),
+    tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))
+) where {T<:Number}
 
     n = size(y, 1)
     iscube(y) ||
@@ -193,11 +222,20 @@ function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=V
     return y
 end
 
-# 3-D
-# inplace transform of y, no vector allocation
-# tmp: size at least n>>2
-# tmpvec: size at least n
-function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))) where {T<:Number}
+"""
+3-D
+inplace transform of y, no vector allocation
+tmp: size at least n>>2
+tmpvec: size at least n
+"""
+function _dwt!(
+    y::Array{T,3},
+    scheme::GLS,
+    L::Integer,
+    fw::Bool,
+    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)),
+    tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))
+) where {T<:Number}
 
     n = size(y, 1)
     iscube(y) ||
@@ -280,7 +318,13 @@ end
 
 # WPT
 # 1-D
-function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))) where {T<:Number}
+function _wpt!(
+    y::AbstractVector{T},
+    scheme::GLS,
+    tree::BitVector,
+    fw::Bool,
+    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))
+) where {T<:Number}
 
     n = length(y)
     isvalidtree(y, tree) ||
@@ -329,8 +373,19 @@ function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) wher
     end
     return x
 end
-# out of place normalize from x to y
-function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
+
+"""
+Out of place normalize from `x` to `y`
+"""
+function normalize!(
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    half::Int,
+    ns::Int,
+    n1::T,
+    n2::T
+) where {T<:Number}
+
     for i = 1:half
         @inbounds y[i] = n1 * x[i]
     end
@@ -339,7 +394,19 @@ function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::I
     end
     return y
 end
-function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
+
+
+function normalize!(
+    y::AbstractArray{T},
+    iy::Int,
+    incy::Int,
+    x::AbstractVector{T},
+    half::Int,
+    ns::Int,
+    n1::T,
+    n2::T
+) where {T<:Number}
+
     for i = 1:half
         @inbounds y[iy+(i-1)*incy] = n1 * x[i]
     end
@@ -348,7 +415,19 @@ function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T
     end
     return y
 end
-function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
+
+
+function normalize!(
+    y::AbstractVector{T},
+    x::AbstractArray{T},
+    ix::Int,
+    incx::Int,
+    half::Int,
+    ns::Int,
+    n1::T,
+    n2::T
+) where {T<:Number}
+
     for i = 1:half
         @inbounds y[i] = n1 * x[ix+(i-1)*incx]
     end
@@ -358,15 +437,20 @@ function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::In
     return y
 end
 
-
 # predict and update lifting steps inplace on x, forward and backward
 # half: half of the length under consideration
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
+
 for step_type in (WT.PredictStep, WT.UpdateStep)
     @eval begin
-        function lift!(x::AbstractVector{T}, half::Int,
-            param::WT.LSStepParam{T}, steptype::$step_type) where {T<:Number}
+        function lift!(
+            x::AbstractVector{T},
+            half::Int,
+            param::WT.LSStepParam{T},
+            steptype::$step_type
+        ) where {T<:Number}
+
             lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
             coefs = param.coef
             # left boundary
@@ -437,8 +521,14 @@ end
 for (step_type, puxind) in ((WT.PredictStep, :(mod1(i + k - 1 + rhsis - half, half) + half)),
     (WT.UpdateStep, :(mod1(i + k - 1 + rhsis, half))))
     @eval begin
-        function lift_perboundary!(x::AbstractVector{T}, half::Int,
-            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where {T<:Number}
+        function lift_perboundary!(
+            x::AbstractVector{T},
+            half::Int,
+            c::Vector{T},
+            irange::AbstractRange,
+            rhsis::Int,
+            ::$step_type
+        ) where {T<:Number}
             nc = length(c)
             for i in irange
                 for k in 1:nc
@@ -452,7 +542,13 @@ end # for
 
 
 # main lift loop
-function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where {T<:Number}
+function lift_inbounds!(
+    x::AbstractVector{T},
+    c::Vector{T},
+    irange::AbstractRange,
+    rhsis::Int
+) where {T<:Number}
+
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]

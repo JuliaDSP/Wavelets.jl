@@ -78,10 +78,19 @@ function _dwt!(
     end
     return y
 end
-function unsafe_dwt1level!(y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
-    filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T},
-    si::FVector{T}) where {T<:Number}
+
+
+
+function unsafe_dwt1level!(
+    y::AbstractVector{<:Number},
+    x::AbstractVector{<:Number},
+    filter::OrthoFilter,
+    fw::Bool,
+    dcfilter::FVector{T},
+    scfilter::FVector{T},
+    si::FVector{T}
+) where {T<:Number}
+
     n = length(x)
     l = 1
     filtlen = length(filter)
@@ -100,11 +109,21 @@ function unsafe_dwt1level!(y::AbstractVector{<:Number}, x::AbstractVector{<:Numb
     return y
 end
 
-function dwt_transform_strided!(y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
-    msub::Int, nsub::Int, stride::Int, idx_func::Function,
-    tmpvec::FVector{T}, tmpvec2::FVector{T},
-    filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T}, si::FVector{T}) where {T<:Number}
+function dwt_transform_strided!(
+    y::AbstractArray{<:Number},
+    x::AbstractArray{<:Number},
+    msub::Int,
+    nsub::Int,
+    stride::Int,
+    idx_func::Function,
+    tmpvec::FVector{T},
+    tmpvec2::FVector{T},
+    filter::OrthoFilter,
+    fw::Bool,
+    dcfilter::FVector{T},
+    scfilter::FVector{T},
+    si::FVector{T}
+) where {T<:Number}
     for i = 1:msub
         xi = idx_func(i)
         stridedcopy!(tmpvec, x, xi, stride, nsub)
@@ -117,7 +136,11 @@ function dwt_transform_cols!(y::AbstractArray{<:Number}, x::AbstractArray{<:Numb
     msub::Int, nsub::Int, idx_func::Function,
     tmpvec::FVector{T},
     filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T}, si::FVector{T}) where {T<:Number}
+    dcfilter::FVector{T},
+    scfilter::FVector{T},
+    si::FVector{T}
+) where {T<:Number}
+
     for i = 1:nsub
         xi = idx_func(i)
         copyto!(tmpvec, 1, x, xi, msub)
@@ -128,8 +151,14 @@ end
 
 # 2-D
 # writes to y
-function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
-    filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number,Ty<:Number}
+function _dwt!(
+    y::AbstractMatrix{Ty},
+    x::AbstractMatrix{Tx},
+    filter::OrthoFilter,
+    L::Integer,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
+
     m, n = size(x)
     T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter) - 1)       # tmp filter vector
@@ -138,24 +167,44 @@ function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!(y::AbstractMatrix{<:Number}, x::AbstractMatrix{<:Number},
-    filter::OrthoFilter, L::Integer, fw::Bool,
-    dcfilter::Vector{T}, scfilter::Vector{T},
-    si::Vector{T}, tmpbuffer::Vector{T}) where {T<:Number}
+
+
+function _dwt!(
+    y::AbstractMatrix{<:Number},
+    x::AbstractMatrix{<:Number},
+    filter::OrthoFilter,
+    L::Integer,
+    fw::Bool,
+    dcfilter::Vector{T},
+    scfilter::Vector{T},
+    si::Vector{T},
+    tmpbuffer::Vector{T}
+) where {T<:Number}
 
     m, n = size(x)
-    size(x) == size(y) ||
-        throw(DimensionMismatch("in and out array size must match"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) ||
-        throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    y === x &&
-        throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= max(n << 1, m) ||
-        throw(ArgumentError("length of tmpbuffer incorrect"))
 
-    if L == 0
+    if size(x) ≠ size(y)
+        throw(DimensionMismatch("in and out array size must match"))
+    end
+
+    if L < 0
+        throw(ArgumentError("L must be positive"))
+    end
+
+    if !sufficientpoweroftwo(y, L)
+        throw(ArgumentError("size must have a sufficient power of 2 factor"))
+    end
+
+    if y === x
+        throw(ArgumentError("in array is out array"))
+    end
+
+    if length(tmpbuffer) < max(n << 1, m)
+        throw(ArgumentError("length of tmpbuffer incorrect"))
+    end
+
+
+    if iszero(L) == 0
         return copyto!(y, x)
     end
     row_stride = m
@@ -182,21 +231,25 @@ function _dwt!(y::AbstractMatrix{<:Number}, x::AbstractMatrix{<:Number},
         tmpvec3 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
         if fw
             # rows
-            dwt_transform_strided!(y, inputArray, msub, nsub, row_stride, row_idx_func,
+            dwt_transform_strided!(
+                y, inputArray, msub, nsub, row_stride, row_idx_func,
                 tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
-            dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
+            dwt_transform_cols!(
+                y, y, msub, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
+            dwt_transform_cols!(
+                y, inputArray, msub, nsub, col_idx_func,
                 tmpvec, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # rows
-            dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+            dwt_transform_strided!(
+                y, y, msub, nsub, row_stride, row_idx_func,
                 tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
         end
         msub = (fw ? msub >> 1 : msub << 1)
@@ -207,8 +260,14 @@ end
 
 # 3-D
 # writes to y
-function _dwt!(y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
-    filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number,Ty<:Number}
+function _dwt!(
+    y::AbstractArray{Ty,3},
+    x::AbstractArray{Tx,3},
+    filter::OrthoFilter,
+    L::Integer,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
+
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter) - 1)            # tmp filter vector
@@ -217,22 +276,41 @@ function _dwt!(y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
-function _dwt!(y::AbstractArray{<:Number,3}, x::AbstractArray{<:Number,3},
-    filter::OrthoFilter, L::Integer, fw::Bool,
-    dcfilter::Vector{T}, scfilter::Vector{T},
-    si::Vector{T}, tmpbuffer::Vector{T}) where {T<:Number}
+
+
+function _dwt!(
+    y::AbstractArray{<:Number,3},
+    x::AbstractArray{<:Number,3},
+    filter::OrthoFilter,
+    L::Integer,
+    fw::Bool,
+    dcfilter::Vector{T},
+    scfilter::Vector{T},
+    si::Vector{T},
+    tmpbuffer::Vector{T}
+) where {T<:Number}
 
     m, n, d = size(x)
-    size(x) == size(y) ||
+
+    if size(x) ≠ size(y)
         throw(DimensionMismatch("in and out array size must match"))
-    0 <= L ||
+    end
+
+    if L < 0
         throw(ArgumentError("L must be positive"))
-    sufficientpoweroftwo(y, L) ||
+    end
+
+    if !sufficientpoweroftwo(y, L)
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    y === x &&
+    end
+
+    if y === x
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n << 1 ||
+    end
+
+    if length(tmpbuffer) < (n << 1)
         throw(ArgumentError("length of tmpbuffer incorrect"))
+    end
 
     if L == 0
         return copyto!(y, x)
@@ -265,7 +343,8 @@ function _dwt!(y::AbstractArray{<:Number,3}, x::AbstractArray{<:Number,3},
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
-                dwt_transform_strided!(y, inputArray, msub, dsub, plane_stride, plane_idx_func,
+                dwt_transform_strided!(
+                    y, inputArray, msub, dsub, plane_stride, plane_idx_func,
                     tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
@@ -273,20 +352,23 @@ function _dwt!(y::AbstractArray{<:Number,3}, x::AbstractArray{<:Number,3},
             # rows
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
-                dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+                dwt_transform_strided!(
+                    y, y, msub, nsub, row_stride, row_idx_func,
                     tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
             end
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
+                dwt_transform_cols!(
+                    y, y, msub, nsub, col_idx_func,
                     tmpcol, filter, fw, dcfilter, scfilter, si)
             end
         else
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
+                dwt_transform_cols!(
+                    y, inputArray, msub, nsub, col_idx_func,
                     tmpcol, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
@@ -294,13 +376,15 @@ function _dwt!(y::AbstractArray{<:Number,3}, x::AbstractArray{<:Number,3},
             # rows
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
-                dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+                dwt_transform_strided!(
+                    y, y, msub, nsub, row_stride, row_idx_func,
                     tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
             end
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
-                dwt_transform_strided!(y, y, msub, dsub, plane_stride, plane_idx_func,
+                dwt_transform_strided!(
+                    y, y, msub, dsub, plane_stride, plane_idx_func,
                     tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
             end
         end
@@ -316,15 +400,35 @@ end
 # WPT
 # 1-D
 # writes to y
-function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool) where {T<:Number}
+function _wpt!(
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    filter::OrthoFilter,
+    tree::BitVector,
+    fw::Bool
+) where {T<:Number}
+
     si = Vector{T}(undef, length(filter) - 1)
     ns = ifelse(fw, length(x) >> 1, length(x))
     snew = Vector{T}(undef, ns)
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
-    return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
+    return _wpt!(
+        y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
 end
-function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T}) where {T<:Number}
+
+
+function _wpt!(
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    filter::OrthoFilter,
+    tree::BitVector,
+    fw::Bool,
+    dcfilter::Vector{T},
+    scfilter::Vector{T},
+    si::Vector{T},
+    snew::Vector{T}
+) where {T<:Number}
 
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
@@ -350,7 +454,8 @@ function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, 
         Lfw = (fw ? Lmax - L : L - 1)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw) - 1
-        dx = first ? x : unsafe_vectorslice(snew, 1, nj) # dx will be overwritten if first
+        # dx will be overwritten if first
+        dx = first ? x : unsafe_vectorslice(snew, 1, nj)
 
         while ix <= n
             if tree[treeind+k]
@@ -394,18 +499,31 @@ macro filtermainloopzero(si, silen)
     end
 end
 
-# periodic filter and downsampling (by 2)
-# apply f to x[ix:ix+nx-1] and write to out[iout:iout+nout-1]
-# f : filter
-# si: tmp array of length 1 less than f
-# out : result gets written to out[iout:iout+nout-1]
-# x : filter convolved with x[ix:ix+nx-1], where nx=nout*2 (shifted by shift)
-# ss : shift downsampling
-# based on Base.filt
-function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
-    out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
-    x::AbstractVector{<:Number}, ix::Integer,
-    shift::Integer=0, ss::Bool=false) where {T<:Number}
+
+"""
+#### Periodic filter and downsampling (by 2)
+Apply f to x[ix:ix+nx-1] and write to out[iout:iout+nout-1]
+
+- f : filter
+- si: tmp array of length 1 less than f
+- out : result gets written to out[iout:iout+nout-1]
+- x : filter convolved with x[ix:ix+nx-1], where nx=nout*2 (shifted by shift)
+- ss : shift downsampling
+
+based on Base.filt
+"""
+function filtdown!(
+    f::AbstractVector{T},
+    si::AbstractVector{T},
+    out::AbstractVector{<:Number},
+    iout::Integer,
+    nout::Integer,
+    x::AbstractVector{<:Number},
+    ix::Integer,
+    shift::Integer=0,
+    ss::Bool=false
+) where {T<:Number}
+
     nx = nout << 1
     silen = length(si)
     flen = length(f)
@@ -449,8 +567,11 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
 
     return nothing
 end
-# find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
-# where mod(i-1+shift, nx) + ix == i + ixsh
+
+"""
+Find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
+where mod(i-1+shift, nx) + ix == i + ixsh
+"""
 function splitdownrangeper(istart, ix, nx, shift)
     inxi = 0
     ixsh = -1 + shift + ix
@@ -474,18 +595,31 @@ function splitdownrangeper(istart, ix, nx, shift)
 end
 
 
-# periodic filter and upsampling (by 2)
-# apply f to x[ix:ix+nx-1] upsampled and write to out[iout:iout+nout-1]
-# f : filter
-# si: tmp array of length 1 less than f
-# out : result gets written to out[iout:iout+nout-1]
-# x : filter convolved with x[ix:ix+nx-1] upsampled, where nout==nx*2 (then shifted by shift)
-# ss : shift upsampling
-# based on Base.filt
-function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
-    out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
-    x::AbstractVector{<:Number}, ix::Integer,
-    shift::Integer=0, ss::Bool=false) where {T<:Number}
+"""
+#### Periodic filter and upsampling (by 2)
+Apply f to x[ix:ix+nx-1] upsampled and write to out[iout:iout+nout-1]
+- `f`   : filter
+- `si`  : tmp array of length 1 less than f
+- `out` : result gets written to out[iout:iout+nout-1]
+- `x`   : filter convolved with x[ix:ix+nx-1] upsampled,
+          where nout==nx*2 (then shifted by shift)
+- `ss`  : shift upsampling
+
+based on Base.filt
+"""
+function filtup!(
+    add2out::Bool,
+    f::Vector{T},
+    si::Vector{T},
+    out::AbstractVector{<:Number},
+    iout::Integer,
+    nout::Integer,
+    x::AbstractVector{<:Number},
+    ix::Integer,
+    shift::Integer=0,
+    ss::Bool=false
+) where {T<:Number}
+
     nx = nout >> 1
     silen = length(si)
     flen = length(f)
@@ -507,7 +641,7 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
                 @filtermainloopzero(si, silen)
             else
                 # periodic in the range [ix:ix+nx-1]
-                xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix    #(i-1)>>1 increm. every other
+                xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix # (i-1)>>1 increm. every other
                 xatind = x[xindex]
                 @filtermainloop(si, silen, f, xatind)
             end
@@ -557,8 +691,11 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     return nothing
 end
-# find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
-# where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
+
+"""
+Find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
+where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
+"""
 function splituprangeper(istart, ix, nx, nout, shift)
     inxi = 0
     ixsh = shift >> 1 + ix

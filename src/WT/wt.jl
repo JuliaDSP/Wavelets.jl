@@ -1,7 +1,7 @@
 using ..Util
 import Base.length
 using SpecialFunctions
-using LinearAlgebra: rmul!, norm
+using LinearAlgebra
 
 
 # TYPE HIERARCHY
@@ -141,7 +141,11 @@ struct OrthoFilter{T<:WaveletBoundary} <: FilterWavelet{T}
     name::String                 # filter short name
 end
 
-function OrthoFilter(w::WC, ::T=DEFAULT_BOUNDARY) where {WC<:OrthoWaveletClass,T<:WaveletBoundary}
+function OrthoFilter(
+    w::WC,
+    ::T=DEFAULT_BOUNDARY
+) where {WC<:OrthoWaveletClass,T<:WaveletBoundary}
+
     name = WT.name(w)
     if WC <: Daubechies
         qmf = daubechies(vanishingmoments(w))
@@ -158,18 +162,32 @@ qmf(f::OrthoFilter) = f.qmf
 name(f::OrthoFilter) = f.name
 
 """Scale filter by scalar."""
-function scale(f::OrthoFilter{T}, a::Number) where {T<:WaveletBoundary}
+function scale(
+    f::OrthoFilter{T},
+    a::Number
+) where {T<:WaveletBoundary}
+
     return OrthoFilter{T}(f.qmf .* a, f.name)
 end
 
 """Quadrature mirror filter pair."""
-function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+function makeqmfpair(
+    f::OrthoFilter,
+    fw::Bool=true,
+    T::Type=eltype(qmf(f))
+)
+
     scfilter, dcfilter = makereverseqmfpair(f, fw, T)
     return reverse(scfilter), reverse(dcfilter)
 end
 
 """Reversed quadrature mirror filter pair."""
-function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
+function makereverseqmfpair(
+    f::OrthoFilter,
+    fw::Bool=true,
+    T::Type=eltype(qmf(f))
+)
+
     h = convert(Vector{T}, qmf(f))
     if fw
         scfilter = reverse(h)
@@ -227,7 +245,11 @@ struct GLS{T<:WaveletBoundary} <: LSWavelet{T}
     name::String            # name of scheme
 end
 
-function GLS(w::WC, ::T=DEFAULT_BOUNDARY) where {WC<:WaveletClass,T<:WaveletBoundary}
+function GLS(
+    w::WC,
+    ::T=DEFAULT_BOUNDARY
+) where {WC<:WaveletClass,T<:WaveletBoundary}
+
     name = WT.name(w)
     schemedef = get(SCHEMES, name, nothing)
     schemedef == nothing && throw(ArgumentError("scheme not found"))
@@ -258,12 +280,31 @@ wavelet(WT.morl,4)
 """
 function wavelet end
 
-wavelet(c::K, boundary::WaveletBoundary=DEFAULT_BOUNDARY) where {K<:Union{BiOrthoWaveletClass,OrthoWaveletClass}} = wavelet(c, Filter, boundary)
-wavelet(c::OrthoWaveletClass, t::FilterTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = OrthoFilter(c, boundary)
-wavelet(c::WaveletClass, t::LiftingTransform, boundary::WaveletBoundary=DEFAULT_BOUNDARY) = GLS(c, boundary)
+function wavelet(
+    c::K,
+    boundary::WaveletBoundary=DEFAULT_BOUNDARY
+) where {K<:Union{BiOrthoWaveletClass,OrthoWaveletClass}}
+
+    return wavelet(c, Filter, boundary)
+end
 
 
-# ------------------------------------------------------------
+function wavelet(
+    c::OrthoWaveletClass,
+    t::FilterTransform,
+    boundary::WaveletBoundary=DEFAULT_BOUNDARY)
+
+    return OrthoFilter(c, boundary)
+end
+
+function wavelet(
+    c::WaveletClass,
+    t::LiftingTransform,
+    boundary::WaveletBoundary=DEFAULT_BOUNDARY
+)
+    return GLS(c, boundary)
+end
+
 
 # Compute filters from the Daubechies class
 # N is the number of zeros at -1
@@ -348,7 +389,7 @@ function vieta(R::AbstractVector)
     Ci::ComplexF64 = 0
     Cig::ComplexF64 = 0
 
-    @inbounds for k = 1:n
+    @inbounds for k in 1:n
         Ci = C[1]
         for i = 1:k
             Cig = C[i+1]
@@ -366,7 +407,8 @@ end
 # sources:
 # http://statweb.stanford.edu/~wavelab/ (Orthogonal/MakeONFilter.m)
 # http://www.mathworks.com/matlabcentral/fileexchange/5502-filter-coefficients-to-popular-wavelets
-### https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
+# https://github.com/nigma/pywt/blob/master/src/wavelets_coeffs.template.h
+
 # name => qmf
 const FILTERS = Dict{String,Vector{Float64}}(
     # Haar filter

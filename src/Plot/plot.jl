@@ -11,7 +11,9 @@ Return levels and detail coefficient centers on the interval [0,r) above (>=) th
 as tuple (d,l).
 Parameters:
 - x: AbstractVector - input vector
+
 - t: Real - threshold value
+
 - r: Real - range value
 """
 function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
@@ -27,9 +29,9 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     k = 1
 
     @inbounds for j in 0:J-1
-        Δ = 1 << (J - j)               # Δ=2^(J-j) : step size at level j
-        start = Δ >> 1                 # start= Δ÷2 = 2^(J-j-1)
-        rind = start:Δ:n               # indices for detail coefficients
+        Δ = 1 << (J - j)                 # Δ=2^(J-j) : step size at level j
+        start = Δ >> 1                   # start= Δ÷2 = 2^(J-j-1)
+        rind = start:Δ:n                 # indices for detail coefficients
         for i in 1:dyadicdetailn(j)
             if x[dyadicdetailindex(j, i)] |> abs ≥ t
                 d[k] = p[rind[i]]
@@ -67,12 +69,17 @@ end
 Return an array of scaled detail coefficients and unscaled scaling coefficients
 ready to be plotted as an image.
 Parameters:
-    x::AbstractArray: The input array.
-    L::Integer: The number of levels.
-    wt::Union{DiscreteWavelet,Nothing}=nothing: The wavelet type.
-    wabs::Bool=true: Whether to take the absolute value of the coefficients.
-    power::Real=0.7: The power to raise the coefficients to.
-    pnorm::Real=1.0: The p-norm to use.
+    - x::AbstractArray: The input array.
+
+    - L::Integer: The number of levels.
+
+    - wt::Union{DiscreteWavelet,Nothing}=nothing: The wavelet type.
+
+    - wabs::Bool=true: Whether to take the absolute value of the coefficients.
+
+    - power::Real=0.7: The power to raise the coefficients to.
+
+    - pnorm::Real=1.0: The p-norm to use.
 """
 function wplotim(
     x::AbstractArray,
@@ -80,7 +87,8 @@ function wplotim(
     wt::Union{DiscreteWavelet,Nothing}=nothing;
     wabs::Bool=true,
     power::Real=0.7,
-    pnorm::Real=1.0)
+    pnorm::Real=1.0
+)
 
     dim = ndims(x)
     n = size(x, 1)

@@ -4,12 +4,26 @@ using LinearAlgebra: norm
 
 # BASIS FUNCTIONS
 
-# Matching Pursuit
-# see: Mallat (2009) p.642 "A wavelet tour of signal processing"
-# find sparse vector y such that ||x - f(y)|| < tol approximately
-# f is the operation of a M by N (M<N) dictionary/matrix
-# ft is a function defining the transpose of f
-function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real, nmax::Int=-1, oop::Bool=false, N::Int=0)
+
+"""
+### Matching Pursuit
+see: _Mallat (2009) p.642 "A wavelet tour of signal processing"_
+
+Find sparse vector y such that ||x - f(y)|| < tol approximately
+
+- `f` is the operation of a M by N (M<N) dictionary/matrix
+- `ft` is a function defining the transpose of `f`
+"""
+function matchingpursuit(
+    x::AbstractVector,
+    f::Function,
+    ft::Function,
+    tol::Real,
+    nmax::Int=-1,
+    oop::Bool=false,
+    N::Int=0
+)
+
     @assert nmax >= -1
     @assert tol > 0
     r = x
@@ -39,13 +53,15 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
         spat[i] = 0
 
         # update residual, r = r - aphi
-        broadcast!(-, r, r, aphi)
+        r = r .- aphi
 
         y[i] += ftr[i]
         n += 1
     end
     return y
 end
+
+
 function findmaxabs(x::AbstractVector)
     m = abs(x[1])
     k = 1

@@ -19,8 +19,11 @@ function isdyadic(x::AbstractArray)
 end
 isdyadic(n::Integer) = (n == 2^(ndyadicscales(n)))
 
-# To perform a level L transform, the size of the signal in each dimension
-# must have 2^L as a factor.
+
+"""
+To perform a level L transform, the size of the signal in each dimension
+must have 2^L as a factor.
+"""
 function sufficientpoweroftwo(x::AbstractArray, L::Integer)
     for i = 1:ndims(x)
         sufficientpoweroftwo(size(x, i), L) || return false
@@ -57,7 +60,8 @@ function downsample(x::AbstractVector, sw::Int=0)
     return y
 end
 
-# count coefficients above threshold t (>=), excluding coefficients in levels < level
+# count coefficients above threshold t (>=)
+# excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
 function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
     @assert level >= -1
@@ -82,13 +86,17 @@ function wcount(x::AbstractArray, t::Real=0)
     return c
 end
 
-# inplace circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
+# inplace circular shift of vector by shift,
+# such that anew[i]=aold[i-shift] (mod length(a))
 function circshift!(a::AbstractVector, shift::Integer)
     atype = typeof(a)
     s = length(a)
     shift = mod(shift, s)
-    shift == 0 && return a
-    shift = ifelse(s >> 1 < shift, shift - s, shift)  # shift a smaller distance if possible
+    if iszero(shift)
+        return a
+    end
+    # shift a smaller distance if possible
+    shift = ifelse(s >> 1 < shift, shift - s, shift)
     if shift < 0
         tmp = a[1:-shift]
         for i = 1:s+shift
@@ -104,14 +112,28 @@ function circshift!(a::AbstractVector, shift::Integer)
     end
     return a::atype
 end
-# out of place circular shift of vector by shift, such that b[i]=a[i-shift] (mod length(a))
-function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
+
+"""
+Out of place circular shift of vector by shift,
+such that b[i]=a[i-shift] (mod length(a))
+"""
+function circshift!(
+    b::AbstractVector,
+    a::AbstractVector,
+    shift::Integer
+)
+
     @assert length(a) == length(b)
     atype = typeof(a)
     s = length(a)
     shift = mod(shift, s)
-    shift == 0 && return copyto!(b, a)
-    shift = ifelse(s >> 1 < shift, shift - s, shift)  # shift a smaller distance if possible
+    if iszero(shift)
+        return copyto!(b, a)
+    end
+
+    # shift a smaller distance if possible
+    shift = ifelse(s >> 1 < shift, shift - s, shift)
+
     if shift < 0
         for i = 1:s+shift
             @inbounds b[i] = a[i-shift]
@@ -133,7 +155,10 @@ function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
 end
 
 # put odd elements into first half, even into second half
-function split!(a::AbstractVector{T}) where {T<:Number}
+function split!(
+    a::AbstractVector{T}
+) where {T<:Number}
+
     n = length(a)
     nt = n >> 2 + (n >> 1) % 2
     tmp = Vector{T}(undef, nt)
@@ -142,7 +167,12 @@ function split!(a::AbstractVector{T}) where {T<:Number}
 end
 
 # split only the range 1:n
-function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where {T<:Number}
+function split!(
+    a::AbstractVector{T},
+    n::Integer,
+    tmp::Vector{T}
+) where {T<:Number}
+
     @assert n <= length(a)
     @assert n % 2 == 0
     n == 2 && return a
@@ -163,7 +193,12 @@ function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where {T<:Numb
 end
 
 # out of place split from a to b, only the range 1:n
-function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where {T<:Number}
+function split!(
+    b::AbstractVector{T},
+    a::AbstractVector{T},
+    n::Integer
+) where {T<:Number}
+
     @assert n <= length(a) && n <= length(b)
     @assert n % 2 == 0
     if n == 2
@@ -182,8 +217,16 @@ function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where {T
 
     return b
 end
-# out of place split from a to b, only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
-function split!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where {T<:Number}
+# out of place split from a to b,
+# only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
+function split!(
+    b::AbstractVector{T},
+    a::AbstractArray{T},
+    ia::Integer,
+    inca::Integer,
+    n::Integer
+) where {T<:Number}
+
     @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
     @assert n % 2 == 0
     if n == 2
@@ -216,7 +259,12 @@ function merge!(a::AbstractVector{T}) where {T<:Number}
 end
 
 # merge only the range 1:n
-function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where {T<:Number}
+function merge!(
+    a::AbstractVector{T},
+    n::Integer,
+    tmp::Vector{T}
+) where {T<:Number}
+
     @assert n <= length(a)
     @assert n % 2 == 0
     n == 2 && return a
@@ -237,7 +285,12 @@ function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where {T<:Numb
 end
 
 # out of place merge from a to b, only the range 1:n
-function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where {T<:Number}
+function merge!(
+    b::AbstractVector{T},
+    a::AbstractVector{T},
+    n::Integer
+) where {T<:Number}
+
     @assert n <= length(a) && n <= length(b)
     @assert n % 2 == 0
     if n == 2
@@ -256,8 +309,16 @@ function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where {T
 
     return b
 end
-# out of place merge from a to b, only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
-function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where {T<:Number}
+# out of place merge from a to b,
+# only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
+function merge!(
+    b::AbstractArray{T},
+    ib::Integer,
+    incb::Integer,
+    a::AbstractVector{T},
+    n::Integer
+) where {T<:Number}
+
     @assert n <= length(a) && ib + (n - 1) * incb <= length(b)
     @assert n % 2 == 0
     if n == 2
@@ -281,15 +342,28 @@ function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVect
 end
 
 
-function stridedcopy!(b::AbstractVector{<:Number}, a::AbstractArray{<:Number}, ia::Integer, inca::Integer, n::Integer)
+function stridedcopy!(
+    b::AbstractVector{<:Number},
+    a::AbstractArray{<:Number},
+    ia::Integer,
+    inca::Integer,
+    n::Integer
+)
     @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
-
     @inbounds for i = 1:n
         b[i] = a[ia+(i-1)*inca]
     end
     return b
 end
-function stridedcopy!(b::AbstractArray{<:Number}, ib::Integer, incb::Integer, a::AbstractVector{<:Number}, n::Integer)
+
+
+function stridedcopy!(
+    b::AbstractArray{<:Number},
+    ib::Integer,
+    incb::Integer,
+    a::AbstractVector{<:Number}, n::Integer
+)
+
     @assert ib + (n - 1) * incb <= length(b) && n <= length(a)
 
     @inbounds for i = 1:n
@@ -298,9 +372,11 @@ function stridedcopy!(b::AbstractArray{<:Number}, ib::Integer, incb::Integer, a:
     return b
 end
 
-# wavelet packet transforms WPT
-# valid if 0 nodes have 0 children and length+1 is dyadic
-# and has a nodes corresponding every transform level
+"""
+Wavelet packet transforms WPT
+valid if 0 nodes have 0 children and length+1 is dyadic
+and has a nodes corresponding every transform level
+"""
 function isvalidtree(x::AbstractVector, b::BitVector)
     ns = maxtransformlevels(x)
     nb = length(b)
@@ -314,6 +390,9 @@ function isvalidtree(x::AbstractVector, b::BitVector)
     end
     return true
 end
+
+
+
 @doc """
     maketree(x::Vector, s::Symbol=:full)
     maketree(n::Int, L::Int, s::Symbol=:full)
@@ -364,18 +443,29 @@ function makewavelet(h::AbstractVector, N::Integer=8)
     end
     phi = phi[1:end-2^(N)+1]
     psi = psi[1:end-2^(N)+1]
-    return rmul!(phi, sc / sqrt(2)), rmul!(psi, sc / sqrt(2)), range(0, stop=length(h) - 1, length=length(psi))
+
+    return rmul!(
+        phi, sc / sqrt(2)),
+    rmul!(psi, sc / sqrt(2)),
+    range(0, stop=length(h) - 1, length=length(psi)
+    )
 end
 
 """
-    testfunction(n::Int, ft::AbstractString)
-return a vector of test function values on [0,1), see Donoho, D.L.; I.M. Johnstone (1994), "Ideal spatial adaptation by wavelet shrinkage," Biometrika, vol. 81, pp. 425–455.
+    `testfunction(n::Int, ft::AbstractString)`
+
+Return a vector of test function values on [0,1)
+
+see Donoho, D.L.; I.M. Johnstone (1994),
+"Ideal spatial adaptation by wavelet shrinkage,"
+Biometrika, vol. 81, pp. 425–455.
 
 Options for ft are
-* Blocks
-* Bumps
-* HeaviSine
-* Doppler
+- `Blocks`
+- `Bumps`
+- `HeaviSine`
+- `Doppler`
+
 """
 function testfunction(n::Int, ft::AbstractString)
     @assert n >= 1

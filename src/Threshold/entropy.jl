@@ -1,20 +1,27 @@
 using ..Threshold
 using ..WT
+using ..Transforms
 using LinearAlgebra: norm
 
 
 # ENTROPY MEASURES
 
 abstract type Entropy end
-struct ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
+struct ShannonEntropy <: Entropy end  # Coifman-Wickerhauser
 struct LogEnergyEntropy <: Entropy end
 
-# Entropy measures: Additive with coefentropy(0) = 0
-# all coefs assumed to be on [-1,1] after normalization with nrm
-# given x and y, where x has "more concentrated energy" than y
-# then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
+"""
+Entropy measures: Additive with coefentropy(0) = 0
+all coefs assumed to be on [-1,1] after normalization with nrm
+given x and y, where x has "more concentrated energy" than y
+then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
+"""
+function coefentropy(
+    x::T,
+    et::ShannonEntropy,
+    nrm::T
+) where {T<:AbstractFloat}
 
-function coefentropy(x::T, et::ShannonEntropy, nrm::T) where {T<:AbstractFloat}
     s = (x / nrm)^2
     if s == 0.0
         return -zero(T)
@@ -22,7 +29,14 @@ function coefentropy(x::T, et::ShannonEntropy, nrm::T) where {T<:AbstractFloat}
         return -s * log(s)
     end
 end
-function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where {T<:AbstractFloat}
+
+
+function coefentropy(
+    x::T,
+    et::LogEnergyEntropy,
+    nrm::T
+) where {T<:AbstractFloat}
+
     s = (x / nrm)^2
     if s == 0.0
         return -zero(T)
@@ -30,7 +44,14 @@ function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where {T<:AbstractFloat
         return -log(s)
     end
 end
-function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=norm(x)) where {T<:AbstractFloat}
+
+
+function coefentropy(
+    x::AbstractArray{T},
+    et::Entropy,
+    nrm::T=norm(x)
+) where {T<:AbstractFloat}
+
     @assert nrm >= 0
     sum = zero(T)
     nrm == sum && return sum
@@ -40,15 +61,32 @@ function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=norm(x)) where {T<
     return sum
 end
 
+"""
+Find the best tree that is a subset of the input tree (use `:full` to find the best tree)
+for wpt
+"""
+function bestbasistree(
+    y::AbstractVector{T},
+    wt::DiscreteWavelet,
+    L::Integer=maxtransformlevels(y),
+    et::Entropy=ShannonEntropy()
+) where {T<:AbstractFloat}
 
-# find the best tree that is a subset of the input tree (use :full to find the best tree)
-# for wpt
-function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy()) where {T<:AbstractFloat}
-    bestbasistree(y, wt, maketree(length(y), L, :full), et)
+    return bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
-function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy()) where {T<:AbstractFloat}
 
-    isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
+
+
+function bestbasistree(
+    y::AbstractVector{T},
+    wt::DiscreteWavelet,
+    tree::BitVector,
+    et::Entropy=ShannonEntropy()
+) where {T<:AbstractFloat}
+
+    if !isvalidtree(y, tree)
+        throw(ArgumentError("invalid tree"))
+    end
 
     tree[1] || copy(tree)      # do nothing
 

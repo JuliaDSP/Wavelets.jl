@@ -14,11 +14,17 @@ using .Transforms
 using .WT
 using .Plot
 
-using SpecialFunctions
-# TODO : no "using" of external packages in module declaration
 
 
 export
+    # export Submodules
+    Util,
+    WT,
+    Transforms,
+    Threshold,
+    Plot,
+
+
     # From Util
     dyadicdetailindex,
     dyadicdetailrange,

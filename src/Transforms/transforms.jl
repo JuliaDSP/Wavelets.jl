@@ -5,7 +5,10 @@ using ..Transforms
 using FFTW
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
-# TODO change integer dependent wavelets to parametric types (see "Value types", https://docs.julialang.org/en/v1/manual/types/index.html#%22Value-types%22-1)
+# TODO change integer dependent wavelets to parametric types
+# see "Value types" :
+# https://docs.julialang.org/en/v1/manual/types/index.html
+
 const DWTArray = AbstractArray
 const WPTArray = AbstractVector
 const ValueType = Union{AbstractFloat,Complex}
@@ -110,13 +113,21 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     (:idwt, :idwt!, :_dwt!, false))
     @eval begin
         # filter
-        function ($Xwt)(x::DWTArray{T}, filter::OrthoFilter,
-            L::Integer=maxtransformlevels(x)) where {T<:ValueType}
-            y = Array{T}(undef, size(x))
+        function ($Xwt)(
+            x::DWTArray{T},
+            filter::OrthoFilter,
+            L::Integer=maxtransformlevels(x)
+        ) where {T<:ValueType}
+            y = Array{T}(undef, size(x)
+            )
             return ($_Xwt!)(y, x, filter, L, $fw)
         end
-        function ($Xwt!)(y::DWTArray{<:ValueType}, x::DWTArray{<:ValueType}, filter::OrthoFilter,
-            L::Integer=maxtransformlevels(x))
+        function ($Xwt!)(
+            y::DWTArray{<:ValueType},
+            x::DWTArray{<:ValueType},
+            filter::OrthoFilter,
+            L::Integer=maxtransformlevels(x)
+        )
             return ($_Xwt!)(y, x, filter, L, $fw)
         end
         # lifting

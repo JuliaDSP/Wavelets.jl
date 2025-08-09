@@ -9,8 +9,13 @@ scaling filters.
 
 Returns a tuple `(v, w)` of the scaling and detail coefficients at level `j+1`.
 """
-function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
-    g::Array{S,1}) where {T<:Number,S<:Number}
+function modwt_step(
+    v::AbstractVector{T},
+    j::Integer,
+    h::Array{S,1},
+    g::Array{S,1}
+) where {T<:Number,S<:Number}
+
     N = length(v)
     L = length(h)
     v1 = zeros(T, N)
@@ -45,8 +50,12 @@ Returns an `n × L+1` matrix (where `n` is the length of `x`) with the wavelet
 coefficients for level j in column j.  The scaling coefficients are in the
 last (L+1th) column.
 """
-function modwt(x::AbstractVector{T}, wt::OrthoFilter,
-    L::Integer=maxmodwttransformlevels(x)) where {T<:Number}
+function modwt(
+    x::AbstractVector{T},
+    wt::OrthoFilter,
+    L::Integer=maxmodwttransformlevels(x)
+) where {T<:Number}
+
     L <= maxmodwttransformlevels(x) ||
         throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
     L >= 1 || throw(ArgumentError("L must be >= 1"))
@@ -69,8 +78,14 @@ Perform one level of the inverse maximal overlap discrete wavelet transform
 and returns a vector of the `j-1`th level scaling coefficients. The vectors
 `h` and `g` are the MODWT detail and scaling filters.
 """
-function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
-    h::Array{S,1}, g::Array{S,1}) where {T<:Number,S<:Number}
+function imodwt_step(
+    v::AbstractVector{T},
+    w::AbstractVector{T},
+    j::Integer,
+    h::Array{S,1},
+    g::Array{S,1}
+) where {T<:Number,S<:Number}
+
     length(v) == length(w) ||
         throw(DimensionMismatch("Input array sizes must match"))
     length(h) == length(g) ||

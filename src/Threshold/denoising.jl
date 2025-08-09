@@ -1,6 +1,7 @@
 using ..Threshold
 using ..WT
 using ..Transforms
+using ..Util
 
 using Statistics: median!
 using LinearAlgebra: rmul!
@@ -25,18 +26,26 @@ end
 
 # denoise signal x by thresholding in wavelet space
 # estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Nothing})
-function denoise(x::AbstractArray,
+function denoise(
+    x::AbstractArray,
     wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET;
     L::Int=min(maxtransformlevels(x), 6),
     dnt::S=VisuShrink(size(x, 1)),
     estnoise::Function=noisest,
     TI::Bool=false,
-    nspin::Union{Int,Tuple}=tuple([8 for i = 1:ndims(x)]...)) where {S<:DNFT}
-    iscube(x) || throw(ArgumentError("array must be square/cube"))
+    nspin::Union{Int,Tuple}=tuple([8 for i = 1:ndims(x)]...)
+) where {S<:DNFT}
+
+    if !iscube(x)
+        throw(ArgumentError("array must be square/cube"))
+    end
+
     sigma = estnoise(x, wt)
 
     if TI
-        wt == nothing && error("TI not supported with wt=nothing")
+        if wt == nothing
+            error("TI not supported with wt=nothing")
+        end
         y = zeros(eltype(x), size(x))
         xt = similar(x)
         pns = prod(nspin)
@@ -69,7 +78,7 @@ function denoise(x::AbstractArray,
         end
         rmul!(y, 1 / pns)
     else # !TI
-        if wt == nothing
+        if isnothing(wt)
             y = copy(x)
             threshold!(y, dnt.th, sigma * dnt.t)
         else
@@ -86,9 +95,14 @@ function denoise(x::AbstractArray,
 
     return y
 end
-# add z to y
+
+"""
+Performant (almost zero allocation) add z to y
+"""
 function arrayadd!(y::AbstractArray, z::AbstractArray)
-    length(y) == length(z) || throw(DimensionMismatch("lengths must be equal"))
+    if length(y) ≠ length(z)
+        throw(DimensionMismatch("lengths must be equal"))
+    end
     for i in eachindex(y)
         @inbounds y[i] += z[i]
     end
@@ -97,7 +111,12 @@ end
 
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
-function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET, L::Integer=1)
+function noisest(
+    x::AbstractArray,
+    wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET,
+    L::Integer=1
+)
+
     if wt == nothing
         y = x
     else
@@ -106,6 +125,8 @@ function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WA
     dr = y[detailrange(y, L)]
     return mad!(dr) / 0.6745
 end
+
+
 # Median absolute deviation
 function mad!(y::AbstractArray)
     m = median!(y)
