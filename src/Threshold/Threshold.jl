@@ -4,7 +4,7 @@ using LinearAlgebra: rmul!, norm
 using Statistics: median!
 
 
-include("threshold.jl")
+include("_threshold.jl")
 include("basis_functions.jl")
 include("denoising.jl")
 include("entropy.jl")

@@ -1,6 +1,6 @@
 module Plot
 
-include("plot.jl")
+include("_plot.jl")
 
 export
     wplotdots, wplotim

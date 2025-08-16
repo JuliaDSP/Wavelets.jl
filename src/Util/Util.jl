@@ -7,7 +7,7 @@ using DSP: conv
 
 include("non_dyadic.jl")
 include("dyadic.jl")
-include("util.jl")
+include("_util.jl")
 
 
 

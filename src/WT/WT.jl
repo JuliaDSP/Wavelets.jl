@@ -1,6 +1,6 @@
 module WT
 
-include("wt.jl")
+include("_wt.jl")
 
 export
     DiscreteWavelet,
