@@ -2,6 +2,8 @@ using ..Util
 using ..WT
 using ..Transforms
 
+using LinearAlgebra: norm
+
 # PLOTTING UTILITIES
 
 # return levels and detail coefficient centers on the interval [0,r) above (>=) threshold t

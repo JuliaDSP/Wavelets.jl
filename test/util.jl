@@ -1,3 +1,4 @@
+using Wavelets.Util
 
 @testset "Indexing" begin
     @test dyadicdetailn(0) == 1
