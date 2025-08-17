@@ -31,7 +31,7 @@ function denoise(x::AbstractArray,
     sigma = estnoise(x, wt)
 
     if TI
-        wt == nothing && error("TI not supported with wt=nothing")
+        isnothing(wt) && error("TI not supported with wt=nothing")
         y = zeros(eltype(x), size(x))
         xt = similar(x)
         pns = prod(nspin)
@@ -64,7 +64,7 @@ function denoise(x::AbstractArray,
         end
         rmul!(y, 1 / pns)
     else # !TI
-        if wt == nothing
+        if isnothing(wt)
             y = copy(x)
             threshold!(y, dnt.th, sigma * dnt.t)
         else
@@ -93,7 +93,7 @@ end
 
 # estimate the std. dev. of the signal noise, assuming Gaussian distribution
 function noisest(x::AbstractArray, wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET, L::Integer=1)
-    if wt == nothing
+    if isnothing(wt)
         y = x
     else
         y = dwt(x, wt, L)

@@ -41,14 +41,20 @@ end
 
 # find the best tree that is a subset of the input tree (use :full to find the best tree)
 # for wpt
-function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, L::Integer=maxtransformlevels(y), et::Entropy=ShannonEntropy()) where {T<:AbstractFloat}
+function bestbasistree(
+    y::AbstractVector{T}, wt::DiscreteWavelet,
+    L::Integer=maxtransformlevels(y),
+    et::Entropy=ShannonEntropy()
+) where {T<:AbstractFloat}
     bestbasistree(y, wt, maketree(length(y), L, :full), et)
 end
-function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVector, et::Entropy=ShannonEntropy()) where {T<:AbstractFloat}
+function bestbasistree(
+    y::AbstractVector{T}, wt::DiscreteWavelet,
+    tree::BitVector,
+    et::Entropy=ShannonEntropy()
+) where {T<:AbstractFloat}
 
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
-
-    tree[1] || copy(tree)      # do nothing
 
     x = copy(y)
     n = length(y)
@@ -97,11 +103,7 @@ function bestbasistree(y::AbstractVector{T}, wt::DiscreteWavelet, tree::BitVecto
         if (i > 1 && !besttree[i>>1]) || !tree[i]  # parent is 0 or input tree-node is 0
             besttree[i] = false
         else
-            if entr_bf[i] <= bestsubtree_entropy(entr_bf, entr_af, i)
-                besttree[i] = false
-            else
-                besttree[i] = true
-            end
+            besttree[i] = (entr_bf[i] > bestsubtree_entropy(entr_bf, entr_af, i))
         end
     end
 
