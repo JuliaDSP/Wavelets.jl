@@ -88,7 +88,7 @@ function unsafe_dwt1level!(
         # detail coefficients
         filtup!(true, dcfilter, si, y, 1, detailn(n, l - 1), x, detailindex(n, l, 1), 0, true)
     end
-    return y
+    return nothing
 end
 
 function dwt_transform_strided!(
@@ -175,8 +175,8 @@ function _dwt!(
 
     inputArray = x
 
-    row_idx_func = i -> row_idx(i, m)
-    col_idx_func = i -> col_idx(i, m)
+    row_idx_func = Base.Fix2(row_idx, m)
+    col_idx_func = Base.Fix2(col_idx, m)
     for l in lrange
         tmpvec = unsafe_vectorslice(tmpbuffer, 1, msub)
         tmpvec2 = unsafe_vectorslice(tmpbuffer, 1, nsub)
@@ -418,7 +418,7 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
     out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
     x::AbstractVector{<:Number}, ix::Integer,
     shift::Integer=0, ss::Bool=false) where T<:Number
-    nx = nout << 1
+    nx = 2 * nout
     silen = length(si)
     flen = length(f)
     @assert length(x) >= ix + nx - 1
@@ -464,7 +464,6 @@ end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
 # where mod(i-1+shift, nx) + ix == i + ixsh
 function splitdownrangeper(istart, ix, nx, shift)
-    inxi = 0
     ixsh = -1 + shift + ix
     if mod(shift, nx) + ix == 1 + ixsh   # shift likely 0
         inxi = 1
@@ -503,7 +502,7 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
     flen = length(f)
     @assert length(x) >= ix + nx - 1                # check array size
     @assert length(out) >= iout + nout - 1          # check array size
-    @assert (nx << 1 - 1) >> 1 + iout <= length(out)  # max for out index
+    @assert (2nx - 1) >> 1 + iout <= length(out)    # max for out index
     @assert silen == flen - 1
     @assert shift <= 0
 
@@ -572,7 +571,6 @@ end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
 # where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
 function splituprangeper(istart, ix, nx, nout, shift)
-    inxi = 0
     ixsh = shift >> 1 + ix
     if mod(shift >> 1, nx) + ix == ixsh   # shift likely 0
         inxi = 1

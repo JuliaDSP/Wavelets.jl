@@ -7,7 +7,7 @@
 ##################################################################################
 
 # for split and merge
-reqtmplength(x::AbstractArray) = (size(x, 1) >> 2) + (size(x, 1) >> 1) % 2
+reqtmplength(x::AbstractArray) = Util.rounding_div4(size(x, 1))
 
 # return scheme parameters adjusted for direction and type
 function makescheme(::Type{T}, scheme::GLS, fw::Bool) where T<:Number
@@ -70,7 +70,7 @@ function _dwt!(
             for step in stepseq
                 lift!(s, half, step.param, step.steptype)
             end
-            Util.merge!(s, ns, tmp)        # inverse split
+            Util.merge!(s, ns, tmp)     # inverse split
             ns = ns << 1
             half = half << 1
         end
@@ -127,7 +127,7 @@ function unsafe_dwt1level!(
         end
     end
 
-    return y
+    return nothing
 end
 
 # 2-D
@@ -148,9 +148,9 @@ function _dwt!(
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n >> 2) ||
+    length(tmp) >= n >> 2 ||
         throw(ArgumentError("length of tmp incorrect"))
-    (length(tmpvec) >= n) ||
+    length(tmpvec) >= n ||
         throw(ArgumentError("length of tmpvec incorrect"))
 
     if L == 0
@@ -224,9 +224,9 @@ function _dwt!(
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n >> 2) ||
+    length(tmp) >= n >> 2 ||
         throw(ArgumentError("length of tmp incorrect"))
-    (length(tmpvec) >= n) ||
+    length(tmpvec) >= n ||
         throw(ArgumentError("length of tmpvec incorrect"))
 
     if L == 0
@@ -349,7 +349,7 @@ function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) wher
     for i = half+1:ns
         @inbounds x[i] *= n2
     end
-    return x
+    return nothing
 end
 # out of place normalize from x to y
 function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
@@ -359,7 +359,7 @@ function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::I
     for i = half+1:ns
         @inbounds y[i] = n2 * x[i]
     end
-    return y
+    return nothing
 end
 function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
@@ -368,7 +368,7 @@ function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T
     for i = half+1:ns
         @inbounds y[iy+(i-1)*incy] = n2 * x[i]
     end
-    return y
+    return nothing
 end
 function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
@@ -377,7 +377,7 @@ function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::In
     for i = half+1:ns
         @inbounds y[i] = n2 * x[ix+(i-1)*incx]
     end
-    return y
+    return nothing
 end
 
 

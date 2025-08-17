@@ -12,7 +12,7 @@
     idx = @index(Global)
     line = ((idx - 1) ÷ nout) + 1
     k = idx - (line - 1) * nout
-    nx = nout << 1
+    nx = 2nout
     phase1 = flen - 1 + (ss1 ? 1 : 0)
     phase2 = flen - 1 + (ss2 ? 1 : 0)
     dsidx1 = phase1 + 2 * (k - 1)

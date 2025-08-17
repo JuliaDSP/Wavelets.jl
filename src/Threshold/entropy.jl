@@ -4,7 +4,7 @@ using ..Transforms
 # ENTROPY MEASURES
 
 abstract type Entropy end
-struct ShannonEntropy <: Entropy end  #Coifman-Wickerhauser
+struct ShannonEntropy <: Entropy end    # Coifman-Wickerhauser
 struct LogEnergyEntropy <: Entropy end
 
 # Entropy measures: Additive with coefentropy(0) = 0
@@ -12,17 +12,17 @@ struct LogEnergyEntropy <: Entropy end
 # given x and y, where x has "more concentrated energy" than y
 # then coefentropy(x, et, norm) <= coefentropy(y, et, norm) should be satisfied.
 
-function coefentropy(x::T, et::ShannonEntropy, nrm::T) where {T<:AbstractFloat}
+function coefentropy(x::T, ::ShannonEntropy, nrm::T) where {T<:AbstractFloat}
     s = (x / nrm)^2
-    if s == 0.0
+    if iszero(s)
         return -zero(T)
     else
         return -s * log(s)
     end
 end
-function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where {T<:AbstractFloat}
+function coefentropy(x::T, ::LogEnergyEntropy, nrm::T) where {T<:AbstractFloat}
     s = (x / nrm)^2
-    if s == 0.0
+    if iszero(s)
         return -zero(T)
     else
         return -log(s)
@@ -30,12 +30,12 @@ function coefentropy(x::T, et::LogEnergyEntropy, nrm::T) where {T<:AbstractFloat
 end
 function coefentropy(x::AbstractArray{T}, et::Entropy, nrm::T=norm(x)) where {T<:AbstractFloat}
     @assert nrm >= 0
-    sum = zero(T)
-    nrm == sum && return sum
-    for i in eachindex(x)
-        @inbounds sum += coefentropy(x[i], et, nrm)
+    entropy = zero(T)
+    iszero(nrm) && return entropy
+    for el in x
+        entropy += coefentropy(el, et, nrm)
     end
-    return sum
+    return entropy
 end
 
 
@@ -117,15 +117,15 @@ function bestsubtree_entropy(entr_bf::Array, entr_af::Array, i::Int)
     n_af = length(entr_af)
     @assert isdyadic(n + 1)
     @assert isdyadic(n_af)
-    @assert n + 1 == n_af << 1
+    @assert n + 1 == 2n_af
 
-    if n < (i << 1)  # bottom of tree
-        sum = entr_af[i-n_af+1]
+    if n < 2i   # bottom of tree
+        entropy = entr_af[i-n_af+1]
     else
-        sum = bestsubtree_entropy(entr_bf, entr_af, i << 1)
-        sum += bestsubtree_entropy(entr_bf, entr_af, i << 1 + 1)
+        entropy = bestsubtree_entropy(entr_bf, entr_af, 2i)
+        entropy += bestsubtree_entropy(entr_bf, entr_af, 2i + 1)
     end
 
-    lowestentropy = min(entr_bf[i], sum)
+    lowestentropy = min(entr_bf[i], entropy)
     return lowestentropy
 end
