@@ -168,8 +168,8 @@ function _dwt!(
 
     inputArray = x
 
-    row_idx_func = i -> row_idx(i, m)
-    col_idx_func = i -> col_idx(i, m)
+    row_idx_func = Base.Fix2(row_idx, m)
+    col_idx_func = Base.Fix2(col_idx, m)
     for l in lrange
         tmpvec = unsafe_vectorslice(tmpbuffer, 1, msub)
         tmpvec2 = unsafe_vectorslice(tmpbuffer, 1, nsub)
@@ -367,9 +367,7 @@ function _wpt!(
                 end
                 unsafe_dwt1level!(dy, dx, filter, fw, dcfilter, scfilter, si)
             elseif first
-                dy = unsafe_vectorslice(y, ix, nj)
-                dx = unsafe_vectorslice(x, ix, nj)
-                copyto!(dy, dx)
+                copyto!(y, ix, x, ix, nj)
             end
             ix += nj
             k += 1
@@ -382,21 +380,19 @@ function _wpt!(
 end
 
 
-macro filtermainloop(si, silen, b, val)
-    quote
-        @inbounds for j = 2:$(esc(silen))
-            $(esc(si))[j-1] = $(esc(si))[j] + $(esc(b))[j] * $(esc(val))
-        end
-        @inbounds $(esc(si))[$(esc(silen))] = $(esc(b))[$(esc(silen))+1] * $(esc(val))
+@inline function filtermainloop!(si, silen, b, val)
+    @inbounds for j = 2:silen
+        si[j-1] = si[j] + b[j] * val
     end
+    @inbounds si[silen] = b[silen+1] * val
+    return nothing
 end
-macro filtermainloopzero(si, silen)
-    quote
-        @inbounds for j = 2:$(esc(silen))
-            $(esc(si))[j-1] = $(esc(si))[j]
-        end
-        @inbounds $(esc(si))[$(esc(silen))] = 0.0
+@inline function filtermainloopzero!(si, silen)
+    @inbounds for j = 2:silen
+        si[j-1] = si[j]
     end
+    @inbounds si[silen] = 0.0
+    return nothing
 end
 
 # periodic filter and downsampling (by 2)
@@ -429,7 +425,7 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
         for i in rout1      # rout1 assumed to be in 1:istart-1
             # periodic in the range [ix:ix+nx-1]
             xatind = x[mod(i - 1 + shift, nx)+ix]
-            @filtermainloop(si, silen, f, xatind)
+            filtermainloop!(si, silen, f, xatind)
         end
         # rin is inbounds in [ix:ix+nx-1]
         ixsh = ix + shift - 1
@@ -439,7 +435,7 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
             if iseven(i + dsshift) && i >= istart
                 out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
             end
-            @filtermainloop(si, silen, f, xatind)
+            filtermainloop!(si, silen, f, xatind)
         end
         for i in rout2
             # periodic in the range [ix:ix+nx-1]
@@ -448,7 +444,7 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
             if iseven(i + dsshift) && i >= istart
                 out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
             end
-            @filtermainloop(si, silen, f, xatind)
+            filtermainloop!(si, silen, f, xatind)
         end
     end
 
@@ -457,7 +453,6 @@ end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
 # where mod(i-1+shift, nx) + ix == i + ixsh
 function splitdownrangeper(istart, ix, nx, shift)
-    inxi = 0
     ixsh = -1 + shift + ix
     if mod(shift, nx) + ix == 1 + ixsh   # shift likely 0
         inxi = 1
@@ -506,56 +501,51 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
     @inbounds begin
-        xatind = 0.0
         for i in rout1  # rout1 assumed to be in 1:istart-1
-            if (i + dsshift) % 2 == 0
-                @filtermainloopzero(si, silen)
+            if iseven(i + dsshift)
+                filtermainloopzero!(si, silen)
             else
                 # periodic in the range [ix:ix+nx-1]
                 xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix    #(i-1)>>1 increm. every other
                 xatind = x[xindex]
-                @filtermainloop(si, silen, f, xatind)
+                filtermainloop!(si, silen, f, xatind)
             end
         end
         ixsh = ix + shift >> 1
         for i in rin
-            if (i + dsshift) % 2 == 0
-                xatind = 0.0
+            si1 = si[1]
+            if iseven(i + dsshift)
+                xatind = zero(eltype(x))
+                filtermainloopzero!(si, silen)
             else
                 xindex = (i - 1) >> 1 + ixsh
                 xatind = x[xindex]
+                filtermainloop!(si, silen, f, xatind)
             end
             if i >= istart
                 if add2out
-                    out[(i-istart)+iout] += si[1] + f[1] * xatind
+                    out[(i-istart)+iout] += si1 + f[1] * xatind
                 else
-                    out[(i-istart)+iout] = si[1] + f[1] * xatind
+                    out[(i-istart)+iout] = si1 + f[1] * xatind
                 end
-            end
-            if (i + dsshift) % 2 == 0
-                @filtermainloopzero(si, silen)
-            else
-                @filtermainloop(si, silen, f, xatind)
             end
         end
         for i in rout2
-            if (i + dsshift) % 2 == 0
+            si1 = si[1]
+            if iseven(i + dsshift)
                 xatind = 0.0
+                filtermainloopzero!(si, silen)
             else
                 xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix
                 xatind = x[xindex]
+                filtermainloop!(si, silen, f, xatind)
             end
             if i >= istart
                 if add2out
-                    out[(i-istart)+iout] += si[1] + f[1] * xatind
+                    out[(i-istart)+iout] += si1 + f[1] * xatind
                 else
-                    out[(i-istart)+iout] = si[1] + f[1] * xatind
+                    out[(i-istart)+iout] = si1 + f[1] * xatind
                 end
-            end
-            if (i + dsshift) % 2 == 0
-                @filtermainloopzero(si, silen)
-            else
-                @filtermainloop(si, silen, f, xatind)
             end
         end
     end
@@ -565,7 +555,6 @@ end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
 # where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
 function splituprangeper(istart, ix, nx, nout, shift)
-    inxi = 0
     ixsh = shift >> 1 + ix
     if mod(shift >> 1, nx) + ix == ixsh   # shift likely 0
         inxi = 1

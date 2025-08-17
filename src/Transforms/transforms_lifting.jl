@@ -456,20 +456,26 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
 end
 
 # periodic boundary
-for (step_type, puxind) in ((WT.PredictStep, :(mod1(i + k - 1 + rhsis - half, half) + half)),
-    (WT.UpdateStep, :(mod1(i + k - 1 + rhsis, half))))
-    @eval begin
-        function lift_perboundary!(x::AbstractVector{T}, half::Int,
-            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
-            nc = length(c)
-            for i in irange, k in 1:nc
-                @inbounds x[i] += c[k] * x[$puxind]
-            end
-            return x
-        end
-    end # eval begin
-end # for
-
+function lift_perboundary!(
+        x::AbstractVector{T}, half::Int, c::Vector{T},
+        irange::AbstractRange, rhsis::Int, ::WT.PredictStep
+    ) where T<:Number
+    nc = length(c)
+    for i in irange, k in 1:nc
+        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+    end
+    return x
+end
+function lift_perboundary!(
+        x::AbstractVector{T}, half::Int, c::Vector{T},
+        irange::AbstractRange, rhsis::Int, ::WT.UpdateStep
+    ) where T<:Number
+    nc = length(c)
+    for i in irange, k in 1:nc
+        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
+    end
+    return x
+end
 
 # main lift loop
 function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number

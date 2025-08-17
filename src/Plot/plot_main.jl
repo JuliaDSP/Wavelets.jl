@@ -95,10 +95,10 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing
 end
 # scale elements of z to the interval [0,1]
 function scale01!(z)
-    mi = minimum(z)
-    ma = maximum(z)
+    mi, ma = extrema(z)
+    r = ma - mi
     for i in eachindex(z)
-        @inbounds z[i] = (z[i] - mi) / (ma - mi)
+        z[i] = (z[i] - mi) / r
     end
     return nothing
 end
