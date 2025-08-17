@@ -12,14 +12,15 @@ detailn(arraysize::Integer, l::Integer) = round(Int, arraysize / 2^l)
 detailn(x::AbstractArray, l::Integer) = detailn(size(x, 1), l)
 # max levels to transform
 maxtransformlevels(x::AbstractArray) = minimum(maxtransformlevels.(size(x)))
-function maxtransformlevels(arraysize::Integer)
-    arraysize > 1 || return 0
-    tl = 0
-    while sufficientpoweroftwo(arraysize, tl)
-        tl += 1
-    end
-    return tl - 1
-end
+maxtransformlevels(arr_sz::Integer) = arr_sz > 1 ? trailing_zeros(arr_sz) : 0
+# function maxtransformlevels(arraysize::Integer)
+#     arraysize > 1 || return 0
+#     tl = 0
+#     while sufficientpoweroftwo(arraysize, tl)
+#         tl += 1
+#     end
+#     return tl - 1
+# end
 
 maxmodwttransformlevels(x::AbstractArray) = floor(Int, log2(length(x)))
 maxmodwttransformlevels(arraysize::Integer) = floor(Int, log2(arraysize))
