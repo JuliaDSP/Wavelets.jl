@@ -7,20 +7,20 @@
 ##################################################################################
 
 # for split and merge
-reqtmplength(x::AbstractArray) = (size(x,1)>>2) + (size(x,1)>>1)%2
+reqtmplength(x::AbstractArray) = (size(x, 1) >> 2) + (size(x, 1) >> 1) % 2
 
 # return scheme parameters adjusted for direction and type
-function makescheme(::Type{T}, scheme::GLS, fw::Bool) where T<:Number
+function makescheme(::Type{T}, scheme::GLS, fw::Bool) where {T<:Number}
     n = length(scheme.step)
     stepseq = Vector{WT.LSStep{T}}(undef, n)
     for i = 1:n
-        j = fw ? i : n+1-i
+        j = fw ? i : n + 1 - i
         stepseq[i] = WT.LSStep(scheme.step[j].steptype,
-                            convert(Vector{T}, scheme.step[j].param.coef * (fw ? -1 : 1)),
-                            scheme.step[j].param.shift)
+            convert(Vector{T}, scheme.step[j].param.coef * (fw ? -1 : 1)),
+            scheme.step[j].param.shift)
     end
-    norm1, norm2 =  convert(T, fw ? scheme.norm1 : 1/scheme.norm1),
-                    convert(T, fw ? scheme.norm2 : 1/scheme.norm2)
+    norm1, norm2 = convert(T, fw ? scheme.norm1 : 1 / scheme.norm1),
+    convert(T, fw ? scheme.norm2 : 1 / scheme.norm2)
     return stepseq, norm1, norm2
 end
 
@@ -28,14 +28,14 @@ end
 # 1-D
 # inplace transform of y, no vector allocation
 function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
+    tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))) where {T<:Number}
 
     n = length(y)
     0 <= L ||
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    length(tmp) >= n>>2 ||
+    length(tmp) >= n >> 2 ||
         throw(ArgumentError("length of tmp incorrect"))
 
     if L == 0
@@ -47,9 +47,9 @@ function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
         ns = n
     else
         lrange = L:-1:1
-        ns = detailn(n, L-1)
+        ns = detailn(n, L - 1)
     end
-    half = ns>>1
+    half = ns >> 1
     s = y
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
@@ -60,16 +60,16 @@ function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
                 lift!(s, half, step.param, step.steptype)
             end
             normalize!(s, half, ns, norm1, norm2)
-            ns = ns>>1
-            half = half>>1
+            ns = ns >> 1
+            half = half >> 1
         else
             normalize!(s, half, ns, norm1, norm2)
             for step in stepseq
                 lift!(s, half, step.param, step.steptype)
             end
             Util.merge!(s, ns, tmp)        # inverse split
-            ns = ns<<1
-            half = half<<1
+            ns = ns << 1
+            half = half << 1
         end
     end
     return y
@@ -81,12 +81,12 @@ end
 # oopv: the out of place location
 function unsafe_dwt1level!(y::AbstractArray{T}, iy::Integer, incy::Integer, oopc::Bool,
     oopv::FVector{T}, scheme::GLS, fw::Bool, stepseq::FVector, norm1::T, norm2::T,
-    tmp::FVector{T}) where T<:Number
+    tmp::FVector{T}) where {T<:Number}
     if !oopc
         oopv = y
     end
     ns = length(oopv)
-    half = ns>>1
+    half = ns >> 1
 
     if fw
         if oopc
@@ -125,16 +125,16 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
+function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))) where {T<:Number}
 
-    n = size(y,1)
+    n = size(y, 1)
     iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
     0 <= L ||
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n>>2) ||
+    (length(tmp) >= n >> 2) ||
         throw(ArgumentError("length of tmp incorrect"))
     (length(tmpvec) >= n) ||
         throw(ArgumentError("length of tmpvec incorrect"))
@@ -143,14 +143,14 @@ function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} =
         return y
     end
     row_stride = n
-    plane_stride = n*n
+    plane_stride = n * n
 
     if fw
         lrange = 1:L
         nsub = n
     else
         lrange = L:-1:1
-        nsub = div(n,2^(L-1))
+        nsub = div(n, 2^(L - 1))
     end
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
@@ -162,14 +162,14 @@ function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} =
             for i in 1:nsub
                 xi = row_idx(i, n)
                 unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
                 unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
         else
             # columns
@@ -177,17 +177,17 @@ function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} =
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
                 unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub
                 xi = row_idx(i, n)
                 unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
         end
 
-        nsub = (fw ? nsub>>1 : nsub<<1)
+        nsub = (fw ? nsub >> 1 : nsub << 1)
     end
 
     return y
@@ -197,16 +197,16 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
+function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))) where {T<:Number}
 
-    n = size(y,1)
+    n = size(y, 1)
     iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
     0 <= L ||
         throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
-    (length(tmp) >= n>>2) ||
+    (length(tmp) >= n >> 2) ||
         throw(ArgumentError("length of tmp incorrect"))
     (length(tmpvec) >= n) ||
         throw(ArgumentError("length of tmpvec incorrect"))
@@ -215,14 +215,14 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
         return y
     end
     row_stride = n
-    plane_stride = n*n
+    plane_stride = n * n
 
     if fw
         lrange = 1:L
         nsub = n
     else
         lrange = L:-1:1
-        nsub = div(n,2^(L-1))
+        nsub = div(n, 2^(L - 1))
     end
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
@@ -234,20 +234,20 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
             for i in 1:nsub, j in 1:nsub
                 xi = plane_idx(i, j, n)
                 unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
                 unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
                 unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
         else
             # columns
@@ -255,23 +255,23 @@ function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} 
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
                 unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
                 unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
             # planes
             for i in 1:nsub, j in 1:nsub
                 xi = plane_idx(i, j, n)
                 unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
-                                    stepseq, norm1, norm2, tmp)
+                    stepseq, norm1, norm2, tmp)
             end
         end
 
-        nsub = (fw ? nsub>>1 : nsub<<1)
+        nsub = (fw ? nsub >> 1 : nsub << 1)
     end
 
     return y
@@ -280,12 +280,12 @@ end
 
 # WPT
 # 1-D
-function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
+function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))) where {T<:Number}
 
     n = length(y)
     isvalidtree(y, tree) ||
         throw(ArgumentError("invalid tree"))
-    length(tmp) >= n>>2 ||
+    length(tmp) >= n >> 2 ||
         throw(ArgumentError("length of tmp incorrect"))
 
     if !tree[1]
@@ -299,10 +299,10 @@ function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp
     while L > 0
         ix = 1
         k = 1
-        fw  && (Lfw = Lmax-L)
-        !fw && (Lfw = L-1)
+        fw && (Lfw = Lmax - L)
+        !fw && (Lfw = L - 1)
         nj = detailn(n, Lfw)
-        treeind = 2^(Lfw)-1
+        treeind = 2^(Lfw) - 1
 
         while ix <= n
             if tree[treeind+k]
@@ -320,7 +320,7 @@ end
 
 
 
-function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
+function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
     for i = 1:half
         @inbounds x[i] *= n1
     end
@@ -330,30 +330,30 @@ function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) wher
     return x
 end
 # out of place normalize from x to y
-function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
+function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
     for i = 1:half
-        @inbounds y[i] = n1*x[i]
+        @inbounds y[i] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2*x[i]
+        @inbounds y[i] = n2 * x[i]
     end
     return y
 end
-function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
+function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
     for i = 1:half
-        @inbounds y[iy + (i-1)*incy] = n1*x[i]
+        @inbounds y[iy+(i-1)*incy] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[iy + (i-1)*incy] = n2*x[i]
+        @inbounds y[iy+(i-1)*incy] = n2 * x[i]
     end
     return y
 end
-function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
+function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where {T<:Number}
     for i = 1:half
-        @inbounds y[i] = n1*x[ix + (i-1)*incx]
+        @inbounds y[i] = n1 * x[ix+(i-1)*incx]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2*x[ix + (i-1)*incx]
+        @inbounds y[i] = n2 * x[ix+(i-1)*incx]
     end
     return y
 end
@@ -364,20 +364,20 @@ end
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
 for step_type in (WT.PredictStep, WT.UpdateStep)
-@eval begin
-function lift!(x::AbstractVector{T}, half::Int,
-                param::WT.LSStepParam{T}, steptype::$step_type) where T<:Number
-    lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
-    coefs = param.coef
-    # left boundary
-    lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
-    # main loop
-    lift_inbounds!(x, coefs, irange, rhsis)
-    # right boundary
-    lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
-    return x
-end
-end # eval begin
+    @eval begin
+        function lift!(x::AbstractVector{T}, half::Int,
+            param::WT.LSStepParam{T}, steptype::$step_type) where {T<:Number}
+            lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
+            coefs = param.coef
+            # left boundary
+            lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
+            # main loop
+            lift_inbounds!(x, coefs, irange, rhsis)
+            # right boundary
+            lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
+            return x
+        end
+    end # eval begin
 end # for
 
 function irlimits(half::Int, nc::Int, shift::Int)
@@ -385,35 +385,35 @@ function irlimits(half::Int, nc::Int, shift::Int)
     # 1 <= i <= half
     # 1 <= i+1-1-shift <= half
     # 1 <= i+nc-1-shift <= half
-    return (max(shift+1, 1-nc+shift),
-            min(half+1+shift-nc, half+shift))
+    return (max(shift + 1, 1 - nc + shift),
+        min(half + 1 + shift - nc, half + shift))
 end
 
 function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.UpdateStep)
     # define index shift rhsis
-    rhsis = -shift-half
+    rhsis = -shift - half
     irmin, irmax = irlimits(half, nc, shift)
     if irmin > half || irmax < 1
         irange = 1:0  # empty
     else
         irmin = max(irmin, 1)
         irmax = min(irmax, half)
-        irange = irmin + half:irmax + half
+        irange = irmin+half:irmax+half
     end
     # periodic boundary
-    if length(irange)==0
-        lhsr = 1 + half:half + half
-        rhsr = 1 + half:0 + half
+    if length(irange) == 0
+        lhsr = 1+half:half+half
+        rhsr = 1+half:0+half
     else
-        lhsr = 1 + half:irmin - 1 + half
-        rhsr = irmax + 1 + half:half + half
+        lhsr = 1+half:irmin-1+half
+        rhsr = irmax+1+half:half+half
     end
     return (lhsr, irange, rhsr, rhsis)
 end
 
 function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
     # define index shift rhsis
-    rhsis = -shift+half
+    rhsis = -shift + half
     irmin, irmax = irlimits(half, nc, shift)
     if irmin > half || irmax < 1
         irange = 1:0  # empty
@@ -423,59 +423,59 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
         irange = irmin:irmax
     end
     # periodic boundary
-    if length(irange)==0
+    if length(irange) == 0
         lhsr = 1:half
         rhsr = 1:0
     else
-        lhsr = 1:irmin - 1
-        rhsr = irmax + 1:half
+        lhsr = 1:irmin-1
+        rhsr = irmax+1:half
     end
     return (lhsr, irange, rhsr, rhsis)
 end
 
 # periodic boundary
-for (step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)),
-                            (WT.UpdateStep,  :(mod1(i+k-1+rhsis,half))) )
-@eval begin
-function lift_perboundary!(x::AbstractVector{T}, half::Int,
-                            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
-    nc = length(c)
-    for i in irange
-        for k in 1:nc
-            @inbounds x[i] += c[k]*x[$puxind]
+for (step_type, puxind) in ((WT.PredictStep, :(mod1(i + k - 1 + rhsis - half, half) + half)),
+    (WT.UpdateStep, :(mod1(i + k - 1 + rhsis, half))))
+    @eval begin
+        function lift_perboundary!(x::AbstractVector{T}, half::Int,
+            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where {T<:Number}
+            nc = length(c)
+            for i in irange
+                for k in 1:nc
+                    @inbounds x[i] += c[k] * x[$puxind]
+                end
+            end
+            return x
         end
-    end
-    return x
-end
-end # eval begin
+    end # eval begin
 end # for
 
 
 # main lift loop
-function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
+function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where {T<:Number}
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
-            @inbounds x[i] += c1*x[i+rhsis]
+            @inbounds x[i] += c1 * x[i+rhsis]
         end
     elseif nc == 2
-        c1,c2 = c[1],c[2]
-        rhsisp1 = rhsis+1
+        c1, c2 = c[1], c[2]
+        rhsisp1 = rhsis + 1
         for i in irange
-            @inbounds x[i] += c1*x[i+rhsis] + c2*x[i+rhsisp1]
+            @inbounds x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1]
         end
     elseif nc == 3
-        c1,c2,c3 = c[1],c[2],c[3]
-        rhsisp1 = rhsis+1
-        rhsisp2 = rhsis+2
+        c1, c2, c3 = c[1], c[2], c[3]
+        rhsisp1 = rhsis + 1
+        rhsisp2 = rhsis + 2
         for i = irange
-            @inbounds x[i] += c1*x[i+rhsis] + c2*x[i+rhsisp1] + c3*x[i+rhsisp2]
+            @inbounds x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1] + c3 * x[i+rhsisp2]
         end
     else
         for i in irange
             for k in 0:nc-1
-                @inbounds x[i] += c[k]*x[i+k+rhsis]
+                @inbounds x[i] += c[k] * x[i+k+rhsis]
             end
         end
     end
