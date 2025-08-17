@@ -11,7 +11,7 @@ using LinearAlgebra: norm
 function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
     isdyadic(x) || throw(ArgumentError("array must be of dyadic size"))
     n = length(x)
-    c = wcount(x, t, level=0)
+    c = wcount(x, t; level=0)
     d = Vector{Float64}(undef, c)
     l = Vector{Int}(undef, c)
     range = 0:1/n:1-eps()
