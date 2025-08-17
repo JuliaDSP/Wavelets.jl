@@ -1,5 +1,5 @@
 
-using Wavelets
+using Wavelets, FFTW
 
 wf = wavelet(WT.db4, WT.Filter)
 wl = wavelet(WT.cdf97, WT.Lifting)
