@@ -4,7 +4,7 @@ using ..Util, ..WT
 # TODO change integer dependent wavelets to parametric types (see "Value types", https://docs.julialang.org/en/v1/manual/types/index.html#%22Value-types%22-1)
 const DWTArray = AbstractArray
 const WPTArray = AbstractVector
-const ValueType = Union{AbstractFloat, Complex}
+const ValueType = Union{AbstractFloat,Complex}
 
 const FVector = StridedVector # e.g., work space vectors
 
@@ -191,24 +191,22 @@ end
 
 # non-exported "out of place" functions
 for (Xwt_oop!, Xwt!) in ((:dwt_oop!, :dwt!), (:idwt_oop!, :idwt!))
-@eval begin
-    # filter
-    function ($Xwt_oop!)(y::DWTArray{T}, x::DWTArray{T}, filter::OrthoFilter,
-                        L::Integer=maxtransformlevels(x)) where T<:ValueType
-        return ($Xwt!)(y, x, filter, L)
-    end
-    # lifting
-    function ($Xwt_oop!)(y::DWTArray{T}, x::DWTArray{T}, scheme::GLS,
-                        L::Integer=maxtransformlevels(x)) where T<:ValueType
-        copyto!(y, x)
-        return ($Xwt!)(y, scheme, L)
-    end
-end # begin
+    @eval begin
+        # filter
+        function ($Xwt_oop!)(y::DWTArray{T}, x::DWTArray{T}, filter::OrthoFilter, L::Integer=maxtransformlevels(x)) where T<:ValueType
+            return ($Xwt!)(y, x, filter, L)
+        end
+        # lifting
+        function ($Xwt_oop!)(y::DWTArray{T}, x::DWTArray{T}, scheme::GLS, L::Integer=maxtransformlevels(x)) where T<:ValueType
+            copyto!(y, x)
+            return ($Xwt!)(y, scheme, L)
+        end
+    end # begin
 end # for
 
 # Array with shared memory
 function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
-   return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
+    return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
 end
 function unsafe_vectorslice(A::StridedArray{T}, i::Int, n::Int) where T
     return @view A[i:(i-1+n)]
@@ -217,8 +215,8 @@ end
 # linear indices of start of rows/cols/planes
 # 2-D, size(A) = (m,n)
 row_idx(i, m) = i
-col_idx(i, m) = 1 + (i-1)*m
+col_idx(i, m) = 1 + (i - 1) * m
 # 3-D, size(A) = (m,n,d)
-row_idx(i, j, m, n=m) = row_idx(i, n) + (j-1)*n*m
-col_idx(i, j, m, n=m) = col_idx(i, m) + (j-1)*n*m
-plane_idx(i, j, m) = i + (j-1)*m
+row_idx(i, j, m, n=m) = row_idx(i, n) + (j - 1) * n * m
+col_idx(i, j, m, n=m) = col_idx(i, m) + (j - 1) * n * m
+plane_idx(i, j, m) = i + (j - 1) * m
