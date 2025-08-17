@@ -12,8 +12,8 @@ supertype(typeof(WT.paul5))
 supertype(typeof(WT.morl))
 EmphasizeFrequencyInfo = WT.Morlet(20)
 y = cwt(x, wavelet(WT.morl))
-heatmap(abs.(y)); plot!(x+90,label="")
+heatmap(abs.(y)); plot!(x + 90; label="");
 y = cwt(x, wavelet(WT.dog1))
-heatmap(abs.(y)); plot!(x+90,label="")
+heatmap(abs.(y)); plot!(x + 90; label="");
 y = cwt(x, wavelet(WT.paul4))
-heatmap(abs.(y)); plot!(x+90,label="")
+heatmap(abs.(y)); plot!(x + 90; label="");

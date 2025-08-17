@@ -22,7 +22,7 @@ function threshold!(x::AbstractArray{<:Number}, ::BiggestTH, m::Int)
     @assert m >= 0
     n = length(x)
     m > n && (m = n)
-    ind = sortperm(x, alg=QuickSort, by=abs)
+    ind = sortperm(x; alg=QuickSort, by=abs)
     @inbounds begin
         for i = 1:n-m
             x[ind[i]] = 0

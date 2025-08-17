@@ -298,7 +298,7 @@ function makewavelet(h::AbstractVector, N::Integer=8)
     end
     phi = phi[1:end-(1<<N)+1]
     psi = psi[1:end-(1<<N)+1]
-    return rmul!(phi, sc / sqrt(2)), rmul!(psi, sc / sqrt(2)), range(0, stop=length(h) - 1, length=length(psi))
+    return rmul!(phi, sc / sqrt(2)), rmul!(psi, sc / sqrt(2)), range(0; stop=length(h) - 1, length=length(psi))
 end
 
 """
