@@ -127,7 +127,7 @@ function unsafe_dwt1level!(
         end
     end
 
-    return y
+    return nothing
 end
 
 # 2-D
@@ -349,7 +349,7 @@ function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) wher
     for i = half+1:ns
         @inbounds x[i] *= n2
     end
-    return x
+    return nothing
 end
 # out of place normalize from x to y
 function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
@@ -359,7 +359,7 @@ function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::I
     for i = half+1:ns
         @inbounds y[i] = n2 * x[i]
     end
-    return y
+    return nothing
 end
 function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
@@ -368,7 +368,7 @@ function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T
     for i = half+1:ns
         @inbounds y[iy+(i-1)*incy] = n2 * x[i]
     end
-    return y
+    return nothing
 end
 function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
@@ -377,7 +377,7 @@ function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::In
     for i = half+1:ns
         @inbounds y[i] = n2 * x[ix+(i-1)*incx]
     end
-    return y
+    return nothing
 end
 
 
@@ -397,7 +397,7 @@ for step_type in (WT.PredictStep, WT.UpdateStep)
             lift_inbounds!(x, coefs, irange, rhsis)
             # right boundary
             lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
-            return x
+            return nothing
         end
     end # eval begin
 end # for
@@ -456,20 +456,26 @@ function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
 end
 
 # periodic boundary
-for (step_type, puxind) in ((WT.PredictStep, :(mod1(i + k - 1 + rhsis - half, half) + half)),
-    (WT.UpdateStep, :(mod1(i + k - 1 + rhsis, half))))
-    @eval begin
-        function lift_perboundary!(x::AbstractVector{T}, half::Int,
-            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
-            nc = length(c)
-            for i in irange, k in 1:nc
-                @inbounds x[i] += c[k] * x[$puxind]
-            end
-            return x
-        end
-    end # eval begin
-end # for
-
+function lift_perboundary!(
+        x::AbstractVector{T}, half::Int, c::Vector{T},
+        irange::AbstractRange, rhsis::Int, ::WT.PredictStep
+    ) where T<:Number
+    nc = length(c)
+    for i in irange, k in 1:nc
+        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+    end
+    return x
+end
+function lift_perboundary!(
+        x::AbstractVector{T}, half::Int, c::Vector{T},
+        irange::AbstractRange, rhsis::Int, ::WT.UpdateStep
+    ) where T<:Number
+    nc = length(c)
+    for i in irange, k in 1:nc
+        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
+    end
+    return x
+end
 
 # main lift loop
 function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
