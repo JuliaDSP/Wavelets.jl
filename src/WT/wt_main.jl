@@ -119,10 +119,10 @@ for (TYPE, NAMEBASE, RANGE1, RANGE2) in (
         name(::$TYPE{N1,N2}) where {N1,N2} = string($NAMEBASE, N1, "/", N2)
         vanishingmoments(::$TYPE{N1,N2}) where {N1,N2} = (N1, N2)
     end
-    for i in length(RANGE1)
+    for i in eachindex(RANGE1, RANGE2)
         CONSTNAME = Symbol(string(NAMEBASE, RANGE1[i], RANGE2[i]))
         @eval begin
-            const $CONSTNAME = $TYPE{$RANGE1[$i],$RANGE2[$i]}()        # type shortcut
+            const $CONSTNAME = $TYPE{$(RANGE1[i]),$(RANGE2[i])}()        # type shortcut
         end
     end
 end
@@ -163,10 +163,8 @@ function scale(f::OrthoFilter{T}, a::Number) where T<:WaveletBoundary
 end
 
 """Quadrature mirror filter pair."""
-function makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-    scfilter, dcfilter = makereverseqmfpair(f, fw, T)
-    return reverse(scfilter), reverse(dcfilter)
-end
+makeqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f))) =
+    makereverseqmfpair(f, !fw, T)   # this is backwards, but only makereverseqmfpair is used...
 
 """Reversed quadrature mirror filter pair."""
 function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
@@ -199,7 +197,7 @@ const Predict = PredictStep()
 const Update = UpdateStep()
 
 struct LSStepParam{T<:Number}
-    coef::Vector{T}        # lifting coefficients
+    coef::Vector{T}         # lifting coefficients
     shift::Int              # + left shift, - right shift
 end
 
@@ -223,8 +221,8 @@ by using a lifting scheme.
 """
 struct GLS{T<:WaveletBoundary} <: LSWavelet{T}
     step::Vector{LSStep{Float64}}    # steps to be taken
-    norm1::Float64           # normalization of scaling coefs.
-    norm2::Float64           # normalization of detail coefs.
+    norm1::Float64          # normalization of scaling coefs.
+    norm2::Float64          # normalization of detail coefs.
     name::String            # name of scheme
 end
 
@@ -232,7 +230,7 @@ function GLS(w::WC, ::T=DEFAULT_BOUNDARY) where {WC<:WaveletClass,T<:WaveletBoun
     name = WT.name(w)
     schemedef = get(SCHEMES, name, nothing)
     isnothing(schemedef) && throw(ArgumentError("scheme not found"))
-    return GLS{T}(schemedef[1], schemedef[2], schemedef[3], name)
+    return GLS{T}(schemedef..., name)
 end
 
 name(s::GLS) = s.name
@@ -292,12 +290,7 @@ function daubechies(N::Int)
     end
 
     # Retain roots inside unit circle
-    nr = 0  # count roots
-    @inbounds for i = eachindex(Z)
-        if abs(Z[i]) <= 1 + eps()
-            nr += 1
-        end
-    end
+    nr = count(z -> abs(z) <= (1 + eps()), Z)    # count roots
 
     # Find coefficients of the polynomial
     # (1 + z)^N * \prod_i (z - z_i)
@@ -333,8 +326,8 @@ function compan(C::AbstractVector)
     A = zeros(n - 1, n - 1)
 
     if n > 1
-        @inbounds A[1, :] .= -C[2:end] ./ C[1]
-        @inbounds A[2:n:end] .= 1
+        @views A[1, :] .= -C[2:end] ./ C[1]
+        A[2:n:end] .= 1
     end
     return A
 end
@@ -349,7 +342,7 @@ function vieta(R::AbstractVector)
     Ci::ComplexF64 = 0
     Cig::ComplexF64 = 0
 
-    @inbounds for k = 1:n
+    for k = 1:n
         Ci = C[1]
         for i = 1:k
             Cig = C[i+1]
@@ -428,7 +421,7 @@ const BIFILTERS = Dict{String,NTuple{2,Vector{Float64}}}(
 
 
 # in matlab (d,p) -> (predict, update)
-const SCHEMES = Dict{String,NTuple{3, Any}}(
+const SCHEMES = Dict{String,Tuple{Vector,Float64,Float64}}(
 # cdf 5/3 -> bior 2.2, cdf 9/7 -> bior 4.4
 # Cohen-Daubechies-Feauveau [Do Quan & Yo-Sung Ho. Optimized median lifting scheme for lossy image compression.]
 "cdf9/7" => ([  LSStep(Update,  [1.0,1.0]*1.5861343420604, 0),

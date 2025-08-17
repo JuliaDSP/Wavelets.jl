@@ -167,7 +167,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
         return ($Xwt!)(y, scheme, maketree(y, :full))
     end
     function ($Xwt!)(y::WPTArray{T}, scheme::GLS, L::Integer) where T<:ValueType
-        return ($Xwt!)(y, scheme, maketree(length(x), L, :full))
+        return ($Xwt!)(y, scheme, maketree(length(y), L, :full))
     end
     function ($Xwt!)(y::WPTArray{T}, scheme::GLS, tree::BitVector) where T<:ValueType
         return ($_Xwt!)(y, scheme, tree, $fw)

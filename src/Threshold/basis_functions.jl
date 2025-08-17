@@ -43,14 +43,4 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     end
     return y
 end
-function findmaxabs(x::AbstractVector)
-    m = abs(x[1])
-    k = 1
-    @inbounds for i in eachindex(x)
-        if abs(x[i]) > m
-            k = i
-            m = abs(x[i])
-        end
-    end
-    return k
-end
+findmaxabs(x::AbstractVector) = findmax(abs, x)[2]

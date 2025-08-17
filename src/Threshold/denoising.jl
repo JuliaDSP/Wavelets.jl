@@ -9,7 +9,6 @@ abstract type DNFT end
 struct VisuShrink <: DNFT
     th::THType      # threshold type
     t::Float64      # threshold for noise level sigma=1, use sigma*t in application
-    VisuShrink(th, t) = new(th, t)
 end
 # define type for signal length n
 function VisuShrink(n::Int)
@@ -20,13 +19,15 @@ const DEFAULT_WAVELET = wavelet(WT.sym5, WT.Filter)    # default wavelet type
 
 # denoise signal x by thresholding in wavelet space
 # estnoise is (x::AbstractArray, wt::Union{DiscreteWavelet,Nothing})
-function denoise(x::AbstractArray,
-    wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET;
-    L::Int=min(maxtransformlevels(x), 6),
-    dnt::S=VisuShrink(size(x, 1)),
-    estnoise::Function=noisest,
-    TI::Bool=false,
-    nspin::Union{Int,Tuple}=tuple([8 for i = 1:ndims(x)]...)) where {S<:DNFT}
+function denoise(
+        x::AbstractArray,
+        wt::Union{DiscreteWavelet,Nothing}=DEFAULT_WAVELET;
+        L::Int=min(maxtransformlevels(x), 6),
+        dnt::S=VisuShrink(size(x, 1)),
+        estnoise::Function=noisest,
+        TI::Bool=false,
+        nspin::Union{Int,Tuple}=ntuple(Returns(8), ndims(x))
+    ) where {S<:DNFT}
     iscube(x) || throw(ArgumentError("array must be square/cube"))
     sigma = estnoise(x, wt)
 
@@ -40,13 +41,13 @@ function denoise(x::AbstractArray,
             z = similar(x)
             for i = 1:pns
                 shift = i - 1
-                Util.circshift!(z, x, shift)
+                circshift!(z, x, shift)
 
                 Transforms.dwt_oop!(xt, z, wt, L)
                 threshold!(xt, dnt.th, sigma * dnt.t)
                 Transforms.idwt_oop!(z, xt, wt, L)
 
-                Util.circshift!(xt, z, -shift)
+                circshift!(xt, z, -shift)
                 arrayadd!(y, xt)
             end
         else # ndims > 1
@@ -115,7 +116,7 @@ nspin2circ(nspin::Int, i::Int) = nspin2circ((nspin,), i)
 function nspin2circ(nspin::Tuple, i::Int)
     c1 = CartesianIndices(nspin)[i].I
     c = Vector{Int}(undef, length(c1))
-    for k in 1:length(c1)
+    for k in eachindex(c1)
         c[k] = c1[k] - 1
     end
     return c
