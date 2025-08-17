@@ -1,58 +1,51 @@
 # UTILITY FUNCTIONS
 
 # are all dimensions equal length?
-function iscube(x::AbstractArray)
-    for i = 1:ndims(x)
-        size(x, 1) != size(x, i) && return false
-    end
-    return true
-end
+iscube(x::AbstractArray) = allequal(size(x))
 # are all dimensions dyadic length?
-function isdyadic(x::AbstractArray)
-    for i = 1:ndims(x)
-        isdyadic(size(x, i)) || return false
-    end
-    return true
-end
-isdyadic(n::Integer) = (n == 2^(ndyadicscales(n)))
+isdyadic(x::AbstractArray) = all(isdyadic, size(x))
+isdyadic(n::Integer) = ispow2(n)
 
 # To perform a level L transform, the size of the signal in each dimension
 # must have 2^L as a factor.
-function sufficientpoweroftwo(x::AbstractArray, L::Integer)
-    for i = 1:ndims(x)
-        sufficientpoweroftwo(size(x, i), L) || return false
-    end
-    return true
-end
-sufficientpoweroftwo(n::Integer, L::Integer) = (n % (2^L) == 0)
+sufficientpoweroftwo(x::AbstractArray, L::Integer) =
+    all(Base.Fix2(sufficientpoweroftwo, L), size(x))
+sufficientpoweroftwo(n::Integer, L::Integer) = (n % (1<<L) == 0)
 
 # mirror of filter
-mirror(f::AbstractVector{<:Number}) = f .* (-1) .^ (0:length(f)-1)
-# upsample
-function upsample(x::AbstractVector, sw::Int=0)
-    @assert sw == 0 || sw == 1
-    n = length(x)
-    y = zeros(eltype(x), n << 1)
-    sw -= 1
+function mirror(h::AbstractVector{<:Number})
+    g = Vector{eltype(h)}(undef, length(h))
+    for i in eachindex(g, h)
+        g[i] = iseven(i) ? -h[i] : h[i]
+    end
+    return g
+end
 
-    for i = 1:n
-        @inbounds y[i<<1+sw] = x[i]
+# upsample
+function upsample(x::AbstractVector, to_evens::Bool=false)
+    n = length(x)
+    y = zeros(eltype(x), 2n)
+    sw = - 1 + to_evens
+
+    for i in eachindex(x)
+        y[2i+sw] = x[i]
     end
     return y
 end
+upsample(x::AbstractVector, i::Int) = upsample(x, Bool(i))
 # downsample
-function downsample(x::AbstractVector, sw::Int=0)
-    @assert sw == 0 || sw == 1
+function downsample(x::AbstractVector, from_evens::Bool=false)
     n = length(x)
-    @assert n % 2 == 0
+    @assert iseven(n)
     y = zeros(eltype(x), n >> 1)
-    sw -= 1
+    sw = - 1 + from_evens
 
     for i in eachindex(y)
-        @inbounds y[i] = x[i<<1+sw]
+        @inbounds y[i] = x[2i+sw]
     end
     return y
 end
+downsample(x::AbstractVector, i::Int) = downsample(x, Bool(i))
 
 # count coefficients above threshold t (>=), excluding coefficients in levels < level
 # where level -1 is the x[1] coefficient
@@ -69,65 +62,7 @@ function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
     return c
 end
 # count coefficients above threshold t (>=)
-function wcount(x::AbstractArray, t::Real=0)
-    c = 0
-    @inbounds for i in eachindex(x)
-        if abs(x[i]) >= t
-            c += 1
-        end
-    end
-    return c
-end
-
-# inplace circular shift of vector by shift, such that anew[i]=aold[i-shift] (mod length(a))
-function circshift!(a::AbstractVector, shift::Integer)
-    atype = typeof(a)
-    s = length(a)
-    shift = mod(shift, s)
-    shift == 0 && return a
-    shift = ifelse(s >> 1 < shift, shift - s, shift)  # shift a smaller distance if possible
-    if shift < 0
-        tmp = a[1:-shift]
-        for i = 1:s+shift
-            @inbounds a[i] = a[i-shift]
-        end
-        a[s+1+shift:s] = tmp
-    else
-        tmp = a[s+1-shift:s]
-        for i = s:-1:1+shift
-            @inbounds a[i] = a[i-shift]
-        end
-        a[1:shift] = tmp
-    end
-    return a::atype
-end
-# out of place circular shift of vector by shift, such that b[i]=a[i-shift] (mod length(a))
-function circshift!(b::AbstractVector, a::AbstractVector, shift::Integer)
-    @assert length(a) == length(b)
-    atype = typeof(a)
-    s = length(a)
-    shift = mod(shift, s)
-    shift == 0 && return copyto!(b, a)
-    shift = ifelse(s >> 1 < shift, shift - s, shift)  # shift a smaller distance if possible
-    if shift < 0
-        for i = 1:s+shift
-            @inbounds b[i] = a[i-shift]
-        end
-        sh = s + shift
-        for i = s+shift+1:s
-            @inbounds b[i] = a[i-sh]
-        end
-    else
-        for i = s:-1:1+shift
-            @inbounds b[i] = a[i-shift]
-        end
-        sh = -s + shift
-        for i = shift:-1:1
-            @inbounds b[i] = a[i-sh]
-        end
-    end
-    return b::atype
-end
+wcount(x::AbstractArray, t::Real=0) = count(y -> abs(y) >= t, x)
 
 # put odd elements into first half, even into second half
 function split!(a::AbstractVector{T}) where T<:Number
@@ -141,7 +76,7 @@ end
 # split only the range 1:n
 function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
-    @assert n % 2 == 0
+    @assert iseven(n)
     n == 2 && return a
     nt = n >> 2 + (n >> 1) % 2
     @assert nt <= length(tmp)
@@ -150,10 +85,10 @@ function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Numbe
         @inbounds tmp[i] = a[2i]
     end
     for i = 1:n>>1  # odds to first part
-        @inbounds a[i] = a[(i-1)<<1+1]
+        @inbounds a[i] = a[2i-1]
     end
     for i = 0:nt-1  # evens to end
-        @inbounds a[n-i] = a[n-i<<1]
+        @inbounds a[n-i] = a[n-2i]
     end
     copyto!(a, n >> 1 + 1, tmp, 1, nt)
     return a
@@ -162,7 +97,7 @@ end
 # out of place split from a to b, only the range 1:n
 function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && n <= length(b)
-    @assert n % 2 == 0
+    @assert iseven(n)
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
@@ -182,7 +117,7 @@ end
 # out of place split from a to b, only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
 function split!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where T<:Number
     @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
-    @assert n % 2 == 0
+    @assert iseven(n)
     if n == 2
         b[1] = a[ia]
         b[2] = a[ia+inca]
@@ -215,7 +150,7 @@ end
 # merge only the range 1:n
 function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
-    @assert n % 2 == 0
+    @assert iseven(n)
     n == 2 && return a
     nt = n >> 2 + (n >> 1) % 2
     @assert nt <= length(tmp)
@@ -236,7 +171,7 @@ end
 # out of place merge from a to b, only the range 1:n
 function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && n <= length(b)
-    @assert n % 2 == 0
+    @assert iseven(n)
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
@@ -256,7 +191,7 @@ end
 # out of place merge from a to b, only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
 function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where T<:Number
     @assert n <= length(a) && ib + (n - 1) * incb <= length(b)
-    @assert n % 2 == 0
+    @assert iseven(n)
     if n == 2
         b[ib] = a[1]
         b[ib+incb] = a[2]
@@ -305,7 +240,7 @@ function isvalidtree(x::AbstractVector, b::BitVector)
     @assert (2^(ns - 1) - 1) << 1 + 1 <= nb
 
     for i in 1:2^(ns-1)-1
-        @inbounds if !b[i] && (b[i<<1] || b[i<<1+1])
+        @inbounds if !b[i] && (b[2i] || b[2i+1])
             return false
         end
     end
@@ -338,7 +273,7 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
             @inbounds b[2^(i-1)] = t
         end
     else
-        throw(ArgumentError("uknown symbol"))
+        throw(ArgumentError("unknown symbol"))
     end
     return b
 end
@@ -356,7 +291,7 @@ function makewavelet(h::AbstractVector, N::Integer=8)
     phi = copy(h)
     psi = mirror(reverse(h))
 
-    for i = 1:N
+    for _ = 1:N
         phi = conv(upsample(phi), h)
         psi = conv(upsample(psi), h)
     end

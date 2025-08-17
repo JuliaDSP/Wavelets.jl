@@ -18,7 +18,7 @@ const DEFAULT_TH = HardTH()
 
 # biggest m-term approximation (best m-term approximation for orthogonal transforms)
 # result is m-sparse
-function threshold!(x::AbstractArray{<:Number}, TH::BiggestTH, m::Int)
+function threshold!(x::AbstractArray{<:Number}, ::BiggestTH, m::Int)
     @assert m >= 0
     n = length(x)
     m > n && (m = n)
@@ -32,7 +32,7 @@ function threshold!(x::AbstractArray{<:Number}, TH::BiggestTH, m::Int)
 end
 
 # hard
-function threshold!(x::AbstractArray{<:Number}, TH::HardTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, ::HardTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -45,7 +45,7 @@ function threshold!(x::AbstractArray{<:Number}, TH::HardTH, t::Real)
 end
 
 # soft
-function threshold!(x::AbstractArray{<:Number}, TH::SoftTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, ::SoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
@@ -61,16 +61,16 @@ function threshold!(x::AbstractArray{<:Number}, TH::SoftTH, t::Real)
 end
 
 # semisoft
-function threshold!(x::AbstractArray{<:Number}, TH::SemiSoftTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, ::SemiSoftTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
-            if x[i] <= 2 * t
+            if x[i] <= 2t
                 sh = abs(x[i]) - t
                 if sh < 0
                     x[i] = 0
                 elseif sh - t < 0
-                    x[i] = sign(x[i]) * sh * 2
+                    x[i] = copysign(2sh, x[i])
                 end
             end
         end
@@ -79,11 +79,11 @@ function threshold!(x::AbstractArray{<:Number}, TH::SemiSoftTH, t::Real)
 end
 
 # stein
-function threshold!(x::AbstractArray{<:Number}, TH::SteinTH, t::Real)
+function threshold!(x::AbstractArray{<:Number}, ::SteinTH, t::Real)
     @assert t >= 0
     @inbounds begin
         for i in eachindex(x)
-            sh = 1 - t * t / (x[i] * x[i])
+            sh = 1 - (t / x[i])^2
             if sh < 0
                 x[i] = 0
             else
@@ -95,7 +95,7 @@ function threshold!(x::AbstractArray{<:Number}, TH::SteinTH, t::Real)
 end
 
 # shrink negative elements to 0
-function threshold!(x::AbstractArray{<:Number}, TH::NegTH)
+function threshold!(x::AbstractArray{<:Number}, ::NegTH)
     @inbounds begin
         for i in eachindex(x)
             if x[i] < 0
@@ -107,7 +107,7 @@ function threshold!(x::AbstractArray{<:Number}, TH::NegTH)
 end
 
 # shrink positive elements to 0
-function threshold!(x::AbstractArray{<:Number}, TH::PosTH)
+function threshold!(x::AbstractArray{<:Number}, ::PosTH)
     @inbounds begin
         for i in eachindex(x)
             if x[i] > 0

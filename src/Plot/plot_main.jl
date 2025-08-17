@@ -100,5 +100,5 @@ function scale01!(z)
     for i in eachindex(z)
         @inbounds z[i] = (z[i] - mi) / (ma - mi)
     end
-    return z
+    return nothing
 end
