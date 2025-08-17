@@ -68,7 +68,7 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing
     nsc = 2^(J - L)
 
     # do wavelet transform
-    if wt != nothing
+    if !isnothing(wt)
         if size(x, 3) > 1
             x = dwtc(x, wt, L)
         else
@@ -81,8 +81,7 @@ function wplotim(x::AbstractArray, L::Integer, wt::Union{DiscreteWavelet,Nothing
     scale01!(scs)
 
     # detail coefs
-    xts = copy(x)
-    wabs && (broadcast!(abs, xts, xts))
+    xts = wabs ? copy(x) : abs.(x)
     xts[1:nsc, 1:nsc, :] .= 0
     scale01!(xts)
     for j = 1:n, i = 1:n
