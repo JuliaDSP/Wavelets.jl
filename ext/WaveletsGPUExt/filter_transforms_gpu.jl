@@ -187,7 +187,7 @@ function _dwt!(
     filtlen = length(filter)
     s = x
     snew = L > 1 ? similar(x, T, n >> 1) : similar(x, T, 0)
-    lrange = fw ? (1:L) : reverse(1:L)
+    lrange = fw ? (1:1:L) : (L:-1:1)
     bases = LineBases(1)
 
     for l in lrange
