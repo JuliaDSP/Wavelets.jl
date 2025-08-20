@@ -64,28 +64,24 @@ function bestbasistree(
     nrm = norm(y)
 
     Lmax = maxtransformlevels(n)
-    L = Lmax
     k = 1
-    while L > 0
-        ix = 1
+    for L in Lmax:-1:1
         Lfw = Lmax - L
         nj = detailn(n, Lfw)
 
         @assert nj <= n
-        dtmp = Transforms.unsafe_vectorslice(tmp, 1, nj)
-        while ix <= n
-            @assert nj + ix - 1 <= n
-            dx = Transforms.unsafe_vectorslice(x, ix, nj)
+        dtmp = view(tmp, 1:nj)
+        for ix in 1:nj:n
+            @assert ix + nj - 1 <= n
+            dx = view(x, ix:ix+nj-1)
 
             entr_bf[k] = coefentropy(dx, et, nrm)
 
             dwt!(dtmp, dx, wt, 1)
             copyto!(dx, dtmp)
 
-            ix += nj
             k += 1
         end
-        L -= 1
     end
 
     # entropy of fully transformed signal (end nodes)

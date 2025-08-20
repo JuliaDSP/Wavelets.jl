@@ -46,8 +46,7 @@ function _dwt!(
     s = x                           # s is current scaling coefs location
     filtlen = length(filter)
 
-    lrange = 1:L
-    !fw && (lrange = reverse(lrange))
+    lrange = fw ? (1:1:L) : (L:-1:1)
 
     for l in lrange
         if fw
@@ -163,7 +162,7 @@ function _dwt!(
     #s = x
 
     if fw
-        lrange = 1:L
+        lrange = 1:1:L
         nsub = n
         msub = m
     else
@@ -245,7 +244,7 @@ function _dwt!(
     plane_stride = m * n
 
     if fw
-        lrange = 1:L
+        lrange = 1:1:L
         msub = m
         nsub = n
         dsub = d
@@ -355,16 +354,14 @@ function _wpt!(
     first = true
     n = length(x)
     Lmax = maxtransformlevels(n)
-    L = Lmax
-    while L > 0
-        ix = 1
+    for L in 1:Lmax
         k = 1
-        Lfw = (fw ? Lmax - L : L - 1)
+        Lfw = (fw ? L - 1 : Lmax - L)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw) - 1
         dx = first ? x : unsafe_vectorslice(snew, 1, nj) # dx will be overwritten if first
 
-        while ix <= n
+        for ix in 1:nj:n
             if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
                 if first
@@ -376,10 +373,8 @@ function _wpt!(
             elseif first
                 copyto!(y, ix, x, ix, nj)
             end
-            ix += nj
             k += 1
         end
-        L -= 1
         first = false
     end
 
