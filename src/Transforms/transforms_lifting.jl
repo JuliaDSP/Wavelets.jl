@@ -45,18 +45,13 @@ function _dwt!(
         return y
     end
 
-    if fw
-        lrange = 1:L
-        ns = n
-    else
-        lrange = L:-1:1
-        ns = detailn(n, L - 1)
-    end
+    ns = fw ? n : detailn(n, L - 1)
+    lrange = 1:L
     half = ns >> 1
     s = y
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
-    for l in lrange
+    for _ in lrange
         if fw
             Util.split!(s, ns, tmp)
             for step in stepseq
@@ -157,19 +152,14 @@ function _dwt!(
         return y
     end
     row_stride = n
-    plane_stride = n * n
+    plane_stride = n^2
 
-    if fw
-        lrange = 1:L
-        nsub = n
-    else
-        lrange = L:-1:1
-        nsub = div(n, 2^(L - 1))
-    end
+    nsub = fw ? n : div(n, 2^(L - 1))
+    lrange = 1:L
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
     # transforms with stride are out of place in a dense array for speed
-    for l in lrange
+    for _ in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
             # rows
@@ -233,19 +223,14 @@ function _dwt!(
         return y
     end
     row_stride = n
-    plane_stride = n * n
+    plane_stride = n^2
 
-    if fw
-        lrange = 1:L
-        nsub = n
-    else
-        lrange = L:-1:1
-        nsub = div(n, 2^(L - 1))
-    end
+    nsub = fw ? n : div(n, 2^(L - 1))
+    lrange = 1:L
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
     # transforms with stride are out of place in a dense array for speed
-    for l in lrange
+    for _ in lrange
         tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
             # planes
@@ -317,24 +302,19 @@ function _wpt!(
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
     Lmax = maxtransformlevels(n)
-    L = Lmax
-    while L > 0
-        ix = 1
+    for L in 1:Lmax
         k = 1
-        fw && (Lfw = Lmax - L)
-        !fw && (Lfw = L - 1)
+        Lfw = fw ? L - 1 : Lmax - L
         nj = detailn(n, Lfw)
-        treeind = 2^(Lfw) - 1
+        treeind = (1 << Lfw) - 1    # 2^Lfw - 1
 
-        while ix <= n
+        for ix in 1:nj:n
             if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
                 unsafe_dwt1level!(dy, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
             end
-            ix += nj
             k += 1
         end
-        L -= 1
     end
 
     return y

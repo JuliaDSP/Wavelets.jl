@@ -9,7 +9,6 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     nmax >= -1 || throw(DomainError(nmax, "nmax must be >= -1"))
     tol > 0    || throw(DomainError(tol, "tol must be positive"))
     r = copy(x)
-    n = 1
 
     if oop  # out of place functions f and ft
         y = zeros(eltype(x), N)
@@ -22,7 +21,8 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
     spat = zeros(eltype(x), length(y))  # sparse for atom computation
     nmax == -1 && (nmax = length(y))
 
-    while norm(r) > tol && n <= nmax
+    for _ in 1:nmax
+        norm(r) > tol || break
         # find largest inner product
         if oop
             ft(ftr, r, tmp)  # compute f^T(r) in place
@@ -45,7 +45,6 @@ function matchingpursuit(x::AbstractVector, f::Function, ft::Function, tol::Real
         broadcast!(-, r, r, aphi)
 
         y[i] += ftri
-        n += 1
     end
     return y
 end
