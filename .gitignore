@@ -25,6 +25,8 @@
 *.orig
 
 /usr
+test/gpu_env/
+benchmark/gpu_env/
 
 lena*
 testmod.jl

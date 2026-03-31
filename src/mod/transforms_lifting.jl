@@ -28,7 +28,7 @@ end
 # 1-D
 # inplace transform of y, no vector allocation
 function _dwt!(y::AbstractVector{T}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
+        tmp::AbstractVector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
 
     n = length(y)
     0 <= L ||
@@ -125,7 +125,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Matrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
+function _dwt!(y::AbstractMatrix{T}, scheme::GLS, L::Integer, fw::Bool, tmp::AbstractVector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::AbstractVector{T} = Vector{T}(undef, size(y,1))) where T<:Number
 
     n = size(y,1)
     iscube(y) ||
@@ -197,7 +197,7 @@ end
 # inplace transform of y, no vector allocation
 # tmp: size at least n>>2
 # tmpvec: size at least n
-function _dwt!(y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::Vector{T} = Vector{T}(undef, size(y,1))) where T<:Number
+function _dwt!(y::AbstractArray{T,3}, scheme::GLS, L::Integer, fw::Bool, tmp::AbstractVector{T} = Vector{T}(undef, reqtmplength(y)), tmpvec::AbstractVector{T} = Vector{T}(undef, size(y,1))) where T<:Number
 
     n = size(y,1)
     iscube(y) ||
@@ -280,7 +280,7 @@ end
 
 # WPT
 # 1-D
-function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::Vector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
+function _wpt!(y::AbstractVector{T}, scheme::GLS, tree::BitVector, fw::Bool, tmp::AbstractVector{T} = Vector{T}(undef, reqtmplength(y))) where T<:Number
 
     n = length(y)
     isvalidtree(y, tree) ||
@@ -438,7 +438,7 @@ for (step_type, puxind) in ((WT.PredictStep, :(mod1(i+k-1+rhsis-half,half)+half)
                             (WT.UpdateStep,  :(mod1(i+k-1+rhsis,half))) )
 @eval begin
 function lift_perboundary!(x::AbstractVector{T}, half::Int,
-                            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
+                            c::AbstractVector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
     nc = length(c)
     for i in irange
         for k in 1:nc
@@ -452,7 +452,7 @@ end # for
 
 
 # main lift loop
-function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
+function lift_inbounds!(x::AbstractVector{T}, c::AbstractVector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
     nc = length(c)
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
