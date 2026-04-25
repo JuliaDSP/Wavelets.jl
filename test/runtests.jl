@@ -1,3 +1,7 @@
+using GPUEnv
+
+GPUEnv.activate(persist = true)
+
 using Wavelets
 using Test
 using LinearAlgebra
@@ -29,3 +33,4 @@ end
 @testset "Transforms" begin include("transforms.jl") end
 @testset "Threshold" begin include("threshold.jl") end
 @testset "Plot" begin include("plot.jl") end
+@testset "GPU" begin include("gpu.jl") end

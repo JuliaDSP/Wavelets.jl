@@ -1,0 +1,9 @@
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+GPUEnv = "78a0b619-6146-4252-b244-0f81c54be577"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
+
+[compat]
+julia = "1"
