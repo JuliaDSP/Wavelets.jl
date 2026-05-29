@@ -1,7 +1,3 @@
-module Transforms
-export  dwt, idwt, dwt!, idwt!,
-        wpt, iwpt, wpt!, iwpt!,
-        modwt, imodwt
 using ..Util, ..WT
 
 # TODO Use StridedArray instead of AbstractArray where writing to array.
@@ -226,13 +222,3 @@ col_idx(i, m) = 1 + (i-1)*m
 row_idx(i, j, m, n=m) = row_idx(i, n) + (j-1)*n*m
 col_idx(i, j, m, n=m) = col_idx(i, m) + (j-1)*n*m
 plane_idx(i, j, m) = i + (j-1)*m
-
-# filter transforms
-include("transforms_filter.jl")
-
-# lifting transforms
-include("transforms_lifting.jl")
-
-include("transforms_maximal_overlap.jl")
-
-end # module

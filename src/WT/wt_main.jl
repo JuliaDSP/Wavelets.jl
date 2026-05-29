@@ -1,12 +1,3 @@
-module WT
-export DiscreteWavelet,
-    FilterWavelet,
-    LSWavelet,
-    OrthoFilter,
-    GLS,
-    wavelet
-
-
 using ..Util
 import Base.length
 using SpecialFunctions
@@ -486,8 +477,3 @@ const SCHEMES = Dict{String,NTuple{3, Any}}(
             1.9318516525781364)
 
 )
-
-
-
-
-end
