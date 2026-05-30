@@ -405,10 +405,13 @@ end
 # x : filter convolved with x[ix:ix+nx-1], where nx=nout*2 (shifted by shift)
 # ss : shift downsampling
 # based on Base.filt
-function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
+function filtdown!(
+    f::AbstractVector{T}, si::AbstractVector{T},
     out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
     x::AbstractVector{<:Number}, ix::Integer,
-    shift::Integer=0, ss::Bool=false) where T<:Number
+    shift::Integer=0,
+    ss::Bool=false
+) where T<:Number
     nx = nout << 1
     silen = length(si)
     flen = length(f)
@@ -422,7 +425,7 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
     istart = flen + Int(ss)
     dsshift = istart % 2    # is flen odd, and shift downsampling
 
-    rout1, rin, rout2 = splitdownrangeper(istart, ix, nx, shift)
+    rout1, rin, rout2 = splitdownrangeper(istart, nx, shift)
     @inbounds begin
         for i in rout1      # rout1 assumed to be in 1:istart-1
             # periodic in the range [ix:ix+nx-1]
@@ -454,21 +457,16 @@ function filtdown!(f::AbstractVector{T}, si::AbstractVector{T},
 end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = -1 + shift + ix)
 # where mod(i-1+shift, nx) + ix == i + ixsh
-function splitdownrangeper(istart, ix, nx, shift)
-    ixsh = -1 + shift + ix
-    if mod(shift, nx) + ix == 1 + ixsh   # shift likely 0
+function splitdownrangeper(istart::T, nx::T, shift::T) where T<:Integer
+    if 0 <= shift < nx  # shift likely 0
         inxi = 1
         iend = nx - 1
-        while mod(iend - 1 + shift, nx) + ix != iend + ixsh
-            iend -= 1
-        end
+        iend = min(iend, nx - shift)
         return (0:-1, inxi:iend, (iend+1):(nx-1+istart))
-    elseif mod(istart - 1 + shift, nx) + ix == istart + ixsh
+    elseif 0 <= istart - 1 + shift < nx
         inxi = istart
         iend = nx - 1 + istart
-        while mod(iend - 1 + shift, nx) + ix != iend + ixsh
-            iend -= 1
-        end
+        iend = min(iend, nx - shift)
         return (1:inxi-1, inxi:iend, (iend+1):(nx-1+istart))
     else
         return (0:-1, 0:-1, 1:(nx-1+istart))
@@ -484,10 +482,15 @@ end
 # x : filter convolved with x[ix:ix+nx-1] upsampled, where nout==nx*2 (then shifted by shift)
 # ss : shift upsampling
 # based on Base.filt
-function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
+function filtup!(
+    add2out::Bool,
+    f::Vector{T},
+    si::Vector{T},
     out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
     x::AbstractVector{<:Number}, ix::Integer,
-    shift::Integer=0, ss::Bool=false) where T<:Number
+    shift::Integer=0,
+    ss::Bool=false
+) where T<:Number
     nx = nout >> 1
     silen = length(si)
     flen = length(f)
@@ -499,21 +502,22 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
 
     fill!(si, 0.0)
     istart = flen - shift % 2
-    dsshift = Int(ss) % 2  # shift upsampling
+    dsshift = Int(isodd(ss))   # shift upsampling
+    hshift = shift >> 1
 
-    rout1, rin, rout2 = splituprangeper(istart, ix, nx, nout, shift)
+    rout1, rin, rout2 = splituprangeper(istart, nx, nout, hshift)
     @inbounds begin
         for i in rout1  # rout1 assumed to be in 1:istart-1
             if iseven(i + dsshift)
                 filtermainloopzero!(si, silen)
             else
                 # periodic in the range [ix:ix+nx-1]
-                xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix    #(i-1)>>1 increm. every other
+                xindex = mod((i - 1) >> 1 + hshift, nx) + ix    #(i-1)>>1 increm. every other
                 xatind = x[xindex]
                 filtermainloop!(si, silen, f, xatind)
             end
         end
-        ixsh = ix + shift >> 1
+        ixsh = ix + hshift
         for i in rin
             si1 = si[1]
             if iseven(i + dsshift)
@@ -538,7 +542,7 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
                 xatind = 0.0
                 filtermainloopzero!(si, silen)
             else
-                xindex = mod((i - 1) >> 1 + shift >> 1, nx) + ix
+                xindex = mod((i - 1) >> 1 + hshift, nx) + ix
                 xatind = x[xindex]
                 filtermainloop!(si, silen, f, xatind)
             end
@@ -556,21 +560,17 @@ function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
 end
 # find part of range which is inbounds for [ix:ix+nx-1] (ixsh = shift>>1 + ix)
 # where mod((i-1)>>1+shift>>1, nx) + ix == (i-1)>>1 + ixsh
-function splituprangeper(istart, ix, nx, nout, shift)
-    ixsh = shift >> 1 + ix
-    if mod(shift >> 1, nx) + ix == ixsh   # shift likely 0
+function splituprangeper(istart::T, nx::T, nout::T, hshift::T) where T<:Integer
+    # ixsh = ix + hshift
+    if 0 <= hshift < nx     # shift likely 0
         inxi = 1
         iend = nout - 1
-        while mod((iend - 1) >> 1 + shift >> 1, nx) + ix != (iend - 1) >> 1 + ixsh
-            iend -= 1
-        end
+        iend = min(iend, 2 * (nx - hshift))
         return (0:-1, inxi:iend, (iend+1):(nout-1+istart))
-    elseif mod((istart - 1) >> 1 + shift >> 1, nx) + ix == (istart - 1) >> 1 + ixsh
+    elseif 0 <= (istart - 1) >> 1 + hshift < nx
         inxi = istart
         iend = nout - 1 + istart
-        while mod((iend - 1) >> 1 + shift >> 1, nx) + ix != (iend - 1) >> 1 + ixsh
-            iend -= 1
-        end
+        iend = min(iend, 2 * (nx - hshift))
         return (1:inxi-1, inxi:iend, (iend+1):(nout-1+istart))
     else
         return (0:-1, 0:-1, 1:(nout-1+istart))
