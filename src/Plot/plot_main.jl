@@ -19,15 +19,13 @@ function wplotdots(x::AbstractVector, t::Real=0, r::Real=1)
 
     J = ndyadicscales(n)
     k = 1
-    @inbounds begin
-        for j = 0:J-1
-            rind = 2^(J-1-j):2^(J-j):n
-            for i in 1:dyadicdetailn(j)
-                if abs(x[dyadicdetailindex(j, i)]) >= t
-                    d[k] = range[rind[i]]
-                    l[k] = j
-                    k += 1
-                end
+    for j = 0:J-1
+        rind = 2^(J-1-j):2^(J-j):n
+        @inbounds for i in 1:dyadicdetailn(j)
+            if abs(x[dyadicdetailindex(j, i)]) >= t
+                d[k] = range[rind[i]]
+                l[k] = j
+                k += 1
             end
         end
     end
@@ -41,13 +39,11 @@ function wplotim(x::AbstractVector)
     J = ndyadicscales(n)
     A = zeros(Float64, J, n)
 
-    @inbounds begin
-        for j = 0:J-1
-            dr = dyadicdetailrange(j)
-            m = 2^(J - j)
-            for i in eachindex(dr)
-                A[j+1, 1+(i-1)*m:i*m] .= x[dr[i]]
-            end
+    for j = 0:J-1
+        dr = dyadicdetailrange(j)
+        m = 2^(J - j)
+        for i in eachindex(dr)
+            @inbounds A[j+1, 1+(i-1)*m:i*m] .= x[dr[i]]
         end
     end
     return A
