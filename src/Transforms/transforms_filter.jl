@@ -383,15 +383,15 @@ end
 
 
 @inline function filtermainloop!(si, silen, b, val)
-    @inbounds for j = 2:silen
-        si[j-1] = si[j] + b[j] * val
+    for j = 2:silen
+        @inbounds si[j-1] = si[j] + b[j] * val
     end
     @inbounds si[silen] = b[silen+1] * val
     return nothing
 end
 @inline function filtermainloopzero!(si, silen)
-    @inbounds for j = 2:silen
-        si[j-1] = si[j]
+    for j = 2:silen
+        @inbounds si[j-1] = si[j]
     end
     @inbounds si[silen] = 0.0
     return nothing
@@ -426,31 +426,30 @@ function filtdown!(
     dsshift = istart % 2    # is flen odd, and shift downsampling
 
     rout1, rin, rout2 = splitdownrangeper(istart, nx, shift)
-    @inbounds begin
-        for i in rout1      # rout1 assumed to be in 1:istart-1
-            # periodic in the range [ix:ix+nx-1]
-            xatind = x[mod(i - 1 + shift, nx)+ix]
-            filtermainloop!(si, silen, f, xatind)
+
+    for i in rout1      # rout1 assumed to be in 1:istart-1
+        # periodic in the range [ix:ix+nx-1]
+        xatind = x[mod(i - 1 + shift, nx)+ix]
+        filtermainloop!(si, silen, f, xatind)
+    end
+    # rin is inbounds in [ix:ix+nx-1]
+    ixsh = ix + shift - 1
+    for i in rin
+        xatind = x[i+ixsh]
+        # take every other value after istart
+        if iseven(i + dsshift) && i >= istart
+            out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
         end
-        # rin is inbounds in [ix:ix+nx-1]
-        ixsh = ix + shift - 1
-        for i in rin
-            xatind = x[i+ixsh]
-            # take every other value after istart
-            if iseven(i + dsshift) && i >= istart
-                out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
-            end
-            filtermainloop!(si, silen, f, xatind)
+        filtermainloop!(si, silen, f, xatind)
+    end
+    for i in rout2
+        # periodic in the range [ix:ix+nx-1]
+        xatind = x[mod(i - 1 + shift, nx)+ix]
+        # take every other value after istart
+        if iseven(i + dsshift) && i >= istart
+            out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
         end
-        for i in rout2
-            # periodic in the range [ix:ix+nx-1]
-            xatind = x[mod(i - 1 + shift, nx)+ix]
-            # take every other value after istart
-            if iseven(i + dsshift) && i >= istart
-                out[(i-istart)>>1+iout] = si[1] + f[1] * xatind
-            end
-            filtermainloop!(si, silen, f, xatind)
-        end
+        filtermainloop!(si, silen, f, xatind)
     end
 
     return nothing
@@ -506,52 +505,51 @@ function filtup!(
     hshift = shift >> 1
 
     rout1, rin, rout2 = splituprangeper(istart, nx, nout, hshift)
-    @inbounds begin
-        for i in rout1  # rout1 assumed to be in 1:istart-1
-            if iseven(i + dsshift)
-                filtermainloopzero!(si, silen)
+
+    for i in rout1  # rout1 assumed to be in 1:istart-1
+        if iseven(i + dsshift)
+            filtermainloopzero!(si, silen)
+        else
+            # periodic in the range [ix:ix+nx-1]
+            xindex = mod((i - 1) >> 1 + hshift, nx) + ix    #(i-1)>>1 increm. every other
+            xatind = x[xindex]
+            filtermainloop!(si, silen, f, xatind)
+        end
+    end
+    ixsh = ix + hshift
+    for i in rin
+        si1 = si[1]
+        if iseven(i + dsshift)
+            xatind = zero(eltype(x))
+            filtermainloopzero!(si, silen)
+        else
+            xindex = (i - 1) >> 1 + ixsh
+            xatind = x[xindex]
+            filtermainloop!(si, silen, f, xatind)
+        end
+        if i >= istart
+            if add2out
+                out[(i-istart)+iout] += si1 + f[1] * xatind
             else
-                # periodic in the range [ix:ix+nx-1]
-                xindex = mod((i - 1) >> 1 + hshift, nx) + ix    #(i-1)>>1 increm. every other
-                xatind = x[xindex]
-                filtermainloop!(si, silen, f, xatind)
+                out[(i-istart)+iout] = si1 + f[1] * xatind
             end
         end
-        ixsh = ix + hshift
-        for i in rin
-            si1 = si[1]
-            if iseven(i + dsshift)
-                xatind = zero(eltype(x))
-                filtermainloopzero!(si, silen)
-            else
-                xindex = (i - 1) >> 1 + ixsh
-                xatind = x[xindex]
-                filtermainloop!(si, silen, f, xatind)
-            end
-            if i >= istart
-                if add2out
-                    out[(i-istart)+iout] += si1 + f[1] * xatind
-                else
-                    out[(i-istart)+iout] = si1 + f[1] * xatind
-                end
-            end
+    end
+    for i in rout2
+        si1 = si[1]
+        if iseven(i + dsshift)
+            xatind = 0.0
+            filtermainloopzero!(si, silen)
+        else
+            xindex = mod((i - 1) >> 1 + hshift, nx) + ix
+            xatind = x[xindex]
+            filtermainloop!(si, silen, f, xatind)
         end
-        for i in rout2
-            si1 = si[1]
-            if iseven(i + dsshift)
-                xatind = 0.0
-                filtermainloopzero!(si, silen)
+        if i >= istart
+            if add2out
+                out[(i-istart)+iout] += si1 + f[1] * xatind
             else
-                xindex = mod((i - 1) >> 1 + hshift, nx) + ix
-                xatind = x[xindex]
-                filtermainloop!(si, silen, f, xatind)
-            end
-            if i >= istart
-                if add2out
-                    out[(i-istart)+iout] += si1 + f[1] * xatind
-                else
-                    out[(i-istart)+iout] = si1 + f[1] * xatind
-                end
+                out[(i-istart)+iout] = si1 + f[1] * xatind
             end
         end
     end

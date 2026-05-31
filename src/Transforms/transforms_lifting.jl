@@ -324,38 +324,38 @@ end
 
 function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds x[i] *= n1
+        x[i] *= n1
     end
     for i = half+1:ns
-        @inbounds x[i] *= n2
+        x[i] *= n2
     end
     return nothing
 end
 # out of place normalize from x to y
 function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[i] = n1 * x[i]
+        y[i] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2 * x[i]
+        y[i] = n2 * x[i]
     end
     return nothing
 end
 function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[iy+(i-1)*incy] = n1 * x[i]
+        y[iy+(i-1)*incy] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[iy+(i-1)*incy] = n2 * x[i]
+        y[iy+(i-1)*incy] = n2 * x[i]
     end
     return nothing
 end
 function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[i] = n1 * x[ix+(i-1)*incx]
+        y[i] = n1 * x[ix+(i-1)*incx]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2 * x[ix+(i-1)*incx]
+        y[i] = n2 * x[ix+(i-1)*incx]
     end
     return nothing
 end
@@ -437,24 +437,22 @@ end
 
 # periodic boundary
 function lift_perboundary!(
-        x::AbstractVector{T}, half::Int, c::Vector{T},
-        irange::AbstractRange, rhsis::Int, ::WT.PredictStep
-    ) where T<:Number
-    nc = length(c)
-    for i in irange, k in 1:nc
-        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+    x::AbstractVector{T}, half::Int, c::Vector{T},
+    irange::AbstractRange, rhsis::Int, ::WT.PredictStep
+) where T<:Number
+    for i in irange, k in eachindex(c)
+        x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
     end
-    return x
+    return nothing
 end
 function lift_perboundary!(
-        x::AbstractVector{T}, half::Int, c::Vector{T},
-        irange::AbstractRange, rhsis::Int, ::WT.UpdateStep
-    ) where T<:Number
-    nc = length(c)
-    for i in irange, k in 1:nc
-        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
+    x::AbstractVector{T}, half::Int, c::Vector{T},
+    irange::AbstractRange, rhsis::Int, ::WT.UpdateStep
+) where T<:Number
+    for i in irange, k in eachindex(c)
+        x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
     end
-    return x
+    return nothing
 end
 
 # main lift loop
@@ -480,8 +478,8 @@ function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRang
         end
     else
         for i in irange, k in 0:nc-1
-            @inbounds x[i] += c[k] * x[i+k+rhsis]
+            @inbounds x[i] += c[1+k] * x[i+k+rhsis]
         end
     end
-    return x
+    return nothing
 end
