@@ -41,7 +41,7 @@ function downsample(x::AbstractVector, from_evens::Bool=false)
     sw = - 1 + from_evens
 
     for i in eachindex(y)
-        @inbounds y[i] = x[2i+sw]
+        y[i] = x[2i+sw]
     end
     return y
 end
@@ -54,7 +54,7 @@ function wcount(x::AbstractVector, t::Real=0; level::Int=-1)
     c = 0
     si = 1
     level >= 0 && (si = 1 + 2^level)
-    @inbounds for i = si:length(x)
+    for i = si:length(x)
         if abs(x[i]) >= t
             c += 1
         end
@@ -82,13 +82,13 @@ function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Numbe
     @assert nt <= length(tmp)
 
     for i = 1:nt    # store evens
-        @inbounds tmp[i] = a[2i]
+        tmp[i] = a[2i]
     end
     for i = 1:n>>1  # odds to first part
-        @inbounds a[i] = a[2i-1]
+        a[i] = a[2i-1]
     end
     for i = 0:nt-1  # evens to end
-        @inbounds a[n-i] = a[n-2i]
+        a[n-i] = a[n-2i]
     end
     copyto!(a, n >> 1 + 1, tmp, 1, nt)
     return a
@@ -106,10 +106,10 @@ function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<
 
     h = n >> 1
     for i = 1:h     # odds to b
-        @inbounds b[i] = a[2i-1]
+        b[i] = a[2i-1]
     end
     for i = h+1:n   # evens to b
-        @inbounds b[i] = a[2*(i-h)]
+        b[i] = a[2*(i-h)]
     end
 
     return b
@@ -127,12 +127,12 @@ function split!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::In
     h = n >> 1
     inca2 = 2inca
     for i = 1:h     # odds to b
-        @inbounds b[i] = a[ia+(i-1)*inca2]
+        b[i] = a[ia+(i-1)*inca2]
     end
     iainca = ia + inca
     hp1 = h + 1
     for i = h+1:n   # evens to b
-        @inbounds b[i] = a[iainca+(i-hp1)*inca2]
+        b[i] = a[iainca+(i-hp1)*inca2]
     end
 
     return b
@@ -157,13 +157,13 @@ function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Numbe
 
     copyto!(tmp, 1, a, n >> 1 + 1, nt)
     for i = nt-1:-1:0   # evens from end
-        @inbounds a[n-2i] = a[n-i]
+        a[n-2i] = a[n-i]
     end
     for i = n>>1:-1:1   # odds from first part
-        @inbounds a[2i-1] = a[i]
+        a[2i-1] = a[i]
     end
     for i = nt:-1:1     # retrieve evens
-        @inbounds a[2i] = tmp[i]
+        a[2i] = tmp[i]
     end
     return a
 end
@@ -180,10 +180,10 @@ function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<
 
     h = n >> 1
     for i = 1:h     # odds to b
-        @inbounds b[2i-1] = a[i]
+        b[2i-1] = a[i]
     end
     for i = h+1:n   # evens to b
-        @inbounds b[2*(i-h)] = a[i]
+        b[2*(i-h)] = a[i]
     end
 
     return b
@@ -201,12 +201,12 @@ function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVect
     h = n >> 1
     incb2 = incb << 1
     for i = 1:h     # odds to b
-        @inbounds b[ib+(i-1)*incb2] = a[i]
+        b[ib+(i-1)*incb2] = a[i]
     end
     ibincb = ib + incb
     hp1 = h + 1
     for i = h+1:n   # evens to b
-        @inbounds b[ibincb+(i-hp1)*incb2] = a[i]
+        b[ibincb+(i-hp1)*incb2] = a[i]
     end
 
     return b
@@ -216,7 +216,7 @@ end
 function stridedcopy!(b::AbstractVector{<:Number}, a::AbstractArray{<:Number}, ia::Integer, inca::Integer, n::Integer)
     @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
 
-    @inbounds for i = 1:n
+    for i = 1:n
         b[i] = a[ia+(i-1)*inca]
     end
     return b
@@ -224,7 +224,7 @@ end
 function stridedcopy!(b::AbstractArray{<:Number}, ib::Integer, incb::Integer, a::AbstractVector{<:Number}, n::Integer)
     @assert ib + (n - 1) * incb <= length(b) && n <= length(a)
 
-    @inbounds for i = 1:n
+    for i = 1:n
         b[ib+(i-1)*incb] = a[i]
     end
     return b
@@ -240,7 +240,7 @@ function isvalidtree(x::AbstractVector, b::BitVector)
     @assert (2^(ns - 1) - 1) << 1 + 1 <= nb
 
     for i in 1:2^(ns-1)-1
-        @inbounds if !b[i] && (b[2i] || b[2i+1])
+        if !b[i] && (b[2i] || b[2i+1])
             return false
         end
     end
@@ -266,11 +266,11 @@ function maketree(n::Int, L::Int, s::Symbol=:full)
     t = true
     if s == :full
         for i in 1:2^(L)-1
-            @inbounds b[i] = t
+            b[i] = t
         end
     elseif s == :dwt
         for i in 1:L
-            @inbounds b[2^(i-1)] = t
+            b[2^(i-1)] = t
         end
     else
         throw(ArgumentError("unknown symbol"))

@@ -23,10 +23,8 @@ function threshold!(x::AbstractArray{<:Number}, ::BiggestTH, m::Int)
     n = length(x)
     m > n && (m = n)
     ind = sortperm(x; alg=QuickSort, by=abs)
-    @inbounds begin
-        for i = 1:n-m
-            x[ind[i]] = 0
-        end
+    for i = 1:n-m
+        @inbounds x[ind[i]] = 0
     end
     return x
 end
@@ -34,11 +32,9 @@ end
 # hard
 function threshold!(x::AbstractArray{<:Number}, ::HardTH, t::Real)
     @assert t >= 0
-    @inbounds begin
-        for i in eachindex(x)
-            if abs(x[i]) <= t
-                x[i] = 0
-            end
+    for i in eachindex(x)
+        if abs(x[i]) <= t
+            x[i] = 0
         end
     end
     return x
@@ -47,14 +43,12 @@ end
 # soft
 function threshold!(x::AbstractArray{<:Number}, ::SoftTH, t::Real)
     @assert t >= 0
-    @inbounds begin
-        for i in eachindex(x)
-            sh = abs(x[i]) - t
-            if sh < 0
-                x[i] = 0
-            else
-                x[i] = sign(x[i]) * sh
-            end
+    for i in eachindex(x)
+        sh = abs(x[i]) - t
+        if sh < 0
+            x[i] = 0
+        else
+            x[i] = sign(x[i]) * sh
         end
     end
     return x
@@ -63,15 +57,13 @@ end
 # semisoft
 function threshold!(x::AbstractArray{<:Number}, ::SemiSoftTH, t::Real)
     @assert t >= 0
-    @inbounds begin
-        for i in eachindex(x)
-            if x[i] <= 2t
-                sh = abs(x[i]) - t
-                if sh < 0
-                    x[i] = 0
-                elseif sh - t < 0
-                    x[i] = copysign(2sh, x[i])
-                end
+    for i in eachindex(x)
+        if x[i] <= 2t
+            sh = abs(x[i]) - t
+            if sh < 0
+                x[i] = 0
+            elseif sh - t < 0
+                x[i] = copysign(2sh, x[i])
             end
         end
     end
@@ -81,14 +73,12 @@ end
 # stein
 function threshold!(x::AbstractArray{<:Number}, ::SteinTH, t::Real)
     @assert t >= 0
-    @inbounds begin
-        for i in eachindex(x)
-            sh = 1 - (t / x[i])^2
-            if sh < 0
-                x[i] = 0
-            else
-                x[i] = x[i] * sh
-            end
+    for i in eachindex(x)
+        sh = 1 - (t / x[i])^2
+        if sh < 0
+            x[i] = 0
+        else
+            x[i] = x[i] * sh
         end
     end
     return x
@@ -96,11 +86,9 @@ end
 
 # shrink negative elements to 0
 function threshold!(x::AbstractArray{<:Number}, ::NegTH)
-    @inbounds begin
-        for i in eachindex(x)
-            if x[i] < 0
-                x[i] = 0
-            end
+    for i in eachindex(x)
+        if x[i] < 0
+            x[i] = 0
         end
     end
     return x
@@ -108,11 +96,9 @@ end
 
 # shrink positive elements to 0
 function threshold!(x::AbstractArray{<:Number}, ::PosTH)
-    @inbounds begin
-        for i in eachindex(x)
-            if x[i] > 0
-                x[i] = 0
-            end
+    for i in eachindex(x)
+        if x[i] > 0
+            x[i] = 0
         end
     end
     return x

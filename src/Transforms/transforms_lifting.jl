@@ -324,38 +324,38 @@ end
 
 function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds x[i] *= n1
+        x[i] *= n1
     end
     for i = half+1:ns
-        @inbounds x[i] *= n2
+        x[i] *= n2
     end
     return x
 end
 # out of place normalize from x to y
 function normalize!(y::AbstractVector{T}, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[i] = n1 * x[i]
+        y[i] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2 * x[i]
+        y[i] = n2 * x[i]
     end
     return y
 end
 function normalize!(y::AbstractArray{T}, iy::Int, incy::Int, x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[iy+(i-1)*incy] = n1 * x[i]
+        y[iy+(i-1)*incy] = n1 * x[i]
     end
     for i = half+1:ns
-        @inbounds y[iy+(i-1)*incy] = n2 * x[i]
+        y[iy+(i-1)*incy] = n2 * x[i]
     end
     return y
 end
 function normalize!(y::AbstractVector{T}, x::AbstractArray{T}, ix::Int, incx::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
     for i = 1:half
-        @inbounds y[i] = n1 * x[ix+(i-1)*incx]
+        y[i] = n1 * x[ix+(i-1)*incx]
     end
     for i = half+1:ns
-        @inbounds y[i] = n2 * x[ix+(i-1)*incx]
+        y[i] = n2 * x[ix+(i-1)*incx]
     end
     return y
 end
@@ -442,7 +442,7 @@ function lift_perboundary!(
     ) where T<:Number
     nc = length(c)
     for i in irange, k in 1:nc
-        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+        x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
     end
     return x
 end
@@ -452,7 +452,7 @@ function lift_perboundary!(
     ) where T<:Number
     nc = length(c)
     for i in irange, k in 1:nc
-        @inbounds x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
+        x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
     end
     return x
 end
@@ -463,24 +463,24 @@ function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRang
     if nc == 1  # hard code the most common cases (1, 2, 3) for speed
         c1 = c[1]
         for i in irange
-            @inbounds x[i] += c1 * x[i+rhsis]
+            x[i] += c1 * x[i+rhsis]
         end
     elseif nc == 2
         c1, c2 = c
         rhsisp1 = rhsis + 1
         for i in irange
-            @inbounds x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1]
+            x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1]
         end
     elseif nc == 3
         c1, c2, c3 = c
         rhsisp1 = rhsis + 1
         rhsisp2 = rhsis + 2
         for i = irange
-            @inbounds x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1] + c3 * x[i+rhsisp2]
+            x[i] += c1 * x[i+rhsis] + c2 * x[i+rhsisp1] + c3 * x[i+rhsisp2]
         end
     else
         for i in irange, k in 0:nc-1
-            @inbounds x[i] += c[k] * x[i+k+rhsis]
+            x[i] += c[k] * x[i+k+rhsis]
         end
     end
     return x

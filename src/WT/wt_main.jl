@@ -270,8 +270,9 @@ function daubechies(N::Int)
     @assert N > 0
     # Create polynomial
     C = Vector{Int}(undef, N)
-    @inbounds for n = 0:N-1
-        C[N-n] = binomial(N - 1 + n, n)
+    for n = 1:N
+        # C[N-n] = binomial(N - 1 + n, n)
+        C[n] = binomial(2N - 1 - n, N - 1)
     end
 
     # Find roots in y domain (truncated binomial series; (1 - y)^{-N})
@@ -295,7 +296,7 @@ function daubechies(N::Int)
     # Find coefficients of the polynomial
     # (1 + z)^N * \prod_i (z - z_i)
     R = Vector{ComplexF64}(undef, N + nr)
-    @inbounds for i = 1:N
+    for i = 1:N
         R[i] = -1
     end
     k = N
