@@ -13,14 +13,14 @@
 function _dwt!(y::AbstractVector{Ty}, x::AbstractVector{Tx},
                 filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
     T = promote_type(Tx, Ty)
-    si = similar(x, T, length(filter)-1) # tmp filter vector
+    si = Vector{T}(undef, length(filter)-1) # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
 function _dwt!(y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
                 filter::OrthoFilter, L::Integer, fw::Bool,
-                dcfilter::AbstractVector{T}, scfilter::AbstractVector{T},
-                si::AbstractVector{T}, snew::AbstractVector{T} = similar(x, T, ifelse(L>1, length(x)>>1, 0))) where T<:Number
+                dcfilter::Vector{T}, scfilter::Vector{T},
+                si::Vector{T}, snew::Vector{T} = Vector{T}(undef, ifelse(L>1, length(x)>>1, 0))) where T<:Number
     n = length(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
@@ -114,16 +114,16 @@ function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
                 filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
     m, n = size(x)
     T = promote_type(Tx, Ty)
-    si = similar(x, T, length(filter)-1)       # tmp filter vector
-    tmpbuffer = similar(x, T, max(n<<1, m))    # tmp storage vector
+    si = Vector{T}(undef, length(filter)-1)       # tmp filter vector
+    tmpbuffer = Vector{T}(undef, max(n<<1, m))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
 function _dwt!(y::AbstractMatrix{<:Number}, x::AbstractMatrix{<:Number},
                 filter::OrthoFilter, L::Integer, fw::Bool,
-                dcfilter::AbstractVector{T}, scfilter::AbstractVector{T},
-                si::AbstractVector{T}, tmpbuffer::AbstractVector{T}) where T<:Number
+                dcfilter::Vector{T}, scfilter::Vector{T},
+                si::Vector{T}, tmpbuffer::Vector{T}) where T<:Number
 
     m, n = size(x)
     size(x) == size(y) ||
@@ -193,16 +193,16 @@ function _dwt!(y::AbstractArray{Ty, 3}, x::AbstractArray{Tx, 3},
                filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number, Ty<:Number}
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
-    si = similar(x, T, length(filter)-1)            # tmp filter vector
-    tmpbuffer = similar(x, T, max(m, n<<1, d<<1))   # tmp storage vector
+    si = Vector{T}(undef, length(filter)-1)            # tmp filter vector
+    tmpbuffer = Vector{T}(undef, max(m, n<<1, d<<1))   # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
 end
 function _dwt!(y::AbstractArray{<:Number, 3}, x::AbstractArray{<:Number, 3},
                 filter::OrthoFilter, L::Integer, fw::Bool,
-                dcfilter::AbstractVector{T}, scfilter::AbstractVector{T},
-                si::AbstractVector{T}, tmpbuffer::AbstractVector{T}) where T<:Number
+                dcfilter::Vector{T}, scfilter::Vector{T},
+                si::Vector{T}, tmpbuffer::Vector{T}) where T<:Number
 
     m, n, d = size(x)
     size(x) == size(y) ||
@@ -299,14 +299,14 @@ end
 # 1-D
 # writes to y
 function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool) where T<:Number
-    si = similar(x, T, length(filter)-1)
+    si = Vector{T}(undef, length(filter)-1)
     ns = ifelse(fw, length(x)>>1, length(x))
-    snew = similar(x, T, ns)
+    snew = Vector{T}(undef, ns)
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _wpt!(y, x, filter, tree, fw, dcfilter, scfilter, si, snew)
 end
-function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::AbstractVector{T}, scfilter::AbstractVector{T}, si::AbstractVector{T}, snew::AbstractVector{T}) where T<:Number
+function _wpt!(y::AbstractVector{T}, x::AbstractVector{T}, filter::OrthoFilter, tree::BitVector, fw::Bool, dcfilter::Vector{T}, scfilter::Vector{T}, si::Vector{T}, snew::Vector{T}) where T<:Number
 
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
@@ -464,7 +464,7 @@ end
 # x : filter convolved with x[ix:ix+nx-1] upsampled, where nout==nx*2 (then shifted by shift)
 # ss : shift upsampling
 # based on Base.filt
-function filtup!(add2out::Bool, f::AbstractVector{T}, si::AbstractVector{T},
+function filtup!(add2out::Bool, f::Vector{T}, si::Vector{T},
               out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
               x::AbstractVector{<:Number}, ix::Integer,
               shift::Integer=0, ss::Bool=false) where T<:Number

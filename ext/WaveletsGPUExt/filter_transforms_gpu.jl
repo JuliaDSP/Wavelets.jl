@@ -53,7 +53,7 @@ end
     val = zero(eltype(out))
     for j in 0:(flen - 1)
         pos = mod1(n - j, nout)
-        if (pos + dsshift) % 2 != 0
+        if isodd(pos + dsshift)
             xk = mod(((pos - 1) >> 1) + shift_half, nx)
             @inbounds val += f[j + 1] * x[in_base + xk * x_stride]
         end
@@ -97,13 +97,13 @@ end
     val = zero(eltype(out))
     for j in 0:(flen - 1)
         pos1 = mod1(n1 - j, nout)
-        if (pos1 + dsshift1) % 2 != 0
+        if isodd(pos1 + dsshift1)
             xk1 = mod(((pos1 - 1) >> 1) + shift_half1, nx)
             @inbounds val += f1[j + 1] * x1[in_base1 + x_offset1 + xk1 * x1_stride]
         end
 
         pos2 = mod1(n2 - j, nout)
-        if (pos2 + dsshift2) % 2 != 0
+        if isodd(pos2 + dsshift2)
             xk2 = mod(((pos2 - 1) >> 1) + shift_half2, nx)
             @inbounds val += f2[j + 1] * x2[in_base2 + x_offset2 + xk2 * x2_stride]
         end

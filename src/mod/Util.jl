@@ -218,13 +218,13 @@ end
 function split!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = similar(a, T, nt)
+    tmp = Vector{T}(undef, nt)
     split!(a, n, tmp)
     return a
 end
 
 # split only the range 1:n
-function split!(a::AbstractVector{T}, n::Integer, tmp::AbstractVector{T}) where T<:Number
+function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
     @assert n%2 == 0
     n == 2 && return a
@@ -292,13 +292,13 @@ end
 function merge!(a::AbstractVector{T}) where T<:Number
     n = length(a)
     nt = n>>2 + (n>>1)%2
-    tmp = similar(a, T, nt)
+    tmp = Vector{T}(undef, nt)
     merge!(a, n, tmp)
     return a
 end
 
 # merge only the range 1:n
-function merge!(a::AbstractVector{T}, n::Integer, tmp::AbstractVector{T}) where T<:Number
+function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
     @assert n <= length(a)
     @assert n%2 == 0
     n == 2 && return a

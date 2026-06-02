@@ -5,6 +5,9 @@
 # modwt_step kernel — each thread computes one output element
 # ============================================================================
 
+import Wavelets.Transforms: modwt_step
+import Wavelets.Transforms: imodwt_step
+
 # One launch computes both scaling and detail coefficients for a single MODWT level.
 @kernel function _modwt_step_kernel!(
         v1, w1, @Const(v), @Const(h), @Const(g),
@@ -18,7 +21,7 @@
     for n in 2:L
         k -= j_pow
         if k <= 0
-            k = mod1(k, N)
+            k += N
         end
         @inbounds wt += h[n] * v[k]
         @inbounds vt += g[n] * v[k]
@@ -28,8 +31,8 @@
 end
 
 function modwt_step(
-        v::AbstractGPUVector{T}, j::Integer, h::AbstractVector{S},
-        g::AbstractVector{S}
+        v::AbstractGPUVector{T}, j::Integer, h::Vector{S},
+        g::Vector{S}
     ) where {T <: Number, S <: Number}
     N = length(v)
     L = length(h)
@@ -38,8 +41,8 @@ function modwt_step(
     v1 = KernelAbstractions.zeros(backend, T, N)
     w1 = KernelAbstractions.zeros(backend, T, N)
 
-    h_gpu = h isa AbstractGPUArray ? h : to_device(backend, h)
-    g_gpu = g isa AbstractGPUArray ? g : to_device(backend, g)
+    h_gpu = to_device(backend, h)
+    g_gpu = to_device(backend, g)
 
     j_pow = 2^(j - 1)
     _modwt_step!(v1, w1, v, h_gpu, g_gpu, j_pow)
@@ -74,7 +77,7 @@ end
     for n in 2:L
         k += j_pow
         if k > N
-            k = mod1(k, N)
+            k -= N
         end
         @inbounds val += h[n] * w[k] + g[n] * v[k]
     end
@@ -83,7 +86,7 @@ end
 
 function imodwt_step(
         v::AbstractGPUVector{T}, w::AbstractGPUVector{T}, j::Integer,
-        h::AbstractVector{S}, g::AbstractVector{S}
+        h::Vector{S}, g::Vector{S}
     ) where {T <: Number, S <: Number}
     length(v) == length(w) ||
         throw(DimensionMismatch("Input array sizes must match"))
@@ -95,8 +98,8 @@ function imodwt_step(
 
     v0 = KernelAbstractions.zeros(backend, T, N)
 
-    h_gpu = h isa AbstractGPUArray ? h : to_device(backend, h)
-    g_gpu = g isa AbstractGPUArray ? g : to_device(backend, g)
+    h_gpu = to_device(backend, h)
+    g_gpu = to_device(backend, g)
 
     j_pow = 2^(j - 1)
     _imodwt_step!(v0, v, w, h_gpu, g_gpu, j_pow)
@@ -148,10 +151,10 @@ function modwt(
     for j in 1:L
         # Ping-pong the scaling buffer while writing details directly into the result matrix.
         _modwt_step!(next, detail, current, h_gpu, g_gpu, 2^(j - 1))
-        copyto!(@view(W[:, j]), detail)
+        copyto!(W, (j - 1) * N + 1, detail, 1, N)
         current, next = next, current
     end
-    copyto!(@view(W[:, L + 1]), current)
+    copyto!(W, L * N + 1, current, 1, N)
     return W
 end
 
@@ -170,7 +173,7 @@ function imodwt(xw::AbstractGPUMatrix{T}, wt::OrthoFilter) where {T <: Number}
     h_gpu = to_device(backend, h)
     g_gpu = to_device(backend, g)
 
-    current = copy(@view(xw[:, L + 1]))
+    current = xw[:, L + 1]
     next = similar(current)
     for j in L:-1:1
         # Inverse levels also ping-pong buffers to avoid per-level allocations.

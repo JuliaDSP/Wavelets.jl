@@ -168,11 +168,7 @@ function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps
     return out
 end
 
-# tmp is unused on GPU (kept for CPU method-signature compatibility)
-function _dwt!(
-        y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::AbstractVector{T} = similar(y, T, 0)
-    ) where {T <: Number}
+function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = length(y)
     0 <= L || throw(ArgumentError("L must be positive"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
@@ -211,12 +207,7 @@ function _dwt!(
     return y
 end
 
-# tmp, tmpvec are unused on GPU (kept for CPU method-signature compatibility)
-function _dwt!(
-        y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::AbstractVector{T} = similar(y, T, 0),
-        tmpvec::AbstractVector{T} = similar(y, T, 0)
-    ) where {T <: Number}
+function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
     0 <= L || throw(ArgumentError("L must be positive"))
@@ -255,12 +246,7 @@ function _dwt!(
     return y
 end
 
-# tmp, tmpvec are unused on GPU (kept for CPU method-signature compatibility)
-function _dwt!(
-        y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool,
-        tmp::AbstractVector{T} = similar(y, T, 0),
-        tmpvec::AbstractVector{T} = similar(y, T, 0)
-    ) where {T <: Number}
+function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
     0 <= L || throw(ArgumentError("L must be positive"))

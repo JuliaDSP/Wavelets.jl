@@ -214,7 +214,7 @@ end # for
 function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
    return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
 end
-function unsafe_vectorslice(A::AbstractArray{T}, i::Int, n::Int) where T
+function unsafe_vectorslice(A::StridedArray{T}, i::Int, n::Int) where T
     return @view A[i:(i-1+n)]
 end
 
