@@ -5,6 +5,8 @@
 
 A [Julia](https://github.com/JuliaLang/julia) package for fast wavelet transforms (1-D, 2-D, 3-D, by filtering or lifting). The package includes discrete wavelet transforms, column-wise discrete wavelet transforms, and wavelet packet transforms.
 
+**GPU acceleration** is supported via [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) and [GPUArrays.jl](https://github.com/JuliaGPU/GPUArrays.jl). Filter-bank DWT/WPT/MODWT and lifting-based DWT/WPT all work on GPU arrays — simply pass a `CuArray` (CUDA), `ROCArray` (AMDGPU), or any other `AbstractGPUArray` and the computation runs on the GPU with no API changes.
+
 * 1st generation wavelets using filter banks (periodic and orthogonal). Filters are included for the following types: Haar, Daubechies, Coiflet, Symmlet, Battle-Lemarie, Beylkin, Vaidyanathan.
 
 * 2nd generation wavelets by lifting (periodic and general type including orthogonal and biorthogonal). Included lifting schemes are currently only for Haar and Daubechies (under development). A new lifting scheme can be easily constructed by users. The current implementation of the lifting transforms is 2x faster than the filter transforms.
@@ -264,6 +266,50 @@ elapsed time: 0.577537263 seconds (167805888 bytes allocated, 5.53% gc time)
 ```
 
 By using the low-level function `dwt!` and pre-allocating temporary arrays, significant gains can be made in terms of memory usage (and some speedup). This is useful when transforming multiple times.
+
+GPU Support
+---------
+
+All transforms work transparently on GPU arrays. Just wrap your data in a GPU array type:
+
+```julia
+using Wavelets, CUDA  # or AMDGPU, Metal, oneAPI
+
+x = CUDA.randn(2^20)
+wt = wavelet(WT.db4)
+
+# Same API, runs on GPU
+xt = dwt(x, wt)
+x_recovered = idwt(xt, wt)
+
+# 2-D / 3-D transforms
+img = CUDA.randn(1024, 1024)
+xt2d = dwt(img, wt)
+
+# MODWT
+mw = modwt(x, wt)
+x_recovered = imodwt(mw, wt)
+
+# WPT
+xt_wpt = wpt(x, wt)
+```
+
+Supported GPU transforms:
+| Transform | 1-D | 2-D | 3-D |
+|:--------- |:---:|:---:|:---:|
+| DWT (filter) | ✓ | ✓ | ✓ |
+| DWT (lifting) | ✓ | ✓ | ✓ |
+| WPT (filter) | ✓ | | |
+| WPT (lifting) | ✓ | | |
+| MODWT | ✓ | | |
+
+Benchmarking the GPU implementation:
+
+```julia
+julia --project=benchmark benchmark/gpu_benchmark.jl
+```
+
+The benchmark workspace is bootstrapped through GPUEnv and only runs real GPU measurements. It skips execution when no native GPU backend is available.
 
 To-do list
 ---------

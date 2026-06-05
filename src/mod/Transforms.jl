@@ -112,7 +112,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     # filter
     function ($Xwt)(x::DWTArray{T}, filter::OrthoFilter,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
-        y = Array{T}(undef, size(x))
+        y = similar(x)
         return ($_Xwt!)(y, x, filter, L, $fw)
     end
     function ($Xwt!)(y::DWTArray{<:ValueType}, x::DWTArray{<:ValueType}, filter::OrthoFilter,
@@ -122,7 +122,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     # lifting
     function ($Xwt)(x::DWTArray{T}, scheme::GLS,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
-        y = Array{T}(undef, size(x))
+        y = similar(x)
         copyto!(y, x)
         return ($_Xwt!)(y, scheme, L, $fw)
     end
@@ -145,7 +145,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     # filter
     function ($Xwt)(x::WPTArray{T}, filter::OrthoFilter,
                     tree::BitVector=maketree(x, :full)) where T<:ValueType
-        y = Array{T}(undef, size(x))
+        y = similar(x)
         return ($_Xwt!)(y, x, filter, tree, $fw)
     end
     function ($Xwt!)(y::WPTArray{T}, x::WPTArray{T},
@@ -163,7 +163,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:wpt, :wpt!, :_wpt!, true),
     # lifting
     function ($Xwt)(x::WPTArray{T}, scheme::GLS,
                     tree::BitVector=maketree(x, :full)) where T<:ValueType
-        y = Array{T}(undef, size(x))
+        y = similar(x)
         copyto!(y, x)
         return ($_Xwt!)(y, scheme, tree, $fw)
     end
