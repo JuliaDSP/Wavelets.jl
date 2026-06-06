@@ -22,6 +22,7 @@ WaveletsGPUExt = ["GPUArrays", "KernelAbstractions"]
 
 [compat]
 DSP = "0.5.1, 0.6, 0.7, 0.8"
+GPUArrays = "11"
 LinearAlgebra = "1"
 Reexport = "0.2, 1.0"
 SpecialFunctions = "0.7.1, 0.8, 0.9, 0.10, 1, 2"
