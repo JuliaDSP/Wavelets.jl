@@ -216,8 +216,8 @@ let
         benchmark_case(
             "1D modwt step",
             "2^$p",
-            () -> Wavelets.Transforms.modwt_step(x, j, h, g),
-            () -> Wavelets.Transforms.modwt_step(xg, j, h, g)
+            () -> Wavelets.Transforms.modwt_step!(x, j, h, g),
+            () -> Wavelets.Transforms.modwt_step!(xg, j, h, g)
         )
     end
 end
@@ -232,13 +232,13 @@ let
         n = 2^p
         x = randn(Float32, n)
         xg = to_gpu(GPU_BACKEND, x)
-        v_cpu, w_cpu = Wavelets.Transforms.modwt_step(x, j, h, g)
-        v_gpu, w_gpu = Wavelets.Transforms.modwt_step(xg, j, h, g)
+        v_cpu, w_cpu = Wavelets.Transforms.modwt_step!(x, j, h, g)
+        v_gpu, w_gpu = Wavelets.Transforms.modwt_step!(xg, j, h, g)
         benchmark_case(
             "1D imodwt step",
             "2^$p",
-            () -> Wavelets.Transforms.imodwt_step(v_cpu, w_cpu, j, h, g),
-            () -> Wavelets.Transforms.imodwt_step(v_gpu, w_gpu, j, h, g)
+            () -> Wavelets.Transforms.imodwt_step!(v_cpu, w_cpu, j, h, g),
+            () -> Wavelets.Transforms.imodwt_step!(v_gpu, w_gpu, j, h, g)
         )
     end
 end

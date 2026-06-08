@@ -8,7 +8,7 @@ using KernelAbstractions: Adapt
 
 import Wavelets: WT, Util
 using Wavelets.WT: OrthoFilter, GLS
-import Wavelets.Transforms: _dwt!, _wpt!, modwt, imodwt, modwt_step, imodwt_step
+import Wavelets.Transforms: _dwt!, _wpt!, modwt, imodwt, modwt_step!, imodwt_step!
 import Wavelets.Util: detailindex, detailn, detailrange,
     maxtransformlevels, maxmodwttransformlevels,
     sufficientpoweroftwo,
