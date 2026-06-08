@@ -2,31 +2,34 @@
 """
 Perform one level of the maximal overlap discrete wavelet transform (MODWT) on
 the the vector `v`, which is either the `j`th level scaling coefficients or,
-if `j==1`, the raw signal.  The vectors `h` and `g` are the MODWT detail and
+if `j==1`, the raw signal. The vectors `h` and `g` are the MODWT detail and
 scaling filters.
 
 Returns a tuple `(v, w)` of the scaling and detail coefficients at level `j+1`.
 """
-function modwt_step(v::AbstractVector{T}, j::Integer, h::Array{S,1},
-        g::Array{S,1}) where {T <: Number, S <: Number}
+function modwt_step!(
+    vtmp::Vector{T}, v::Vector{T},
+    W::Matrix{T},
+    j::Integer,
+    h::Vector{T}, g::Vector{T}
+) where {T<:Number}
     N = length(v)
     L = length(h)
-    v1 = zeros(T, N)
-    w1 = zeros(T, N)
+    mod_delta = mod(2^(j - 1), N)
     for t in 1:N
         k = t
-        w1[t] = h[1] * v[k]
-        v1[t] = g[1] * v[k]
+        W[t, j] = h[1] * v[k]
+        vtmp[t] = g[1] * v[k]
         for n in 2:L
-            k -= 2^(j-1)
+            k -= mod_delta
             if k <= 0
-                k = mod1(k, N)
+                k += N
             end
-            w1[t] += h[n] * v[k]
-            v1[t] += g[n] * v[k]
+            W[t, j] += h[n] * v[k]
+            vtmp[t] += g[n] * v[k]
         end
     end
-    return v1, w1
+    return nothing
 end
 
 
@@ -43,21 +46,26 @@ Returns an `n × L+1` matrix (where `n` is the length of `x`) with the wavelet
 coefficients for level j in column j.  The scaling coefficients are in the
 last (L+1th) column.
 """
-function modwt(x::AbstractVector{T}, wt::OrthoFilter,
-        L::Integer=maxmodwttransformlevels(x)) where T <: Number
+function modwt(
+    x::AbstractVector{T}, wt::OrthoFilter,
+    L::Integer=maxmodwttransformlevels(x)
+) where T<:Number
     L <= maxmodwttransformlevels(x) ||
         throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
     L >= 1 || throw(ArgumentError("L must be >= 1"))
-    g, h = WT.makereverseqmfpair(wt)
-    g /= sqrt(2)
-    h /= sqrt(2)
+    g, h = WT.makereverseqmfpair(wt, true, T)
+    g ./= sqrt(2)
+    h ./= sqrt(2)
     N = length(x)
-    W = zeros(T, N, L)
-    V = deepcopy(x)
+    W = similar(x, T, (N, L + 1))
+    V = copyto!(similar(x, T), x)
+    vtmp = similar(V)
     for j in 1:L
-        V[:], W[:, j] = modwt_step(V, j, h, g)
+        modwt_step!(vtmp, V, W, j, h, g)
+        vtmp, V = V, vtmp
     end
-    return [W V]
+    W[:, end] = V
+    return W
 end
 
 
@@ -67,41 +75,87 @@ Perform one level of the inverse maximal overlap discrete wavelet transform
 and returns a vector of the `j-1`th level scaling coefficients. The vectors
 `h` and `g` are the MODWT detail and scaling filters.
 """
-function imodwt_step(v::AbstractVector{T}, w::AbstractVector{T}, j::Integer,
-        h::Array{S,1}, g::Array{S,1}) where {T<:Number, S<:Number}
-    length(v) == length(w) ||
-        throw(DimensionMismatch("Input array sizes must match"))
-    length(h) == length(g) ||
-        throw(DimensionMismatch("Filter sizes must match"))
+function imodwt_step!(
+    vn::Vector{T}, v::Vector{T},
+    w::Matrix{T},
+    j::Integer,
+    h::Vector{T}, g::Vector{T}
+) where {T<:Number}
     N = length(v)
     L = length(h)
-    v0 = zeros(T, N)
+    N == size(w, 1) ||
+        throw(DimensionMismatch("Column sizes must match"))
+    L == length(g) ||
+        throw(DimensionMismatch("Filter sizes must match"))
+    mod_delta = mod(2^(j - 1), N)
     for t in 1:N
         k = t
-        v0[t] = h[1] * w[k] + g[1] * v[k]
+        vn[t] = h[1] * w[k, j] + g[1] * v[k]
         for n in 2:L
-            k += 2^(j-1)
+            k += mod_delta
             if k > N
-                k = mod1(k, N)
+                k -= N
             end
-            v0[t] += h[n] * w[k] + g[n] * v[k]
+            vn[t] += h[n] * w[k, j] + g[n] * v[k]
         end
     end
-    return v0
 end
 
 """
 Perform an inverse maximal overlap discrete wavelet transform (MODWT) of `xw`,
 the inverse of `modwt(x, wt, L)`.
 """
-function imodwt(xw::Array{T, 2}, wt::OrthoFilter) where T <: Number
-    g, h = WT.makereverseqmfpair(wt)
-    g /= sqrt(2)
-    h /= sqrt(2)
-    N, L = size(xw)
-    x = deepcopy(xw[:, L])
+function imodwt(xw::Matrix{T}, wt::OrthoFilter) where T<:Number
+    g, h = WT.makereverseqmfpair(wt, true, T)
+    g ./= sqrt(2)
+    h ./= sqrt(2)
+    L = size(xw, 2)
+    x = xw[:, L]
+    xn = similar(x)
     for j in L-1:-1:1
-        x[:] = imodwt_step(x, xw[:, j], j, h, g)
+        imodwt_step!(xn, x, xw, j, h, g)
+        x, xn = xn, x
     end
     return x
+end
+
+#####################################
+### Only for benchmarks and tests ###
+#####################################
+
+function modwt_step(
+    v::AbstractVector{T},
+    j::Integer,
+    h::Vector{T}, g::Vector{T}
+) where {T<:Number}
+    N = length(v)
+    L = length(h)
+
+    v1 = similar(v)
+    w1 = fill!(similar(v, (N, j)), zero(T))
+
+    h_new = copyto!(similar(v, L), h)
+    g_new = copyto!(similar(v, L), g)
+
+    modwt_step!(v1, v, w1, j, h_new, g_new)
+    return v1, w1
+end
+
+function imodwt_step(
+    v::AbstractVector{T}, w::AbstractMatrix{T},
+    j::Integer,
+    h::Vector{T}, g::Vector{T}
+) where {T<:Number}
+    N = length(v)
+    L = length(h)
+    N == size(w, 1) || throw(DimensionMismatch("Column sizes must match"))
+    L == length(g)  || throw(DimensionMismatch("Filter sizes must match"))
+
+    vn = zero(v)
+
+    h_new = copyto!(similar(v, L), h)
+    g_new = copyto!(similar(v, L), g)
+
+    imodwt_step!(vn, v, w, j, h_new, g_new)
+    return vn
 end

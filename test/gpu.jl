@@ -153,16 +153,18 @@ gpu_allclose(x, y; atol) = maximum(abs.(x .- Array(y))) < atol
                 xr_gpu = imodwt(W_gpu, wt)
                 @test gpu_allclose(xr_cpu, xr_gpu; atol = 1e-5)
 
+                using Wavelets.Transforms: modwt_step, imodwt_step
+
                 g, h = WT.makereverseqmfpair(wt, true, Float32)
                 g ./= sqrt(2)
                 h ./= sqrt(2)
-                v1_cpu, w1_cpu = Wavelets.Transforms.modwt_step(x_cpu, 2, h, g)
-                v1_gpu, w1_gpu = Wavelets.Transforms.modwt_step(x_gpu, 2, h, g)
+                v1_cpu, w1_cpu = modwt_step(x_cpu, 2, h, g)
+                v1_gpu, w1_gpu = modwt_step(x_gpu, 2, h, g)
                 @test gpu_allclose(v1_cpu, v1_gpu; atol = 1e-5)
                 @test gpu_allclose(w1_cpu, w1_gpu; atol = 1e-5)
 
-                v0_cpu = Wavelets.Transforms.imodwt_step(v1_cpu, w1_cpu, 2, h, g)
-                v0_gpu = Wavelets.Transforms.imodwt_step(v1_gpu, w1_gpu, 2, h, g)
+                v0_cpu = imodwt_step(v1_cpu, w1_cpu, 2, h, g)
+                v0_gpu = imodwt_step(v1_gpu, w1_gpu, 2, h, g)
                 @test gpu_allclose(v0_cpu, v0_gpu; atol = 1e-5)
             end
 
