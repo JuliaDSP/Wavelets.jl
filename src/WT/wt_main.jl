@@ -170,7 +170,8 @@ end
 
 """Reversed quadrature mirror filter pair."""
 function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-    h = convert(Vector{T}, qmf(f))
+    v = qmf(f)
+    h = copyto!(Vector{T}(undef, length(v)), v) # prevent aliasing
     if fw
         scfilter = reverse(h)
         dcfilter = mirror(h)
