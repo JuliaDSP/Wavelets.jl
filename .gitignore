@@ -32,3 +32,4 @@ lena*
 testmod.jl
 
 Manifest.toml
+.vscode/settings.json
