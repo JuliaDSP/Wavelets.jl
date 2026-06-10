@@ -133,9 +133,9 @@ function modwt(
     L <= maxmodwttransformlevels(x) ||
         throw(ArgumentError("Too many transform levels (length(x) < 2^L)"))
     L >= 1 || throw(ArgumentError("L must be >= 1"))
-    g, h = WT.makereverseqmfpair(wt)
-    g /= sqrt(2)
-    h /= sqrt(2)
+    g, h = WT.makereverseqmfpair(wt, true, T)
+    g ./= sqrt(T(2))
+    h ./= sqrt(T(2))
     N = length(x)
     backend = KernelAbstractions.get_backend(x)
 
@@ -150,7 +150,7 @@ function modwt(
 
     for j in 1:L
         # Ping-pong the scaling buffer while writing details directly into the result matrix.
-        _modwt_step!(next, detail, current, h_gpu, g_gpu, 2^(j - 1))
+        _modwt_step!(next, detail, current, h_gpu, g_gpu, mod(2^(j - 1), N))
         copyto!(W, (j - 1) * N + 1, detail, 1, N)
         current, next = next, current
     end
@@ -163,9 +163,9 @@ end
 # ============================================================================
 
 function imodwt(xw::AbstractGPUMatrix{T}, wt::OrthoFilter) where {T <: Number}
-    g, h = WT.makereverseqmfpair(wt)
-    g /= sqrt(2)
-    h /= sqrt(2)
+    g, h = WT.makereverseqmfpair(wt, true, T)
+    g ./= sqrt(T(2))
+    h ./= sqrt(T(2))
     N, Lp1 = size(xw)
     L = Lp1 - 1
     backend = KernelAbstractions.get_backend(xw)
@@ -173,11 +173,11 @@ function imodwt(xw::AbstractGPUMatrix{T}, wt::OrthoFilter) where {T <: Number}
     h_gpu = to_device(backend, h)
     g_gpu = to_device(backend, g)
 
-    current = xw[:, L + 1]
+    current = xw[:, Lp1]
     next = similar(current)
     for j in L:-1:1
         # Inverse levels also ping-pong buffers to avoid per-level allocations.
-        _imodwt_step!(next, current, @view(xw[:, j]), h_gpu, g_gpu, 2^(j - 1))
+        _imodwt_step!(next, current, @view(xw[:, j]), h_gpu, g_gpu, mod(2^(j - 1), N))
         current, next = next, current
     end
     return current
