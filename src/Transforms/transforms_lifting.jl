@@ -34,8 +34,8 @@ function _dwt!(
 ) where T<:Number
 
     n = length(y)
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     length(tmp) >= n >> 2 ||
@@ -139,8 +139,8 @@ function _dwt!(
     n = size(y, 1)
     iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     (length(tmp) >= n >> 2) ||
@@ -210,8 +210,8 @@ function _dwt!(
     n = size(y, 1)
     iscube(y) ||
         throw(ArgumentError("array must be square/cube"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     (length(tmp) >= n >> 2) ||

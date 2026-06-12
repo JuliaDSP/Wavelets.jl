@@ -4,7 +4,7 @@ struct GPULiftStep{A}
     predict::Bool
 end
 
-function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T <: Number}
+function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T<:Number}
     nsteps = length(scheme.step)
     steps = Vector{GPULiftStep}(undef, nsteps)
     for i in 1:nsteps
@@ -19,9 +19,9 @@ function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T <: N
 end
 
 @kernel function _split_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int, ns::Int
-    )
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int, ns::Int
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -33,9 +33,9 @@ end
 end
 
 @kernel function _merge_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int, ns::Int
-    )
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int, ns::Int
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -46,20 +46,21 @@ end
     @inbounds out[out_idx] = x[x_idx]
 end
 
-@kernel function _normalize_lines_kernel!(x, bases, stride::Int, ns::Int, norm1, norm2)
+@kernel function _normalize_lines_kernel!(x, @Const(bases), stride::Int, ns::Int, norm1, norm2)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
     half = ns >> 1
     factor = pos <= half ? norm1 : norm2
-    @inbounds x[get_base(bases, line) + (pos - 1) * stride] *= factor
+    x_idx = get_base(bases, line) + (pos - 1) * stride
+    @inbounds x[x_idx] *= factor
 end
 
 @kernel function _normalize_copy_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int,
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int,
         ns::Int, norm1, norm2
-    )
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -71,7 +72,7 @@ end
 end
 
 @kernel function _lift_step_lines_kernel!(
-        x, bases, stride::Int,
+        x, @Const(bases), stride::Int,
         half::Int, @Const(coef), nc::Int,
         shift::Int, predict::Bool
     )
@@ -82,70 +83,82 @@ end
 
     if predict
         dst = base + (i - 1) * stride
-        @inbounds val = x[dst]
+        val = @inbounds x[dst]
         for k in 1:nc
             srcpos = half + mod1(i + k - 1 - shift, half)
-            @inbounds val += coef[k] * x[base + (srcpos - 1) * stride]
+            val += @inbounds coef[k] * x[base + (srcpos - 1) * stride]
         end
         @inbounds x[dst] = val
     else
         dstpos = half + i
         dst = base + (dstpos - 1) * stride
-        @inbounds val = x[dst]
+        val = @inbounds x[dst]
         for k in 1:nc
             srcpos = mod1(i + k - 1 - shift, half)
-            @inbounds val += coef[k] * x[base + (srcpos - 1) * stride]
+            val += @inbounds coef[k] * x[base + (srcpos - 1) * stride]
         end
         @inbounds x[dst] = val
     end
 end
 
-function split_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int)
-    ns == 0 && return out
+function split_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
-    kernel = _split_lines_kernel!(KernelAbstractions.get_backend(out), 256)
-    kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
-    return out
+    nlines == 0 && return
+    kernel! = _split_lines_kernel!(KernelAbstractions.get_backend(out))
+    kernel!(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
+    return
 end
 
-function merge_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int)
-    ns == 0 && return out
+function merge_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
-    kernel = _merge_lines_kernel!(KernelAbstractions.get_backend(out), 256)
-    kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
-    return out
+    nlines == 0 && return
+    kernel! = _merge_lines_kernel!(KernelAbstractions.get_backend(out))
+    kernel!(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
+    return
 end
 
 function normalize_lines!(x, bases, stride::Int, ns::Int, norm1, norm2)
-    ns == 0 && return x
+    ns == 0 && return
     nlines = length(bases)
-    nlines == 0 && return x
-    kernel = _normalize_lines_kernel!(KernelAbstractions.get_backend(x), 256)
-    kernel(x, bases, Int(stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
-    return x
+    nlines == 0 && return
+    kernel! = _normalize_lines_kernel!(KernelAbstractions.get_backend(x))
+    kernel!(x, bases, Int(stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
+    return
 end
 
-function normalize_copy_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int, norm1, norm2)
-    ns == 0 && return out
+function normalize_copy_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int, norm1, norm2
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
-    kernel = _normalize_copy_lines_kernel!(KernelAbstractions.get_backend(out), 256)
-    kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
-    return out
+    nlines == 0 && return
+    kernel! = _normalize_copy_lines_kernel!(KernelAbstractions.get_backend(out))
+    kernel!(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
+    return
 end
 
 function lift_step_lines!(x, bases, stride::Int, half::Int, step::GPULiftStep)
-    half == 0 && return x
+    half == 0 && return
     nlines = length(bases)
-    nlines == 0 && return x
-    kernel = _lift_step_lines_kernel!(KernelAbstractions.get_backend(x), 256)
-    kernel(
+    nlines == 0 && return
+    kernel! = _lift_step_lines_kernel!(KernelAbstractions.get_backend(x))
+    kernel!(
         x, bases, Int(stride), Int(half), step.coef, Int(length(step.coef)), Int(step.shift), step.predict;
         ndrange = nlines * half
     )
-    return x
+    return
 end
 
 function lifting_forward_lines!(out, x, bases, stride::Int, ns::Int, steps, norm1, norm2)
@@ -155,7 +168,7 @@ function lifting_forward_lines!(out, x, bases, stride::Int, ns::Int, steps, norm
         lift_step_lines!(out, bases, stride, half, step)
     end
     normalize_lines!(out, bases, stride, ns, norm1, norm2)
-    return out
+    return
 end
 
 function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps, norm1, norm2)
@@ -165,12 +178,12 @@ function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps
         lift_step_lines!(work, bases, stride, half, step)
     end
     merge_lines!(out, bases, stride, work, bases, stride, ns)
-    return out
+    return
 end
 
 function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = length(y)
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 
@@ -180,29 +193,21 @@ function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where
     temp = similar(y, T, size(y))
     work = similar(y, T, size(y))
 
-    if fw
-        current = y
-        output = temp
-        ns = n
-        for _ in 1:L
-            current === output || copyto!(output, current)
+    current = y
+    output = temp
+    ns = fw ? n : div(n, 2^(L - 1))
+    for _ in 1:L
+        copyto!(output, current)
+        if fw
             lifting_forward_lines!(output, current, bases, 1, ns, steps, norm1, norm2)
-            current, output = output, current
             ns >>= 1
-        end
-        current === y || copyto!(y, current)
-    else
-        current = y
-        output = temp
-        ns = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            current === output || copyto!(output, current)
+        else
             lifting_inverse_lines!(output, current, work, bases, 1, ns, steps, norm1, norm2)
-            current, output = output, current
             ns <<= 1
         end
-        current === y || copyto!(y, current)
+        current, output = output, current
     end
+    iseven(L) || copyto!(y, temp)
 
     return y
 end
@@ -210,7 +215,7 @@ end
 function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 
@@ -219,26 +224,19 @@ function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where
     temp = similar(y, T, size(y))
     work = similar(y, T, size(y))
 
-    if fw
-        current = y
-        nsub = n
-        for _ in 1:L
-            row_bases = LineBases(nsub, nsub, 1, 0, 1)
-            col_bases = LineBases(nsub, nsub, n, 0, 1)
+    current = y
+    nsub = fw ? n : div(n, 2^(L - 1))
+
+    for _ in 1:L
+        row_bases = LineBases(nsub, nsub, 1, 0, 1)
+        col_bases = LineBases(nsub, nsub, n, 0, 1)
+        if fw
             lifting_forward_lines!(temp, current, row_bases, n, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(y, temp, col_bases, 1, nsub, steps, norm1, norm2)
-            current = y
+            lifting_forward_lines!(y,       temp, col_bases, 1, nsub, steps, norm1, norm2)
             nsub >>= 1
-        end
-    else
-        current = y
-        nsub = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            col_bases = LineBases(nsub, nsub, n, 0, 1)
-            row_bases = LineBases(nsub, nsub, 1, 0, 1)
+        else
             lifting_inverse_lines!(temp, current, work, col_bases, 1, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(y, temp, work, row_bases, n, nsub, steps, norm1, norm2)
-            current = y
+            lifting_inverse_lines!(y,       temp, work, row_bases, n, nsub, steps, norm1, norm2)
             nsub <<= 1
         end
     end
@@ -246,10 +244,10 @@ function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where
     return y
 end
 
-function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
+function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Integer, fw::Bool) where {T<:Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 
@@ -259,32 +257,23 @@ function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) whe
     temp2 = similar(y, T, size(y))
     work = similar(y, T, size(y))
     row_stride = n
-    plane_stride = n * n
+    plane_stride = n^2
 
-    if fw
-        current = y
-        nsub = n
-        for _ in 1:L
-            plane_bases = LineBases(nsub * nsub, nsub, 1, n, 1)
-            row_bases = LineBases(nsub * nsub, nsub, 1, n * n, 1)
-            col_bases = LineBases(nsub * nsub, nsub, n, n * n, 1)
+    current = y
+    nsub = fw ? n : div(n, 2^(L - 1))
+    for _ in 1:L
+        col_bases   = LineBases(nsub^2, nsub, n, n^2, 1)
+        row_bases   = LineBases(nsub^2, nsub, 1, n^2, 1)
+        plane_bases = LineBases(nsub^2, nsub, 1,   n, 1)
+        if fw
             lifting_forward_lines!(temp1, current, plane_bases, plane_stride, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(temp2, temp1, row_bases, row_stride, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(y, temp2, col_bases, 1, nsub, steps, norm1, norm2)
-            current = y
+            lifting_forward_lines!(temp2,   temp1,   row_bases,   row_stride, nsub, steps, norm1, norm2)
+            lifting_forward_lines!(y,       temp2,   col_bases,            1, nsub, steps, norm1, norm2)
             nsub >>= 1
-        end
-    else
-        current = y
-        nsub = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            col_bases = LineBases(nsub * nsub, nsub, n, n * n, 1)
-            row_bases = LineBases(nsub * nsub, nsub, 1, n * n, 1)
-            plane_bases = LineBases(nsub * nsub, nsub, 1, n, 1)
-            lifting_inverse_lines!(temp1, current, work, col_bases, 1, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(temp2, temp1, work, row_bases, row_stride, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(y, temp2, work, plane_bases, plane_stride, nsub, steps, norm1, norm2)
-            current = y
+        else
+            lifting_inverse_lines!(temp1, current, work,   col_bases,            1, nsub, steps, norm1, norm2)
+            lifting_inverse_lines!(temp2,   temp1, work,   row_bases,   row_stride, nsub, steps, norm1, norm2)
+            lifting_inverse_lines!(y,       temp2, work, plane_bases, plane_stride, nsub, steps, norm1, norm2)
             nsub <<= 1
         end
     end
@@ -293,9 +282,10 @@ function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) whe
 end
 
 function _wpt!(
-        y::AbstractGPUVector{T}, scheme::GLS, tree::BitVector, fw::Bool,
-        tmp::AbstractVector{T} = similar(y, T, 0)
-    ) where {T <: Number}
+    y::AbstractGPUVector{T},
+    scheme::GLS, tree::BitVector,
+    fw::Bool
+) where {T<:Number}
     n = length(y)
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
     !tree[1] && return y
@@ -308,25 +298,25 @@ function _wpt!(
     output = temp
     Lmax = maxtransformlevels(n)
 
-    for L in Lmax:-1:1
-        Lfw = fw ? (Lmax - L) : (L - 1)
+    for L in 1:Lmax
+        Lfw = fw ? (L - 1) : (Lmax - L)
         seglen = detailn(n, Lfw)
         bases_cpu = segment_bases(n, seglen)
         bases = LineBases(n ÷ seglen, n ÷ seglen, seglen, 0, 1)
         copy_lines!(output, bases, 1, current, bases, 1, seglen)
         treeind = 2^Lfw - 1
-        active_idx = findall(k -> tree[treeind + k], 1:length(bases_cpu))
+        active_idx = tree[(treeind+1):(treeind+length(bases_cpu))]
         if !isempty(active_idx)
-            active_bases = to_device(backend, Int.(bases_cpu[active_idx]))
+            active_bases = to_device(backend, bases_cpu[active_idx])
             if fw
                 lifting_forward_lines!(output, current, active_bases, 1, seglen, steps, norm1, norm2)
             else
                 lifting_inverse_lines!(output, current, work, active_bases, 1, seglen, steps, norm1, norm2)
             end
         end
-        current, output = output, output === y ? temp : y
+        current, output = output, current
     end
 
-    current === y || copyto!(y, current)
+    iseven(Lmax) || copyto!(y, current)
     return y
 end
