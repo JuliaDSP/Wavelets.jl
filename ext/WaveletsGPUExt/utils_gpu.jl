@@ -65,4 +65,4 @@ function copy_lines!(
 end
 
 # segment_bases is kept for WPT where irregular subsets of lines are needed
-segment_bases(n::Int, seglen::Int) = [1 + (k - 1) * seglen for k in 1:(n ÷ seglen)]
+segment_bases(n::Int, seglen::Int) = Int[1 + (k - 1) * seglen for k in 1:(n ÷ seglen)]

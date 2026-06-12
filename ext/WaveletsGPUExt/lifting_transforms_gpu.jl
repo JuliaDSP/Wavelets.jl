@@ -329,9 +329,9 @@ function _wpt!(
         bases = LineBases(n ÷ seglen, n ÷ seglen, seglen, 0, 1)
         copy_lines!(output, bases, 1, current, bases, 1, seglen)
         treeind = 2^Lfw - 1
-        active_idx = findall(k -> tree[treeind + k], 1:length(bases_cpu))
+        active_idx = tree[(treeind+1):(treeind+length(bases_cpu))]
         if !isempty(active_idx)
-            active_bases = to_device(backend, Int.(bases_cpu[active_idx]))
+            active_bases = to_device(backend, bases_cpu[active_idx])
             if fw
                 lifting_forward_lines!(output, current, active_bases, 1, seglen, steps, norm1, norm2)
             else
