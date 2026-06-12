@@ -4,7 +4,7 @@ struct GPULiftStep{A}
     predict::Bool
 end
 
-function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T <: Number}
+function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T<:Number}
     nsteps = length(scheme.step)
     steps = Vector{GPULiftStep}(undef, nsteps)
     for i in 1:nsteps
@@ -19,9 +19,9 @@ function gpu_makescheme(backend, ::Type{T}, scheme::GLS, fw::Bool) where {T <: N
 end
 
 @kernel function _split_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int, ns::Int
-    )
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int, ns::Int
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -33,9 +33,9 @@ end
 end
 
 @kernel function _merge_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int, ns::Int
-    )
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int, ns::Int
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -46,20 +46,21 @@ end
     @inbounds out[out_idx] = x[x_idx]
 end
 
-@kernel function _normalize_lines_kernel!(x, bases, stride::Int, ns::Int, norm1, norm2)
+@kernel function _normalize_lines_kernel!(x, @Const(bases), stride::Int, ns::Int, norm1, norm2)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
     half = ns >> 1
     factor = pos <= half ? norm1 : norm2
-    @inbounds x[get_base(bases, line) + (pos - 1) * stride] *= factor
+    x_idx = get_base(bases, line) + (pos - 1) * stride
+    @inbounds x[x_idx] *= factor
 end
 
 @kernel function _normalize_copy_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int,
+        out, @Const(out_bases), out_stride::Int,
+    @Const(x), @Const(x_bases), x_stride::Int,
         ns::Int, norm1, norm2
-    )
+)
     idx = @index(Global)
     line = ((idx - 1) ÷ ns) + 1
     pos = idx - (line - 1) * ns
@@ -71,7 +72,7 @@ end
 end
 
 @kernel function _lift_step_lines_kernel!(
-        x, bases, stride::Int,
+        x, @Const(bases), stride::Int,
         half::Int, @Const(coef), nc::Int,
         shift::Int, predict::Bool
     )
@@ -82,70 +83,82 @@ end
 
     if predict
         dst = base + (i - 1) * stride
-        @inbounds val = x[dst]
+        val = @inbounds x[dst]
         for k in 1:nc
             srcpos = half + mod1(i + k - 1 - shift, half)
-            @inbounds val += coef[k] * x[base + (srcpos - 1) * stride]
+            val += @inbounds coef[k] * x[base + (srcpos - 1) * stride]
         end
         @inbounds x[dst] = val
     else
         dstpos = half + i
         dst = base + (dstpos - 1) * stride
-        @inbounds val = x[dst]
+        val = @inbounds x[dst]
         for k in 1:nc
             srcpos = mod1(i + k - 1 - shift, half)
-            @inbounds val += coef[k] * x[base + (srcpos - 1) * stride]
+            val += @inbounds coef[k] * x[base + (srcpos - 1) * stride]
         end
         @inbounds x[dst] = val
     end
 end
 
-function split_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int)
-    ns == 0 && return out
+function split_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
+    nlines == 0 && return
     kernel = _split_lines_kernel!(KernelAbstractions.get_backend(out), 256)
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
-    return out
+    return
 end
 
-function merge_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int)
-    ns == 0 && return out
+function merge_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
+    nlines == 0 && return
     kernel = _merge_lines_kernel!(KernelAbstractions.get_backend(out), 256)
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
-    return out
+    return
 end
 
 function normalize_lines!(x, bases, stride::Int, ns::Int, norm1, norm2)
-    ns == 0 && return x
+    ns == 0 && return
     nlines = length(bases)
-    nlines == 0 && return x
+    nlines == 0 && return
     kernel = _normalize_lines_kernel!(KernelAbstractions.get_backend(x), 256)
     kernel(x, bases, Int(stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
-    return x
+    return
 end
 
-function normalize_copy_lines!(out, out_bases, out_stride::Int, x, x_bases, x_stride::Int, ns::Int, norm1, norm2)
-    ns == 0 && return out
+function normalize_copy_lines!(
+    out, out_bases, out_stride::Int,
+    x, x_bases, x_stride::Int,
+    ns::Int, norm1, norm2
+)
+    ns == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
+    nlines == 0 && return
     kernel = _normalize_copy_lines_kernel!(KernelAbstractions.get_backend(out), 256)
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
-    return out
+    return
 end
 
 function lift_step_lines!(x, bases, stride::Int, half::Int, step::GPULiftStep)
-    half == 0 && return x
+    half == 0 && return
     nlines = length(bases)
-    nlines == 0 && return x
+    nlines == 0 && return
     kernel = _lift_step_lines_kernel!(KernelAbstractions.get_backend(x), 256)
     kernel(
         x, bases, Int(stride), Int(half), step.coef, Int(length(step.coef)), Int(step.shift), step.predict;
         ndrange = nlines * half
     )
-    return x
+    return
 end
 
 function lifting_forward_lines!(out, x, bases, stride::Int, ns::Int, steps, norm1, norm2)
@@ -155,7 +168,7 @@ function lifting_forward_lines!(out, x, bases, stride::Int, ns::Int, steps, norm
         lift_step_lines!(out, bases, stride, half, step)
     end
     normalize_lines!(out, bases, stride, ns, norm1, norm2)
-    return out
+    return
 end
 
 function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps, norm1, norm2)
@@ -165,7 +178,7 @@ function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps
         lift_step_lines!(work, bases, stride, half, step)
     end
     merge_lines!(out, bases, stride, work, bases, stride, ns)
-    return out
+    return
 end
 
 function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
@@ -246,7 +259,7 @@ function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where
     return y
 end
 
-function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
+function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Integer, fw::Bool) where {T<:Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
     0 <= L || throw(ArgumentError("L must be positive"))
@@ -293,9 +306,10 @@ function _dwt!(y::AbstractGPUArray{T, 3}, scheme::GLS, L::Integer, fw::Bool) whe
 end
 
 function _wpt!(
-        y::AbstractGPUVector{T}, scheme::GLS, tree::BitVector, fw::Bool,
-        tmp::AbstractVector{T} = similar(y, T, 0)
-    ) where {T <: Number}
+    y::AbstractGPUVector{T},
+    scheme::GLS, tree::BitVector,
+    fw::Bool
+) where {T<:Number}
     n = length(y)
     isvalidtree(y, tree) || throw(ArgumentError("invalid tree"))
     !tree[1] && return y
@@ -308,8 +322,8 @@ function _wpt!(
     output = temp
     Lmax = maxtransformlevels(n)
 
-    for L in Lmax:-1:1
-        Lfw = fw ? (Lmax - L) : (L - 1)
+    for L in 1:Lmax
+        Lfw = fw ? L - 1 : Lmax - L
         seglen = detailn(n, Lfw)
         bases_cpu = segment_bases(n, seglen)
         bases = LineBases(n ÷ seglen, n ÷ seglen, seglen, 0, 1)

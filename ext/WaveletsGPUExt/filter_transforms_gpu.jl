@@ -2,8 +2,8 @@
 
 # Fused forward pass: approximation and detail reuse the same input traversal.
 @kernel function _filtdown_pair_lines_kernel!(
-        out, out_bases, out_stride::Int, out_offset1::Int, out_offset2::Int,
-        @Const(x), x_bases, x_stride::Int,
+        out, @Const(out_bases), out_stride::Int, out_offset1::Int, out_offset2::Int,
+    @Const(x), @Const(x_bases), x_stride::Int,
         nout::Int,
         @Const(f1), shift1::Int, ss1::Bool,
         @Const(f2), shift2::Int, ss2::Bool,
@@ -25,8 +25,8 @@
     for j in 0:(flen - 1)
         xidx1 = mod(dsidx1 - j + shift1, nx)
         xidx2 = mod(dsidx2 - j + shift2, nx)
-        @inbounds val1 += f1[j + 1] * x[in_base + xidx1 * x_stride]
-        @inbounds val2 += f2[j + 1] * x[in_base + xidx2 * x_stride]
+        val1 += @inbounds f1[j + 1] * x[in_base + xidx1 * x_stride]
+        val2 += @inbounds f2[j + 1] * x[in_base + xidx2 * x_stride]
     end
     @inbounds out[out_base + out_offset1 + (k - 1) * out_stride] = val1
     @inbounds out[out_base + out_offset2 + (k - 1) * out_stride] = val2
@@ -34,8 +34,8 @@ end
 
 # Each thread reconstructs one output sample by traversing the wrapped half-rate input.
 @kernel function _filtup_lines_kernel!(
-        out, out_bases, out_stride::Int, out_offset::Int,
-        @Const(x), x_bases, x_stride::Int, x_offset::Int,
+        out, @Const(out_bases), out_stride::Int, out_offset::Int,
+    @Const(x), @Const(x_bases), x_stride::Int, x_offset::Int,
         nout::Int, @Const(f), flen::Int,
         shift::Int, ss::Bool, add2out::Bool
     )
@@ -55,7 +55,7 @@ end
         pos = mod1(n - j, nout)
         if isodd(pos + dsshift)
             xk = mod(((pos - 1) >> 1) + shift_half, nx)
-            @inbounds val += f[j + 1] * x[in_base + xk * x_stride]
+            val += @inbounds f[j + 1] * x[in_base + xk * x_stride]
         end
     end
 
@@ -68,9 +68,9 @@ end
 
 # Fused inverse pass: approximation and detail contributions are accumulated in one launch.
 @kernel function _filtup_pair_lines_kernel!(
-        out, out_bases, out_stride::Int, out_offset::Int,
-    @Const(x1), x1_bases, x1_stride::Int, x_offset1::Int,
-    @Const(x2), x2_bases, x2_stride::Int, x_offset2::Int,
+        out, @Const(out_bases), out_stride::Int, out_offset::Int,
+    @Const(x1), @Const(x1_bases), x1_stride::Int, x_offset1::Int,
+    @Const(x2), @Const(x2_bases), x2_stride::Int, x_offset2::Int,
         nout::Int,
         @Const(f1), shift1::Int, ss1::Bool,
         @Const(f2), shift2::Int, ss2::Bool,
@@ -99,13 +99,13 @@ end
         pos1 = mod1(n1 - j, nout)
         if isodd(pos1 + dsshift1)
             xk1 = mod(((pos1 - 1) >> 1) + shift_half1, nx)
-            @inbounds val += f1[j + 1] * x1[in_base1 + x_offset1 + xk1 * x1_stride]
+            val += @inbounds f1[j + 1] * x1[in_base1 + x_offset1 + xk1 * x1_stride]
         end
 
         pos2 = mod1(n2 - j, nout)
         if isodd(pos2 + dsshift2)
             xk2 = mod(((pos2 - 1) >> 1) + shift_half2, nx)
-            @inbounds val += f2[j + 1] * x2[in_base2 + x_offset2 + xk2 * x2_stride]
+            val += @inbounds f2[j + 1] * x2[in_base2 + x_offset2 + xk2 * x2_stride]
         end
     end
 
@@ -113,11 +113,11 @@ end
 end
 
 function batched_filtdown_pair!(
-        out, out_bases, out_stride::Int, out_offset1::Int, out_offset2::Int,
-        x, x_bases, x_stride::Int, nout::Int,
-        f1, shift1::Int, ss1::Bool,
-        f2, shift2::Int, ss2::Bool
-    )
+    out, out_bases, out_stride::Int, out_offset1::Int, out_offset2::Int,
+    x, x_bases, x_stride::Int, nout::Int,
+    f1, shift1::Int, ss1::Bool,
+    f2, shift2::Int, ss2::Bool
+)
     nout == 0 && return out
     nlines = length(out_bases)
     nlines == 0 && return out
@@ -131,10 +131,10 @@ function batched_filtdown_pair!(
 end
 
 function batched_filtup!(
-        out, out_bases, out_stride::Int, out_offset::Int,
-        x, x_bases, x_stride::Int, x_offset::Int, nout::Int,
-        f, shift::Int, ss::Bool, add2out::Bool
-    )
+    out, out_bases, out_stride::Int, out_offset::Int,
+    x, x_bases, x_stride::Int, x_offset::Int, nout::Int,
+    f, shift::Int, ss::Bool, add2out::Bool
+)
     nout == 0 && return out
     nlines = length(out_bases)
     nlines == 0 && return out
@@ -147,13 +147,13 @@ function batched_filtup!(
 end
 
 function batched_filtup_pair!(
-        out, out_bases, out_stride::Int, out_offset::Int,
+    out, out_bases, out_stride::Int, out_offset::Int,
     x1, x1_bases, x1_stride::Int, x_offset1::Int,
     x2, x2_bases, x2_stride::Int, x_offset2::Int,
     nout::Int,
-        f1, shift1::Int, ss1::Bool,
-        f2, shift2::Int, ss2::Bool
-    )
+    f1, shift1::Int, ss1::Bool,
+    f2, shift2::Int, ss2::Bool
+)
     nout == 0 && return out
     nlines = length(out_bases)
     nlines == 0 && return out
@@ -169,9 +169,10 @@ function batched_filtup_pair!(
 end
 
 function _dwt!(
-        y::AbstractGPUVector{Ty}, x::AbstractGPUVector{Tx},
-        filter::OrthoFilter, L::Integer, fw::Bool
-    ) where {Tx <: Number, Ty <: Number}
+    y::AbstractGPUVector{Ty}, x::AbstractGPUVector{Tx},
+    filter::OrthoFilter, L::Integer,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
     T = promote_type(Tx, Ty)
     n = length(x)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
@@ -202,7 +203,14 @@ function _dwt!(
         else
             nout = detailn(n, l - 1)
             half = nout >> 1
-            batched_filtup_pair!(y, bases, 1, 0, s, bases, 1, 0, x, bases, 1, detailindex(n, l, 1) - 1, nout, scfilter, -filtlen + 1, false, dcfilter, 0, true)
+            batched_filtup_pair!(
+                y, bases, 1, 0,
+                s, bases, 1, 0,
+                x, bases, 1, detailindex(n, l, 1) - 1,
+                nout,
+                scfilter, -filtlen + 1, false,
+                dcfilter, 0, true
+            )
         end
         if l != lrange[end]
             copyto!(snew, 1, y, 1, detailn(n, fw ? l : l - 1))
@@ -214,9 +222,10 @@ function _dwt!(
 end
 
 function _dwt!(
-        y::AbstractGPUMatrix{Ty}, x::AbstractGPUMatrix{Tx},
-        filter::OrthoFilter, L::Integer, fw::Bool
-    ) where {Tx <: Number, Ty <: Number}
+    y::AbstractGPUMatrix{Ty}, x::AbstractGPUMatrix{Tx},
+    filter::OrthoFilter, L::Integer,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
     m, n = size(x)
     T = promote_type(Tx, Ty)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
@@ -269,9 +278,10 @@ function _dwt!(
 end
 
 function _dwt!(
-        y::AbstractGPUArray{Ty, 3}, x::AbstractGPUArray{Tx, 3},
-        filter::OrthoFilter, L::Integer, fw::Bool
-    ) where {Tx <: Number, Ty <: Number}
+    y::AbstractGPUArray{Ty,3}, x::AbstractGPUArray{Tx,3},
+    filter::OrthoFilter, L::Integer,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
@@ -335,9 +345,10 @@ function _dwt!(
 end
 
 function _wpt!(
-        y::AbstractGPUVector{Ty}, x::AbstractGPUVector{Tx},
-        filter::OrthoFilter, tree::BitVector, fw::Bool
-    ) where {Tx <: Number, Ty <: Number}
+    y::AbstractGPUVector{Ty}, x::AbstractGPUVector{Tx},
+    filter::OrthoFilter, tree::BitVector,
+    fw::Bool
+) where {Tx<:Number,Ty<:Number}
     T = promote_type(Tx, Ty)
     size(x) == size(y) || throw(DimensionMismatch("in and out array size must match"))
     y === x && throw(ArgumentError("in array is out array"))
