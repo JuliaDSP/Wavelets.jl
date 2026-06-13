@@ -59,7 +59,7 @@ function copy_lines!(
     line_len == 0 && return out
     nlines = length(out_bases)
     nlines == 0 && return out
-    kernel = _copy_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _copy_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(line_len); ndrange = nlines * line_len)
     return out
 end

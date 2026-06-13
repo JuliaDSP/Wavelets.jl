@@ -122,7 +122,7 @@ function batched_filtdown_pair!(
     nlines = length(out_bases)
     nlines == 0 && return out
     length(f1) == length(f2) || throw(DimensionMismatch("Filter sizes must match"))
-    kernel = _filtdown_pair_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _filtdown_pair_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(
         out, out_bases, Int(out_stride), Int(out_offset1), Int(out_offset2), x, x_bases, Int(x_stride),
         Int(nout), f1, Int(shift1), ss1, f2, Int(shift2), ss2, Int(length(f1)); ndrange = nlines * nout
@@ -138,7 +138,7 @@ function batched_filtup!(
     nout == 0 && return out
     nlines = length(out_bases)
     nlines == 0 && return out
-    kernel = _filtup_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _filtup_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(
         out, out_bases, Int(out_stride), Int(out_offset), x, x_bases, Int(x_stride), Int(x_offset),
         Int(nout), f, Int(length(f)), Int(shift), ss, add2out; ndrange = nlines * nout
@@ -158,7 +158,7 @@ function batched_filtup_pair!(
     nlines = length(out_bases)
     nlines == 0 && return out
     length(f1) == length(f2) || throw(DimensionMismatch("Filter sizes must match"))
-    kernel = _filtup_pair_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _filtup_pair_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(
         out, out_bases, Int(out_stride), Int(out_offset),
         x1, x1_bases, Int(x1_stride), Int(x_offset1),

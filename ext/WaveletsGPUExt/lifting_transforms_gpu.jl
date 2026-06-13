@@ -109,7 +109,7 @@ function split_lines!(
     ns == 0 && return
     nlines = length(out_bases)
     nlines == 0 && return
-    kernel = _split_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _split_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
     return
 end
@@ -122,7 +122,7 @@ function merge_lines!(
     ns == 0 && return
     nlines = length(out_bases)
     nlines == 0 && return
-    kernel = _merge_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _merge_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns); ndrange = nlines * ns)
     return
 end
@@ -131,7 +131,7 @@ function normalize_lines!(x, bases, stride::Int, ns::Int, norm1, norm2)
     ns == 0 && return
     nlines = length(bases)
     nlines == 0 && return
-    kernel = _normalize_lines_kernel!(KernelAbstractions.get_backend(x), 256)
+    kernel = _normalize_lines_kernel!(KernelAbstractions.get_backend(x))
     kernel(x, bases, Int(stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
     return
 end
@@ -144,7 +144,7 @@ function normalize_copy_lines!(
     ns == 0 && return
     nlines = length(out_bases)
     nlines == 0 && return
-    kernel = _normalize_copy_lines_kernel!(KernelAbstractions.get_backend(out), 256)
+    kernel = _normalize_copy_lines_kernel!(KernelAbstractions.get_backend(out))
     kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(ns), norm1, norm2; ndrange = nlines * ns)
     return
 end
@@ -153,7 +153,7 @@ function lift_step_lines!(x, bases, stride::Int, half::Int, step::GPULiftStep)
     half == 0 && return
     nlines = length(bases)
     nlines == 0 && return
-    kernel = _lift_step_lines_kernel!(KernelAbstractions.get_backend(x), 256)
+    kernel = _lift_step_lines_kernel!(KernelAbstractions.get_backend(x))
     kernel(
         x, bases, Int(stride), Int(half), step.coef, Int(length(step.coef)), Int(step.shift), step.predict;
         ndrange = nlines * half
