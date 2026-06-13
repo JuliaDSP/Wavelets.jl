@@ -242,36 +242,31 @@ function _dwt!(
     filtlen = length(filter)
 
     if fw
-        current = x
         msub = m
         nsub = n
-        for _ in 1:L
-            row_bases = LineBases(msub, msub, 1, 0, 1)
-            col_bases = LineBases(nsub, nsub, m, 0, 1)
-            half_rows = nsub >> 1
-            half_cols = msub >> 1
-            batched_filtdown_pair!(tmp, row_bases, m, half_rows * m, 0, current, row_bases, m, half_rows, dcfilter, -filtlen + 1, true, scfilter, 0, false)
-            batched_filtdown_pair!(y, col_bases, 1, half_cols, 0, tmp, col_bases, 1, half_cols, dcfilter, -filtlen + 1, true, scfilter, 0, false)
-            current = y
-            msub >>= 1
-            nsub >>= 1
-        end
     else
-        current = x
         msub = div(m, 2^(L - 1))
         nsub = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            current === y || copyto!(y, current)
-            col_bases = LineBases(nsub, nsub, m, 0, 1)
-            row_bases = LineBases(msub, msub, 1, 0, 1)
-            half_cols = msub >> 1
-            half_rows = nsub >> 1
+        copyto!(y, x)
+    end
+    current = x
+    for _ in 1:L
+        col_bases = LineBases(nsub, nsub, m, 0, 1)
+        row_bases = LineBases(msub, msub, 1, 0, 1)
+        half_cols = msub >> 1
+        half_rows = nsub >> 1
+        if fw
+            batched_filtdown_pair!(tmp, row_bases, m, half_rows * m, 0, current, row_bases, m, half_rows, dcfilter, -filtlen + 1, true, scfilter, 0, false)
+            batched_filtdown_pair!(y, col_bases, 1, half_cols, 0, tmp, col_bases, 1, half_cols, dcfilter, -filtlen + 1, true, scfilter, 0, false)
+            msub >>= 1
+            nsub >>= 1
+        else
             batched_filtup_pair!(tmp, col_bases, 1, 0, current, col_bases, 1, 0, current, col_bases, 1, half_cols, msub, scfilter, -filtlen + 1, false, dcfilter, 0, true)
             batched_filtup_pair!(y, row_bases, m, 0, tmp, row_bases, m, 0, tmp, row_bases, m, half_rows * m, nsub, scfilter, -filtlen + 1, false, dcfilter, 0, true)
-            current = y
             msub <<= 1
             nsub <<= 1
         end
+        current = y
     end
 
     return y
@@ -301,44 +296,37 @@ function _dwt!(
     plane_stride = m * n
 
     if fw
-        current = x
         msub, nsub, dsub = m, n, d
-        for _ in 1:L
-            plane_bases = LineBases(msub * nsub, msub, 1, m, 1)
-            row_bases = LineBases(msub * dsub, msub, 1, m * n, 1)
-            col_bases = LineBases(nsub * dsub, nsub, m, m * n, 1)
-            half_d = dsub >> 1
-            half_n = nsub >> 1
-            half_m = msub >> 1
-            batched_filtdown_pair!(tmp1, plane_bases, plane_stride, half_d * plane_stride, 0, current, plane_bases, plane_stride, half_d, dcfilter, -filtlen + 1, true, scfilter, 0, false)
-            batched_filtdown_pair!(tmp2, row_bases, row_stride, half_n * row_stride, 0, tmp1, row_bases, row_stride, half_n, dcfilter, -filtlen + 1, true, scfilter, 0, false)
-            batched_filtdown_pair!(y, col_bases, 1, half_m, 0, tmp2, col_bases, 1, half_m, dcfilter, -filtlen + 1, true, scfilter, 0, false)
-            current = y
-            msub >>= 1
-            nsub >>= 1
-            dsub >>= 1
-        end
     else
-        current = x
         msub = div(m, 2^(L - 1))
         nsub = div(n, 2^(L - 1))
         dsub = div(d, 2^(L - 1))
-        for _ in L:-1:1
-            current === y || copyto!(y, current)
-            col_bases = LineBases(nsub * dsub, nsub, m, m * n, 1)
-            row_bases = LineBases(msub * dsub, msub, 1, m * n, 1)
-            plane_bases = LineBases(msub * nsub, msub, 1, m, 1)
-            half_m = msub >> 1
-            half_n = nsub >> 1
-            half_d = dsub >> 1
+        copyto!(y, x)
+    end
+    current = x
+    for _ in 1:L
+        col_bases = LineBases(nsub * dsub, nsub, m, plane_stride, 1)
+        row_bases = LineBases(msub * dsub, msub, 1, plane_stride, 1)
+        plane_bases = LineBases(msub * nsub, msub, 1, m, 1)
+        half_m = msub >> 1
+        half_n = nsub >> 1
+        half_d = dsub >> 1
+        if fw
+            batched_filtdown_pair!(tmp1, plane_bases, plane_stride, half_d * plane_stride, 0, current, plane_bases, plane_stride, half_d, dcfilter, -filtlen + 1, true, scfilter, 0, false)
+            batched_filtdown_pair!(tmp2, row_bases, row_stride, half_n * row_stride, 0, tmp1, row_bases, row_stride, half_n, dcfilter, -filtlen + 1, true, scfilter, 0, false)
+            batched_filtdown_pair!(y, col_bases, 1, half_m, 0, tmp2, col_bases, 1, half_m, dcfilter, -filtlen + 1, true, scfilter, 0, false)
+            msub >>= 1
+            nsub >>= 1
+            dsub >>= 1
+        else
             batched_filtup_pair!(tmp1, col_bases, 1, 0, current, col_bases, 1, 0, current, col_bases, 1, half_m, msub, scfilter, -filtlen + 1, false, dcfilter, 0, true)
             batched_filtup_pair!(tmp2, row_bases, row_stride, 0, tmp1, row_bases, row_stride, 0, tmp1, row_bases, row_stride, half_n * row_stride, nsub, scfilter, -filtlen + 1, false, dcfilter, 0, true)
             batched_filtup_pair!(y, plane_bases, plane_stride, 0, tmp2, plane_bases, plane_stride, 0, tmp2, plane_bases, plane_stride, half_d * plane_stride, dsub, scfilter, -filtlen + 1, false, dcfilter, 0, true)
-            current = y
             msub <<= 1
             nsub <<= 1
             dsub <<= 1
         end
+        current = y
     end
 
     return y
@@ -359,15 +347,15 @@ function _wpt!(
     scfilter_cpu, dcfilter_cpu = WT.makereverseqmfpair(filter, fw, T)
     scfilter = to_device(backend, scfilter_cpu)
     dcfilter = to_device(backend, dcfilter_cpu)
-    tmp = similar(y, T, length(y))
-    current = x
+    tmp = copyto!(similar(y, T, length(y)), x)
+    current = tmp
     output = y
     filtlen = length(filter)
     n = length(x)
     Lmax = maxtransformlevels(n)
 
-    for L in Lmax:-1:1
-        Lfw = fw ? (Lmax - L) : (L - 1)
+    for L in 1:Lmax
+        Lfw = fw ? (L - 1) : (Lmax - L)
         seglen = detailn(n, Lfw)
         bases_cpu = segment_bases(n, seglen)
         bases = LineBases(n ÷ seglen, n ÷ seglen, seglen, 0, 1)
@@ -384,7 +372,7 @@ function _wpt!(
                 batched_filtup!(output, active_bases, 1, 0, current, active_bases, 1, half, seglen, dcfilter, 0, true, true)
             end
         end
-        current, output = output, output === y ? tmp : y
+        current, output = output, current
     end
 
     current === y || copyto!(y, current)

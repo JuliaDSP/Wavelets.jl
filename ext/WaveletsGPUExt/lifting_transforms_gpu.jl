@@ -193,29 +193,21 @@ function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where
     temp = similar(y, T, size(y))
     work = similar(y, T, size(y))
 
-    if fw
-        current = y
-        output = temp
-        ns = n
-        for _ in 1:L
-            current === output || copyto!(output, current)
+    current = y
+    output = temp
+    ns = fw ? n : div(n, 2^(L - 1))
+    for _ in 1:L
+        copyto!(output, current)
+        if fw
             lifting_forward_lines!(output, current, bases, 1, ns, steps, norm1, norm2)
-            current, output = output, current
             ns >>= 1
-        end
-        current === y || copyto!(y, current)
-    else
-        current = y
-        output = temp
-        ns = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            current === output || copyto!(output, current)
+        else
             lifting_inverse_lines!(output, current, work, bases, 1, ns, steps, norm1, norm2)
-            current, output = output, current
             ns <<= 1
         end
-        current === y || copyto!(y, current)
+        current, output = output, current
     end
+    iseven(L) || copyto!(y, temp)
 
     return y
 end
@@ -232,26 +224,19 @@ function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where
     temp = similar(y, T, size(y))
     work = similar(y, T, size(y))
 
-    if fw
-        current = y
-        nsub = n
-        for _ in 1:L
-            row_bases = LineBases(nsub, nsub, 1, 0, 1)
-            col_bases = LineBases(nsub, nsub, n, 0, 1)
+    current = y
+    nsub = fw ? n : div(n, 2^(L - 1))
+
+    for _ in 1:L
+        row_bases = LineBases(nsub, nsub, 1, 0, 1)
+        col_bases = LineBases(nsub, nsub, n, 0, 1)
+        if fw
             lifting_forward_lines!(temp, current, row_bases, n, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(y, temp, col_bases, 1, nsub, steps, norm1, norm2)
-            current = y
+            lifting_forward_lines!(y,       temp, col_bases, 1, nsub, steps, norm1, norm2)
             nsub >>= 1
-        end
-    else
-        current = y
-        nsub = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            col_bases = LineBases(nsub, nsub, n, 0, 1)
-            row_bases = LineBases(nsub, nsub, 1, 0, 1)
+        else
             lifting_inverse_lines!(temp, current, work, col_bases, 1, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(y, temp, work, row_bases, n, nsub, steps, norm1, norm2)
-            current = y
+            lifting_inverse_lines!(y,       temp, work, row_bases, n, nsub, steps, norm1, norm2)
             nsub <<= 1
         end
     end
@@ -272,32 +257,23 @@ function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Integer, fw::Bool) wher
     temp2 = similar(y, T, size(y))
     work = similar(y, T, size(y))
     row_stride = n
-    plane_stride = n * n
+    plane_stride = n^2
 
-    if fw
-        current = y
-        nsub = n
-        for _ in 1:L
-            plane_bases = LineBases(nsub * nsub, nsub, 1, n, 1)
-            row_bases = LineBases(nsub * nsub, nsub, 1, n * n, 1)
-            col_bases = LineBases(nsub * nsub, nsub, n, n * n, 1)
+    current = y
+    nsub = fw ? n : div(n, 2^(L - 1))
+    for _ in 1:L
+        col_bases   = LineBases(nsub^2, nsub, n, n^2, 1)
+        row_bases   = LineBases(nsub^2, nsub, 1, n^2, 1)
+        plane_bases = LineBases(nsub^2, nsub, 1,   n, 1)
+        if fw
             lifting_forward_lines!(temp1, current, plane_bases, plane_stride, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(temp2, temp1, row_bases, row_stride, nsub, steps, norm1, norm2)
-            lifting_forward_lines!(y, temp2, col_bases, 1, nsub, steps, norm1, norm2)
-            current = y
+            lifting_forward_lines!(temp2,   temp1,   row_bases,   row_stride, nsub, steps, norm1, norm2)
+            lifting_forward_lines!(y,       temp2,   col_bases,            1, nsub, steps, norm1, norm2)
             nsub >>= 1
-        end
-    else
-        current = y
-        nsub = div(n, 2^(L - 1))
-        for _ in L:-1:1
-            col_bases = LineBases(nsub * nsub, nsub, n, n * n, 1)
-            row_bases = LineBases(nsub * nsub, nsub, 1, n * n, 1)
-            plane_bases = LineBases(nsub * nsub, nsub, 1, n, 1)
-            lifting_inverse_lines!(temp1, current, work, col_bases, 1, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(temp2, temp1, work, row_bases, row_stride, nsub, steps, norm1, norm2)
-            lifting_inverse_lines!(y, temp2, work, plane_bases, plane_stride, nsub, steps, norm1, norm2)
-            current = y
+        else
+            lifting_inverse_lines!(temp1, current, work,   col_bases,            1, nsub, steps, norm1, norm2)
+            lifting_inverse_lines!(temp2,   temp1, work,   row_bases,   row_stride, nsub, steps, norm1, norm2)
+            lifting_inverse_lines!(y,       temp2, work, plane_bases, plane_stride, nsub, steps, norm1, norm2)
             nsub <<= 1
         end
     end
@@ -323,7 +299,7 @@ function _wpt!(
     Lmax = maxtransformlevels(n)
 
     for L in 1:Lmax
-        Lfw = fw ? L - 1 : Lmax - L
+        Lfw = fw ? (L - 1) : (Lmax - L)
         seglen = detailn(n, Lfw)
         bases_cpu = segment_bases(n, seglen)
         bases = LineBases(n ÷ seglen, n ÷ seglen, seglen, 0, 1)
@@ -338,9 +314,9 @@ function _wpt!(
                 lifting_inverse_lines!(output, current, work, active_bases, 1, seglen, steps, norm1, norm2)
             end
         end
-        current, output = output, output === y ? temp : y
+        current, output = output, current
     end
 
-    current === y || copyto!(y, current)
+    iseven(Lmax) || copyto!(y, current)
     return y
 end
