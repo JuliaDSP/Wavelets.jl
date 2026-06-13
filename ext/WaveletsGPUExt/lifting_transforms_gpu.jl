@@ -183,7 +183,7 @@ end
 
 function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = length(y)
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 
@@ -223,7 +223,7 @@ end
 function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 
@@ -262,7 +262,7 @@ end
 function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Integer, fw::Bool) where {T<:Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
-    0 <= L || throw(ArgumentError("L must be positive"))
+    L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
     L == 0 && return y
 

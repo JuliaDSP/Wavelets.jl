@@ -24,8 +24,8 @@ function _dwt!(y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
     n = length(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
@@ -140,8 +140,8 @@ function _dwt!(
     m, n = size(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
@@ -222,8 +222,8 @@ function _dwt!(
     m, n, d = size(x)
     size(x) == size(y) ||
         throw(DimensionMismatch("in and out array size must match"))
-    0 <= L ||
-        throw(ArgumentError("L must be positive"))
+    L >= 0 ||
+        throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) ||
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
