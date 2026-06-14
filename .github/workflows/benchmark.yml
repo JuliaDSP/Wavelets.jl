@@ -1,9 +1,13 @@
 name: Benchmark
-"on":
+on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'test/**'
     branches:
       - master
-
+  workflow_dispatch:
 jobs:
   bench:
     runs-on: ubuntu-latest

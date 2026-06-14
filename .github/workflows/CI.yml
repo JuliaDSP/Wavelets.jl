@@ -5,13 +5,16 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+      - 'benchmark/**'
   push:
     branches:
       - master
     paths-ignore:
       - '**.md'
       - 'docs/**'
+      - 'benchmark/**'
     tags: '*'
+  workflow_dispatch:
 
 jobs:
   test:
