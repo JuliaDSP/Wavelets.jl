@@ -11,6 +11,9 @@ on:
 jobs:
   bench:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
     steps:
       - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
