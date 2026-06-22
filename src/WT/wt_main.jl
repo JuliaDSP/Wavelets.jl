@@ -1,12 +1,3 @@
-module WT
-export DiscreteWavelet,
-    FilterWavelet,
-    LSWavelet,
-    OrthoFilter,
-    GLS,
-    wavelet
-
-
 using ..Util
 import Base.length
 using SpecialFunctions
@@ -179,7 +170,8 @@ end
 
 """Reversed quadrature mirror filter pair."""
 function makereverseqmfpair(f::OrthoFilter, fw::Bool=true, T::Type=eltype(qmf(f)))
-    h = convert(Vector{T}, qmf(f))
+    v = qmf(f)
+    h = copyto!(Vector{T}(undef, length(v)), v) # prevent aliasing
     if fw
         scfilter = reverse(h)
         dcfilter = mirror(h)
@@ -486,8 +478,3 @@ const SCHEMES = Dict{String,NTuple{3, Any}}(
             1.9318516525781364)
 
 )
-
-
-
-
-end
