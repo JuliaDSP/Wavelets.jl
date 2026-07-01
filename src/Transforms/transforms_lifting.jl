@@ -80,16 +80,15 @@ end
 function unsafe_dwt1level!(
     y::AbstractArray{T},
     iy::Integer, incy::Integer, oopc::Bool,
-    oopv::FVector{T},
+    oopv::Vector{T}, ns::Int,
     scheme::GLS, fw::Bool,
-    stepseq::FVector,
+    stepseq::Vector,
     norm1::T, norm2::T,
-    tmp::FVector{T}
+    tmp::Vector{T}
 ) where T<:Number
     if !oopc
         oopv = y
     end
-    ns = length(oopv)
     half = ns >> 1
 
     if fw
@@ -152,7 +151,6 @@ function _dwt!(
         return y
     end
     row_stride = n
-    plane_stride = n^2
 
     nsub = fw ? n : div(n, 2^(L - 1))
     lrange = 1:L
@@ -160,34 +158,33 @@ function _dwt!(
 
     # transforms with stride are out of place in a dense array for speed
     for _ in lrange
-        tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
             # rows
             for i in 1:nsub
                 xi = row_idx(i, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
         else
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub
                 xi = row_idx(i, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
         end
 
@@ -231,46 +228,45 @@ function _dwt!(
 
     # transforms with stride are out of place in a dense array for speed
     for _ in lrange
-        tmpsub = unsafe_vectorslice(tmpvec, 1, nsub)
         if fw
             # planes
             for i in 1:nsub, j in 1:nsub
                 xi = plane_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, plane_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
         else
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
                 ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # rows
             for i in 1:nsub, j in 1:nsub
                 xi = row_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, row_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, row_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # planes
             for i in 1:nsub, j in 1:nsub
                 xi = plane_idx(i, j, n)
-                unsafe_dwt1level!(y, xi, plane_stride, true, tmpsub, scheme, fw,
-                    stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(y, xi, plane_stride, true, tmpvec, nsub,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
         end
 
@@ -311,7 +307,8 @@ function _wpt!(
         for ix in 1:nj:n
             if tree[treeind+k]
                 dy = unsafe_vectorslice(y, ix, nj)
-                unsafe_dwt1level!(dy, 1, 1, false, tmp, scheme, fw, stepseq, norm1, norm2, tmp)
+                unsafe_dwt1level!(dy, 1, 1, false, tmp, nj,
+                    scheme, fw, stepseq, norm1, norm2, tmp)
             end
             k += 1
         end

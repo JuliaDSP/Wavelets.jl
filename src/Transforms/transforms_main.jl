@@ -6,7 +6,7 @@ const DWTArray = AbstractArray
 const WPTArray = AbstractVector
 const ValueType = Union{AbstractFloat,Complex}
 
-const FVector = StridedVector # e.g., work space vectors
+# const FVector = StridedVector # e.g., work space vectors
 
 # DWT
 
