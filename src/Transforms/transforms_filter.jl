@@ -103,17 +103,16 @@ function dwt_transform_strided!(
     y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
     msub::Int, nsub::Int, stride::Int,
     idx_func::Function,
-    tmpvec::Vector{T}, tmpvec2::Vector{T},
+    tmpvec::Vector{T},
     filter::OrthoFilter, fw::Bool,
     dcfilter::Vector{T}, scfilter::Vector{T},
     si::Vector{T}
 ) where T<:Number
-    n = length(tmpvec)
     for i = 1:msub
         xi = idx_func(i)
         stridedcopy!(tmpvec, x, xi, stride, nsub)
-        unsafe_dwt1level!(tmpvec2, 1, tmpvec, 1, n, filter, fw, dcfilter, scfilter, si)
-        stridedcopy!(y, xi, stride, tmpvec2, nsub)
+        unsafe_dwt1level!(tmpvec, 1+nsub, tmpvec, 1, nsub, filter, fw, dcfilter, scfilter, si)
+        stridedcopy!(y, xi, stride, tmpvec, nsub, nsub)
     end
 end
 
@@ -187,12 +186,10 @@ function _dwt!(
     row_idx_func = Base.Fix2(row_idx, m)
     col_idx_func = Base.Fix2(col_idx, m)
     for l in lrange
-        tmpvec2 = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmpvec3 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
         if fw
             # rows
             dwt_transform_strided!(vy, inputArray, msub, nsub, row_stride, row_idx_func,
-                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
@@ -206,7 +203,7 @@ function _dwt!(
 
             # rows
             dwt_transform_strided!(vy, vy, msub, nsub, row_stride, row_idx_func,
-                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
         end
         msub = (fw ? msub >> 1 : msub << 1)
         nsub = (fw ? nsub >> 1 : nsub << 1)
@@ -221,7 +218,7 @@ function _dwt!(y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter) - 1)            # tmp filter vector
-    tmpbuffer = Vector{T}(undef, max(m, n << 1, d << 1))   # tmp storage vector
+    tmpbuffer = Vector{T}(undef, max(m, 2n, 2d))   # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -243,7 +240,7 @@ function _dwt!(
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n << 1 ||
+    length(tmpbuffer) >= max(m, 2n, 2d) ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
 
     if L == 0
@@ -269,16 +266,12 @@ function _dwt!(
     inputArray = x
 
     for l in lrange
-        tmprow = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmprow2 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
-        tmphei = unsafe_vectorslice(tmpbuffer, 1, dsub)
-        tmphei2 = unsafe_vectorslice(tmpbuffer, dsub + 1, dsub)
         if fw
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
                 dwt_transform_strided!(y, inputArray, msub, dsub, plane_stride, plane_idx_func,
-                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
 
@@ -286,7 +279,7 @@ function _dwt!(
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
                 dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
-                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             # columns
             for j in 1:dsub
@@ -307,13 +300,13 @@ function _dwt!(
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
                 dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
-                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
                 dwt_transform_strided!(y, y, msub, dsub, plane_stride, plane_idx_func,
-                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
         end
         msub = (fw ? msub >> 1 : msub << 1)
