@@ -74,30 +74,31 @@ function split!(a::AbstractVector{T}) where T<:Number
 end
 
 # split only the range 1:n
-function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
-    @assert n <= length(a)
-    @assert iseven(n)
+function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}, os_a::Integer=0) where T<:Number
+    iseven(n) && n > 1 || throw(DomainError(n, "n must be positive and even"))
+    checkbounds(a, os_a+1:os_a+n)
     n == 2 && return a
     nt = rounding_div4(n)
     @assert nt <= length(tmp)
 
     for i = 1:nt    # store evens
-        @inbounds tmp[i] = a[2i]
+        @inbounds tmp[i] = a[os_a+2i]
     end
     for i = 1:n>>1  # odds to first part
-        @inbounds a[i] = a[2i-1]
+        @inbounds a[os_a+i] = a[os_a+2i-1]
     end
     for i = 0:nt-1  # evens to end
-        @inbounds a[n-i] = a[n-2i]
+        @inbounds a[os_a+n-i] = a[os_a+n-2i]
     end
-    copyto!(a, n >> 1 + 1, tmp, 1, nt)
+    copyto!(a, os_a + n >> 1 + 1, tmp, 1, nt)
     return a
 end
 
 # out of place split from a to b, only the range 1:n
 function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
-    @assert n <= length(a) && n <= length(b)
-    @assert iseven(n)
+    iseven(n) && n > 1 || throw(DomainError(n, "n must be positive and even"))
+    checkbounds(a, 1:n)
+    checkbounds(b, 1:n)
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
@@ -116,8 +117,10 @@ function split!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<
 end
 # out of place split from a to b, only the range a[ia:inca:ia+(n-1)*inca] to b[1:n]
 function split!(b::AbstractVector{T}, a::AbstractArray{T}, ia::Integer, inca::Integer, n::Integer) where T<:Number
-    @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
-    @assert iseven(n)
+    iseven(n) && n > 0 || throw(DomainError(n, "n must be positive and even"))
+    inca > 0 || throw(DomainError(inca, "inca must be positive"))
+    checkbounds(a, ia:ia + (n - 1) * inca)
+    checkbounds(b, 1:n)
     if n == 2
         b[1] = a[ia]
         b[2] = a[ia+inca]
@@ -148,30 +151,31 @@ function merge!(a::AbstractVector{T}) where T<:Number
 end
 
 # merge only the range 1:n
-function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
-    @assert n <= length(a)
-    @assert iseven(n)
+function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}, os_a::Integer=0) where T<:Number
+    iseven(n) && n>=0 || throw(DomainError(n, "n must be positive and even"))
+    checkbounds(a, os_a+1:os_a+n)
     n == 2 && return a
     nt = rounding_div4(n)
-    @assert nt <= length(tmp)
+    checkbounds(tmp, nt)
 
-    copyto!(tmp, 1, a, n >> 1 + 1, nt)
+    copyto!(tmp, 1, a, os_a + n >> 1 + 1, nt)
     for i = nt-1:-1:0   # evens from end
-        @inbounds a[n-2i] = a[n-i]
+        @inbounds a[os_a+n-2i] = a[os_a+n-i]
     end
     for i = n>>1:-1:1   # odds from first part
-        @inbounds a[2i-1] = a[i]
+        @inbounds a[os_a+2i-1] = a[os_a+i]
     end
     for i = nt:-1:1     # retrieve evens
-        @inbounds a[2i] = tmp[i]
+        @inbounds a[os_a+2i] = tmp[i]
     end
     return a
 end
 
 # out of place merge from a to b, only the range 1:n
 function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<:Number
-    @assert n <= length(a) && n <= length(b)
-    @assert iseven(n)
+    iseven(n) || throw(DomainError(n, "n must be even"))
+    checkbounds(a, 1:n)
+    checkbounds(b, 1:n)
     if n == 2
         b[1] = a[1]
         b[2] = a[2]
@@ -190,8 +194,9 @@ function merge!(b::AbstractVector{T}, a::AbstractVector{T}, n::Integer) where T<
 end
 # out of place merge from a to b, only the range a[1:n] to b[ib:incb:ib+(n-1)*incb]
 function merge!(b::AbstractArray{T}, ib::Integer, incb::Integer, a::AbstractVector{T}, n::Integer) where T<:Number
-    @assert n <= length(a) && ib + (n - 1) * incb <= length(b)
-    @assert iseven(n)
+    iseven(n) && n>=0 || throw(DomainError(n, "n must be positive and even"))
+    checkbounds(a, 1:n)
+    checkbounds(b, ib:ib+(n-1)*incb)
     if n == 2
         b[ib] = a[1]
         b[ib+incb] = a[2]

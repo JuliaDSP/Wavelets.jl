@@ -6,7 +6,7 @@ const DWTArray = AbstractArray
 const WPTArray = AbstractVector
 const ValueType = Union{AbstractFloat,Complex}
 
-const FVector = StridedVector # e.g., work space vectors
+# const FVector = StridedVector # e.g., work space vectors
 
 # DWT
 
@@ -120,7 +120,7 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
         y = similar(x)
         copyto!(y, x)
-        return ($_Xwt!)(y, scheme, L, $fw)
+        return ($Xwt!)(y, scheme, L)
     end
     function ($Xwt!)(y::DWTArray{T}, scheme::GLS,
                     L::Integer=maxtransformlevels(y)) where T<:ValueType
