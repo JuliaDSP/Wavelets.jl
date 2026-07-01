@@ -118,14 +118,13 @@ function dwt_transform_strided!(
 end
 
 function dwt_transform_cols!(
-    y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
+    vy::AbstractVector{<:Number}, x::AbstractArray{<:Number},
     msub::Int, nsub::Int, idx_func::Function,
     tmpvec::Vector{T},
     filter::OrthoFilter, fw::Bool,
     dcfilter::Vector{T}, scfilter::Vector{T},
     si::Vector{T}
 ) where T<:Number
-    vy = y isa AbstractVector ? y : unsafe_vectorslice(y, 1, length(y))
     for i = 1:nsub
         xi = idx_func(i)
         copyto!(tmpvec, 1, x, xi, msub)
@@ -140,7 +139,7 @@ function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
     m, n = size(x)
     T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter) - 1)       # tmp filter vector
-    tmpbuffer = Vector{T}(undef, max(n << 1, m))    # tmp storage vector
+    tmpbuffer = Vector{T}(undef, max(m, 2n))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -162,7 +161,7 @@ function _dwt!(
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= max(n << 1, m) ||
+    length(tmpbuffer) >= max(m, 2n) ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
 
     if L == 0
@@ -182,6 +181,7 @@ function _dwt!(
         copyto!(y, x)
     end
 
+    vy = unsafe_vectorslice(y, 1, length(y))
     inputArray = x
 
     row_idx_func = Base.Fix2(row_idx, m)
@@ -191,21 +191,21 @@ function _dwt!(
         tmpvec3 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
         if fw
             # rows
-            dwt_transform_strided!(y, inputArray, msub, nsub, row_stride, row_idx_func,
+            dwt_transform_strided!(vy, inputArray, msub, nsub, row_stride, row_idx_func,
                 tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
-            dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
+            dwt_transform_cols!(vy, vy, msub, nsub, col_idx_func,
                 tmpbuffer, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
+            dwt_transform_cols!(vy, inputArray, msub, nsub, col_idx_func,
                 tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # rows
-            dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
+            dwt_transform_strided!(vy, vy, msub, nsub, row_stride, row_idx_func,
                 tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
         end
         msub = (fw ? msub >> 1 : msub << 1)
@@ -265,6 +265,7 @@ function _dwt!(
         copyto!(y, x)
     end
 
+    vy = unsafe_vectorslice(y, 1, length(y))
     inputArray = x
 
     for l in lrange
@@ -290,14 +291,14 @@ function _dwt!(
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
+                dwt_transform_cols!(vy, vy, msub, nsub, col_idx_func,
                     tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
         else
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
+                dwt_transform_cols!(vy, inputArray, msub, nsub, col_idx_func,
                     tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
