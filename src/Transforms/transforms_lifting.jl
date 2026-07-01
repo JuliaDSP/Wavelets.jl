@@ -57,11 +57,11 @@ function _dwt!(
             for step in stepseq
                 lift!(s, half, step.param, step.steptype)
             end
-            normalize!(s, half, ns, norm1, norm2)
+            normalize!(s, 1, half, ns, norm1, norm2)
             ns = ns >> 1
             half = half >> 1
         else
-            normalize!(s, half, ns, norm1, norm2)
+            normalize!(s, 1, half, ns, norm1, norm2)
             for step in stepseq
                 lift!(s, half, step.param, step.steptype)
             end
@@ -86,38 +86,37 @@ function unsafe_dwt1level!(
     norm1::T, norm2::T,
     tmp::Vector{T}
 ) where T<:Number
-    if !oopc
-        oopv = y
-    end
+    oopv = oopc ? oopv : y
     half = ns >> 1
+    y_os = iy - 1
 
     if fw
         if oopc
             Util.split!(oopv, y, iy, incy, ns)
-        else
-            Util.split!(oopv, ns, tmp)
-        end
-        for step in stepseq
-            lift!(oopv, half, step.param, step.steptype)
-        end
-        if oopc
+            for step in stepseq
+                lift!(oopv, half, step.param, step.steptype)
+            end
             normalize!(y, iy, incy, oopv, half, ns, norm1, norm2)
         else
-            normalize!(oopv, half, ns, norm1, norm2)
+            Util.split!(oopv, ns, tmp, y_os)
+            for step in stepseq
+                lift!(oopv, half, step.param, step.steptype, y_os)
+            end
+            normalize!(oopv, iy, half, ns, norm1, norm2)
         end
     else
         if oopc
             normalize!(oopv, y, iy, incy, half, ns, norm1, norm2)
-        else
-            normalize!(oopv, half, ns, norm1, norm2)
-        end
-        for step in stepseq
-            lift!(oopv, half, step.param, step.steptype)
-        end
-        if oopc
+            for step in stepseq
+                lift!(oopv, half, step.param, step.steptype)
+            end
             Util.merge!(y, iy, incy, oopv, ns)
         else
-            Util.merge!(oopv, ns, tmp)
+            normalize!(oopv, iy, half, ns, norm1, norm2)
+            for step in stepseq
+                lift!(oopv, half, step.param, step.steptype, y_os)
+            end
+            Util.merge!(oopv, ns, tmp, y_os)
         end
     end
 
@@ -156,6 +155,7 @@ function _dwt!(
     lrange = 1:L
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
+    vy = vec(y)
     # transforms with stride are out of place in a dense array for speed
     for _ in lrange
         if fw
@@ -168,16 +168,14 @@ function _dwt!(
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
-                ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                unsafe_dwt1level!(vy, xi, 1, false, tmpvec, nsub,
                     scheme, fw, stepseq, norm1, norm2, tmp)
             end
         else
             # columns
             for i in 1:nsub
                 xi = col_idx(i, n)
-                ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                unsafe_dwt1level!(vy, xi, 1, false, tmpvec, nsub,
                     scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # rows
@@ -226,6 +224,7 @@ function _dwt!(
     lrange = 1:L
     stepseq, norm1, norm2 = makescheme(T, scheme, fw)
 
+    vy = vec(y)
     # transforms with stride are out of place in a dense array for speed
     for _ in lrange
         if fw
@@ -244,16 +243,14 @@ function _dwt!(
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
-                ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                unsafe_dwt1level!(vy, xi, 1, false, tmpvec, nsub,
                     scheme, fw, stepseq, norm1, norm2, tmp)
             end
         else
             # columns
             for i in 1:nsub, j in 1:nsub
                 xi = col_idx(i, j, n)
-                ya = unsafe_vectorslice(y, xi, nsub)
-                unsafe_dwt1level!(ya, 1, 1, false, tmpvec, nsub,
+                unsafe_dwt1level!(vy, xi, 1, false, tmpvec, nsub,
                     scheme, fw, stepseq, norm1, norm2, tmp)
             end
             # rows
@@ -306,8 +303,7 @@ function _wpt!(
 
         for ix in 1:nj:n
             if tree[treeind+k]
-                dy = unsafe_vectorslice(y, ix, nj)
-                unsafe_dwt1level!(dy, 1, 1, false, tmp, nj,
+                unsafe_dwt1level!(y, ix, 1, false, tmp, nj,
                     scheme, fw, stepseq, norm1, norm2, tmp)
             end
             k += 1
@@ -319,12 +315,12 @@ end
 
 
 
-function normalize!(x::AbstractVector{T}, half::Int, ns::Int, n1::T, n2::T) where T<:Number
-    for i = 1:half
-        x[i] *= n1
+function normalize!(x::AbstractVector{T}, ix::Int, half::Int, ns::Int, n1::T, n2::T) where T<:Number
+    for i = 0:half-1
+        x[ix+i] *= n1
     end
-    for i = half+1:ns
-        x[i] *= n2
+    for i = half:ns-1
+        x[ix+i] *= n2
     end
     return nothing
 end
@@ -365,15 +361,16 @@ end
 for step_type in (WT.PredictStep, WT.UpdateStep)
     @eval begin
         function lift!(x::AbstractVector{T}, half::Int,
-                    param::WT.LSStepParam{T}, steptype::$step_type) where T<:Number
+            param::WT.LSStepParam{T}, steptype::$step_type, x_os::Int=0
+        ) where T<:Number
             lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
             coefs = param.coef
             # left boundary
-            lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
+            lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype, x_os)
             # main loop
-            lift_inbounds!(x, coefs, irange, rhsis)
+            lift_inbounds!(x, coefs, irange .+ x_os, rhsis)
             # right boundary
-            lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
+            lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype, x_os)
             return nothing
         end
     end # eval begin
@@ -435,19 +432,19 @@ end
 # periodic boundary
 function lift_perboundary!(
     x::AbstractVector{T}, half::Int, c::Vector{T},
-    irange::AbstractRange, rhsis::Int, ::WT.PredictStep
+    irange::AbstractRange, rhsis::Int, ::WT.PredictStep, x_os::Int
 ) where T<:Number
     for i in irange, k in eachindex(c)
-        x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+        x[x_os+i] += c[k] * x[x_os+mod1(i + k - 1 + rhsis - half, half)+half]
     end
     return nothing
 end
 function lift_perboundary!(
     x::AbstractVector{T}, half::Int, c::Vector{T},
-    irange::AbstractRange, rhsis::Int, ::WT.UpdateStep
+    irange::AbstractRange, rhsis::Int, ::WT.UpdateStep, x_os::Int
 ) where T<:Number
     for i in irange, k in eachindex(c)
-        x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
+        x[x_os+i] += c[k] * x[x_os+mod1(i + k - 1 + rhsis, half)]
     end
     return nothing
 end

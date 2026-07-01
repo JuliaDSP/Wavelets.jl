@@ -74,23 +74,23 @@ function split!(a::AbstractVector{T}) where T<:Number
 end
 
 # split only the range 1:n
-function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
-    @assert n <= length(a)
+function split!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}, os_a::Integer=0) where T<:Number
+    @assert n <= length(a) - os_a
     @assert iseven(n)
     n == 2 && return a
     nt = n >> 2 + (n >> 1) % 2
     @assert nt <= length(tmp)
 
     for i = 1:nt    # store evens
-        @inbounds tmp[i] = a[2i]
+        @inbounds tmp[i] = a[os_a+2i]
     end
     for i = 1:n>>1  # odds to first part
-        @inbounds a[i] = a[2i-1]
+        @inbounds a[os_a+i] = a[os_a+2i-1]
     end
     for i = 0:nt-1  # evens to end
-        @inbounds a[n-i] = a[n-2i]
+        @inbounds a[os_a+n-i] = a[os_a+n-2i]
     end
-    copyto!(a, n >> 1 + 1, tmp, 1, nt)
+    copyto!(a, os_a + n >> 1 + 1, tmp, 1, nt)
     return a
 end
 
@@ -148,22 +148,22 @@ function merge!(a::AbstractVector{T}) where T<:Number
 end
 
 # merge only the range 1:n
-function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}) where T<:Number
-    @assert n <= length(a)
+function merge!(a::AbstractVector{T}, n::Integer, tmp::Vector{T}, os_a::Integer=0) where T<:Number
+    @assert n <= length(a) - os_a
     @assert iseven(n)
     n == 2 && return a
     nt = n >> 2 + (n >> 1) % 2
     @assert nt <= length(tmp)
 
-    copyto!(tmp, 1, a, n >> 1 + 1, nt)
+    copyto!(tmp, 1, a, os_a + n >> 1 + 1, nt)
     for i = nt-1:-1:0   # evens from end
-        @inbounds a[n-2i] = a[n-i]
+        @inbounds a[os_a+n-2i] = a[os_a+n-i]
     end
     for i = n>>1:-1:1   # odds from first part
-        @inbounds a[2i-1] = a[i]
+        @inbounds a[os_a+2i-1] = a[os_a+i]
     end
     for i = nt:-1:1     # retrieve evens
-        @inbounds a[2i] = tmp[i]
+        @inbounds a[os_a+2i] = tmp[i]
     end
     return a
 end
