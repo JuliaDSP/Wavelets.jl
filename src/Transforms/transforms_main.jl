@@ -206,7 +206,11 @@ end # for
 
 # Array with shared memory
 function unsafe_vectorslice(A::Array{T}, i::Int, n::Int) where T
-    return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
+    @static if VERSION >= v"1.12"
+        return Base.wrap(Array, memoryref(A.ref, i), n)
+    else
+        return unsafe_wrap(Array, pointer(A, i), n)::Vector{T}
+    end
 end
 function unsafe_vectorslice(A::StridedArray{T}, i::Int, n::Int) where T
     return @view A[i:(i-1+n)]
