@@ -35,12 +35,30 @@ end
 end
 
 @testset "Matching pursuit" begin
+    using LinearAlgebra: mul!, norm
+
     N = 128
     M = 64
-    y = randn(N)
     Arr = randn(M, N)
-    func(a::AbstractVector) = Arr * a
-    funct(a::AbstractVector) = Arr' * a
+    foreach(v -> v ./= norm(v), eachcol(Arr))
+
+    y = zeros(N)
+    idx = rand(1:N, 5)
+    y[idx] = randn(5)
+
+    func, funct = let H = copy(Arr)
+        a::AbstractVector -> (H  * a),
+        a::AbstractVector -> (H' * a)
+    end
     x = func(y)
-    matchingpursuit(x, func, funct, 0.1)
+
+    tol = 0.1
+    s1 = matchingpursuit(x, func, funct, tol)
+    @test norm(x - func(s1)) < tol
+    func!, funct! = let H = copy(Arr)
+        (a::AbstractVector, r::AbstractVector, _) -> mul!(a, H, r),
+        (a::AbstractVector, r::AbstractVector, _) -> mul!(a, H', r)
+    end
+    s2 = matchingpursuit(x, func!, funct!, tol, -1, true, N)
+    @test norm(x - func(s2)) < tol
 end
