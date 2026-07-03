@@ -16,7 +16,7 @@ function _dwt!(
     fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     T = promote_type(Tx, Ty)
-    si = Vector{T}(undef, length(filter) - 1) # tmp filter vector
+    si = Vector{T}(undef, length(filter) - 1)   # tmp filter vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si)
 end
@@ -49,43 +49,52 @@ function _dwt!(
     lrange = fw ? (1:1:L) : (L:-1:1)
 
     for l in lrange
+        iout = detailindex(n, l, 1)
         if fw
+            nout = detailn(n, l)
             # detail coefficients
-            filtdown!(dcfilter, si, y, detailindex(n, l, 1), detailn(n, l), s, 1, -filtlen + 1, true)
+            filtdown!(dcfilter, si, y, iout, nout, s, 1, -filtlen + 1,  true)
             # scaling coefficients
-            filtdown!(scfilter, si, y, 1, detailn(n, l), s, 1, 0, false)
+            filtdown!(scfilter, si, y,    1, nout, s, 1,            0, false)
         else
+            nout = detailn(n, l - 1)
             # scaling coefficients
-            filtup!(false, scfilter, si, y, 1, detailn(n, l - 1), s, 1, -filtlen + 1, false)
+            filtup!(false, scfilter, si, y, 1, nout, s,    1, -filtlen + 1, false)
             # detail coefficients
-            filtup!(true, dcfilter, si, y, 1, detailn(n, l - 1), x, detailindex(n, l, 1), 0, true)
+            filtup!(true,  dcfilter, si, y, 1, nout, x, iout,            0,  true)
         end
         # if not final iteration: copy to tmp location
-        l != lrange[end] && copyto!(snew, 1, y, 1, detailn(n, fw ? l : l - 1))
+        l != lrange[end] && copyto!(snew, 1, y, 1, nout)
         L > 1 && (s = snew)
     end
     return y
 end
 function unsafe_dwt1level!(
-    y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
+    y::AbstractVector{<:Number}, iy::Int,
+    x::AbstractVector{<:Number}, ix::Int,
+    n::Int,
     filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T},
-    si::FVector{T}
+    dcfilter::Vector{T}, scfilter::Vector{T},
+    si::Vector{T}
 ) where T<:Number
-    n = length(x)
     l = 1
     filtlen = length(filter)
 
+    ishift = detailindex(n, l, 1) - 1
     if fw
+        nout = detailn(n, l)
+        iout = iy + ishift
         # detail coefficients
-        filtdown!(dcfilter, si, y, detailindex(n, l, 1), detailn(n, l), x, 1, -filtlen + 1, true)
+        filtdown!(dcfilter, si, y, iout, nout, x, ix, -filtlen + 1,  true)
         # scaling coefficients
-        filtdown!(scfilter, si, y, 1, detailn(n, l), x, 1, 0, false)
+        filtdown!(scfilter, si, y,   iy, nout, x, ix,            0, false)
     else
+        nout = detailn(n, l - 1)
+        iout = ix + ishift
         # scaling coefficients
-        filtup!(false, scfilter, si, y, 1, detailn(n, l - 1), x, 1, -filtlen + 1, false)
+        filtup!(false, scfilter, si, y, iy, nout, x,   ix, -filtlen + 1, false)
         # detail coefficients
-        filtup!(true, dcfilter, si, y, 1, detailn(n, l - 1), x, detailindex(n, l, 1), 0, true)
+        filtup!(true,  dcfilter, si, y, iy, nout, x, iout,            0,  true)
     end
     return nothing
 end
@@ -94,32 +103,31 @@ function dwt_transform_strided!(
     y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
     msub::Int, nsub::Int, stride::Int,
     idx_func::Function,
-    tmpvec::FVector{T}, tmpvec2::FVector{T},
+    tmpvec::Vector{T},
     filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T},
-    si::FVector{T}
+    dcfilter::Vector{T}, scfilter::Vector{T},
+    si::Vector{T}
 ) where T<:Number
     for i = 1:msub
         xi = idx_func(i)
         stridedcopy!(tmpvec, x, xi, stride, nsub)
-        unsafe_dwt1level!(tmpvec2, tmpvec, filter, fw, dcfilter, scfilter, si)
-        stridedcopy!(y, xi, stride, tmpvec2, nsub)
+        unsafe_dwt1level!(tmpvec, 1+nsub, tmpvec, 1, nsub, filter, fw, dcfilter, scfilter, si)
+        stridedcopy!(y, xi, stride, tmpvec, 1+nsub, nsub)
     end
 end
 
 function dwt_transform_cols!(
-    y::AbstractArray{<:Number}, x::AbstractArray{<:Number},
+    vy::AbstractVector{<:Number}, x::AbstractArray{<:Number},
     msub::Int, nsub::Int, idx_func::Function,
-    tmpvec::FVector{T},
+    tmpvec::Vector{T},
     filter::OrthoFilter, fw::Bool,
-    dcfilter::FVector{T}, scfilter::FVector{T},
-    si::FVector{T}
+    dcfilter::Vector{T}, scfilter::Vector{T},
+    si::Vector{T}
 ) where T<:Number
     for i = 1:nsub
         xi = idx_func(i)
         copyto!(tmpvec, 1, x, xi, msub)
-        ya = unsafe_vectorslice(y, xi, msub)
-        unsafe_dwt1level!(ya, tmpvec, filter, fw, dcfilter, scfilter, si)
+        unsafe_dwt1level!(vy, xi, tmpvec, 1, msub, filter, fw, dcfilter, scfilter, si)
     end
 end
 
@@ -129,8 +137,8 @@ function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
     filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number,Ty<:Number}
     m, n = size(x)
     T = promote_type(Tx, Ty)
-    si = Vector{T}(undef, length(filter) - 1)       # tmp filter vector
-    tmpbuffer = Vector{T}(undef, max(n << 1, m))    # tmp storage vector
+    si = Vector{T}(undef, length(filter) - 1)   # tmp filter vector
+    tmpbuffer = Vector{T}(undef, max(m, 2n))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -152,7 +160,7 @@ function _dwt!(
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= max(n << 1, m) ||
+    length(tmpbuffer) >= max(m, 2n) ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
 
     if L == 0
@@ -172,32 +180,30 @@ function _dwt!(
         copyto!(y, x)
     end
 
+    vy = unsafe_vectorslice(y, 1, length(y))
     inputArray = x
 
     row_idx_func = Base.Fix2(row_idx, m)
     col_idx_func = Base.Fix2(col_idx, m)
     for l in lrange
-        tmpvec = unsafe_vectorslice(tmpbuffer, 1, msub)
-        tmpvec2 = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmpvec3 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
         if fw
             # rows
-            dwt_transform_strided!(y, inputArray, msub, nsub, row_stride, row_idx_func,
-                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_strided!(vy, inputArray, msub, nsub, row_stride, row_idx_func,
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # columns
-            dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
-                tmpvec, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_cols!(vy, vy, msub, nsub, col_idx_func,
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
-                tmpvec, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_cols!(vy, inputArray, msub, nsub, col_idx_func,
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
             # rows
-            dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
-                tmpvec2, tmpvec3, filter, fw, dcfilter, scfilter, si)
+            dwt_transform_strided!(vy, vy, msub, nsub, row_stride, row_idx_func,
+                tmpbuffer, filter, fw, dcfilter, scfilter, si)
         end
         msub = (fw ? msub >> 1 : msub << 1)
         nsub = (fw ? nsub >> 1 : nsub << 1)
@@ -207,12 +213,15 @@ end
 
 # 3-D
 # writes to y
-function _dwt!(y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
-    filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number,Ty<:Number}
+function _dwt!(
+    y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
+    filter::OrthoFilter,
+    L::Integer, fw::Bool
+) where {Tx<:Number,Ty<:Number}
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
-    si = Vector{T}(undef, length(filter) - 1)            # tmp filter vector
-    tmpbuffer = Vector{T}(undef, max(m, n << 1, d << 1))   # tmp storage vector
+    si = Vector{T}(undef, length(filter) - 1)       # tmp filter vector
+    tmpbuffer = Vector{T}(undef, max(m, 2n, 2d))    # tmp storage vector
     scfilter, dcfilter = WT.makereverseqmfpair(filter, fw, T)
 
     return _dwt!(y, x, filter, L, fw, dcfilter, scfilter, si, tmpbuffer)
@@ -234,7 +243,7 @@ function _dwt!(
         throw(ArgumentError("size must have a sufficient power of 2 factor"))
     y === x &&
         throw(ArgumentError("in array is out array"))
-    length(tmpbuffer) >= n << 1 ||
+    length(tmpbuffer) >= max(m, 2n, 2d) ||
         throw(ArgumentError("length of tmpbuffer incorrect"))
 
     if L == 0
@@ -256,20 +265,16 @@ function _dwt!(
         copyto!(y, x)
     end
 
+    vy = unsafe_vectorslice(y, 1, length(y))
     inputArray = x
 
     for l in lrange
-        tmpcol = unsafe_vectorslice(tmpbuffer, 1, msub)
-        tmprow = unsafe_vectorslice(tmpbuffer, 1, nsub)
-        tmprow2 = unsafe_vectorslice(tmpbuffer, nsub + 1, nsub)
-        tmphei = unsafe_vectorslice(tmpbuffer, 1, dsub)
-        tmphei2 = unsafe_vectorslice(tmpbuffer, dsub + 1, dsub)
         if fw
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
                 dwt_transform_strided!(y, inputArray, msub, dsub, plane_stride, plane_idx_func,
-                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
 
@@ -277,20 +282,20 @@ function _dwt!(
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
                 dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
-                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, y, msub, nsub, col_idx_func,
-                    tmpcol, filter, fw, dcfilter, scfilter, si)
+                dwt_transform_cols!(vy, vy, msub, nsub, col_idx_func,
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
         else
             # columns
             for j in 1:dsub
                 col_idx_func = i -> col_idx(i, j, m, n)
-                dwt_transform_cols!(y, inputArray, msub, nsub, col_idx_func,
-                    tmpcol, filter, fw, dcfilter, scfilter, si)
+                dwt_transform_cols!(vy, inputArray, msub, nsub, col_idx_func,
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             l == lrange[1] && (inputArray = y)
 
@@ -298,13 +303,13 @@ function _dwt!(
             for j in 1:dsub
                 row_idx_func = i -> row_idx(i, j, m, n)
                 dwt_transform_strided!(y, y, msub, nsub, row_stride, row_idx_func,
-                    tmprow, tmprow2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
             # planes
             for j in 1:nsub
                 plane_idx_func = i -> plane_idx(i, j, m)
                 dwt_transform_strided!(y, y, msub, dsub, plane_stride, plane_idx_func,
-                    tmphei, tmphei2, filter, fw, dcfilter, scfilter, si)
+                    tmpbuffer, filter, fw, dcfilter, scfilter, si)
             end
         end
         msub = (fw ? msub >> 1 : msub << 1)
@@ -359,21 +364,19 @@ function _wpt!(
         Lfw = (fw ? L - 1 : Lmax - L)
         nj = detailn(n, Lfw)
         treeind = 2^(Lfw) - 1
-        dx = first ? x : unsafe_vectorslice(snew, 1, nj) # dx will be overwritten if first
+        dx = first ? x : snew
 
-        for ix in 1:nj:n
+        for iy in 1:nj:n
             if tree[treeind+k]
-                dy = unsafe_vectorslice(y, ix, nj)
                 if first
-                    dx = unsafe_vectorslice(x, ix, nj)
+                    ix = iy
                 else
-                    copyto!(dx, dy)
+                    ix = 1
+                    copyto!(dx, 1, y, iy, nj)
                 end
-                unsafe_dwt1level!(dy, dx, filter, fw, dcfilter, scfilter, si)
+                unsafe_dwt1level!(y, iy, dx, ix, nj, filter, fw, dcfilter, scfilter, si)
             elseif first
-                dy = unsafe_vectorslice(y, ix, nj)
-                dx = unsafe_vectorslice(x, ix, nj)
-                copyto!(dy, dx)
+                copyto!(y, iy, x, iy, nj)
             end
             k += 1
         end
@@ -408,7 +411,7 @@ end
 # ss : shift downsampling
 # based on Base.filt
 function filtdown!(
-    f::AbstractVector{T}, si::AbstractVector{T},
+    f::Vector{T}, si::Vector{T},
     out::AbstractVector{<:Number}, iout::Integer, nout::Integer,
     x::AbstractVector{<:Number}, ix::Integer,
     shift::Integer=0,
@@ -503,7 +506,7 @@ function filtup!(
 
     fill!(si, 0.0)
     istart = flen - shift % 2
-    dsshift = Int(isodd(ss))   # shift upsampling
+    dsshift = Int(isodd(ss))    # shift upsampling
     hshift = shift >> 1
 
     rout1, rin, rout2 = splituprangeper(istart, nx, nout, hshift)
@@ -513,7 +516,7 @@ function filtup!(
             filtermainloopzero!(si, silen)
         else
             # periodic in the range [ix:ix+nx-1]
-            xindex = mod((i - 1) >> 1 + hshift, nx) + ix    #(i-1)>>1 increm. every other
+            xindex = mod((i - 1) >> 1 + hshift, nx) + ix    # (i-1)>>1 increm. every other
             xatind = x[xindex]
             filtermainloop!(si, silen, f, xatind)
         end

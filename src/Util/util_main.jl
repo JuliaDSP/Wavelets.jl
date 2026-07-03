@@ -214,21 +214,28 @@ end
 
 
 function stridedcopy!(b::AbstractVector{<:Number}, a::AbstractArray{<:Number}, ia::Integer, inca::Integer, n::Integer)
-    @assert ia + (n - 1) * inca <= length(a) && n <= length(b)
+    checkbounds(a, ia:(ia+(n-1)*inca))
+    checkbounds(b, 1:n)
 
     for i = 1:n
         b[i] = a[ia+(i-1)*inca]
     end
     return b
 end
-function stridedcopy!(b::AbstractArray{<:Number}, ib::Integer, incb::Integer, a::AbstractVector{<:Number}, n::Integer)
-    @assert ib + (n - 1) * incb <= length(b) && n <= length(a)
+function stridedcopy!(
+    b::AbstractArray{<:Number}, ib::Integer, incb::Integer,
+    a::AbstractVector{<:Number}, ia::Integer,
+    n::Integer
+)
+    checkbounds(a, ia:(ia+n-1))
+    checkbounds(b, ib:(ib+(n-1)*incb))
 
-    for i = 1:n
-        b[ib+(i-1)*incb] = a[i]
+    for i = 0:n-1
+        b[ib+i*incb] = a[ia+i]
     end
     return b
 end
+
 
 # wavelet packet transforms WPT
 # valid if 0 nodes have 0 children and length+1 is dyadic
