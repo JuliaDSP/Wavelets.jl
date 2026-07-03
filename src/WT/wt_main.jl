@@ -193,6 +193,7 @@ end
 abstract type StepType end
 struct PredictStep <: StepType end
 struct UpdateStep <: StepType end
+const PredOrUp = Union{PredictStep,UpdateStep}
 const Predict = PredictStep()
 const Update = UpdateStep()
 

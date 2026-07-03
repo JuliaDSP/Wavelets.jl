@@ -385,22 +385,22 @@ end
 # half: half of the length under consideration
 # For predict: writes to range 1:half, reads from 1:2*half
 # For update : writes to range half+1:2*half, reads from 1:2*half
-for step_type in (WT.PredictStep, WT.UpdateStep)
-    @eval begin
-        function lift!(x::AbstractVector{T}, half::Int,
-                    param::WT.LSStepParam{T}, steptype::$step_type) where T<:Number
-            lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
-            coefs = param.coef
-            # left boundary
-            lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
-            # main loop
-            lift_inbounds!(x, coefs, irange, rhsis)
-            # right boundary
-            lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
-            return x
-        end
-    end # eval begin
-end # for
+function lift!(
+    x::AbstractVector{T}, half::Int,
+    param::WT.LSStepParam{T},
+    steptype::WT.PredOrUp
+) where T<:Number
+    @inline
+    lhsr, irange, rhsr, rhsis = getliftranges(half, length(param), param.shift, steptype)
+    coefs = param.coef
+    # left boundary
+    lift_perboundary!(x, half, coefs, lhsr, rhsis, steptype)
+    # main loop
+    lift_inbounds!(x, coefs, irange, rhsis)
+    # right boundary
+    lift_perboundary!(x, half, coefs, rhsr, rhsis, steptype)
+    return nothing
+end
 
 function irlimits(half::Int, nc::Int, shift::Int)
     # conditions for every element i in irange to be in bounds
@@ -411,65 +411,48 @@ function irlimits(half::Int, nc::Int, shift::Int)
         min(half + 1 + shift - nc, half + shift))
 end
 
-function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.UpdateStep)
+function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredOrUp)
+    isUpdate = steptype isa WT.UpdateStep
     # define index shift rhsis
-    rhsis = -shift - half
+    rhsis = -shift - (isUpdate ? half : -half)
     irmin, irmax = irlimits(half, nc, shift)
     if irmin > half || irmax < 1
-        irange = 1:0  # empty
-    else
-        irmin = max(irmin, 1)
-        irmax = min(irmax, half)
-        irange = irmin+half:irmax+half
-    end
-    # periodic boundary
-    if length(irange) == 0
-        lhsr = 1+half:half+half
-        rhsr = 1+half:0+half
-    else
-        lhsr = 1+half:irmin-1+half
-        rhsr = irmax+1+half:half+half
-    end
-    return (lhsr, irange, rhsr, rhsis)
-end
-
-function getliftranges(half::Int, nc::Int, shift::Int, steptype::WT.PredictStep)
-    # define index shift rhsis
-    rhsis = -shift + half
-    irmin, irmax = irlimits(half, nc, shift)
-    if irmin > half || irmax < 1
-        irange = 1:0  # empty
+        irange = 1:0    # empty
     else
         irmin = max(irmin, 1)
         irmax = min(irmax, half)
         irange = irmin:irmax
     end
     # periodic boundary
-    if length(irange) == 0
+    if isempty(irange)
         lhsr = 1:half
         rhsr = 1:0
     else
         lhsr = 1:irmin-1
         rhsr = irmax+1:half
     end
-    return (lhsr, irange, rhsr, rhsis)
+
+    if isUpdate
+        return (lhsr .+ half, irange .+ half, rhsr .+ half, rhsis)
+    else
+        return (lhsr,         irange,         rhsr,         rhsis)
+    end
 end
 
 # periodic boundary
-for (step_type, puxind) in ((WT.PredictStep, :(mod1(i + k - 1 + rhsis - half, half) + half)),
-    (WT.UpdateStep, :(mod1(i + k - 1 + rhsis, half))))
-    @eval begin
-        function lift_perboundary!(x::AbstractVector{T}, half::Int,
-            c::Vector{T}, irange::AbstractRange, rhsis::Int, ::$step_type) where T<:Number
-            nc = length(c)
-            for i in irange, k in 1:nc
-                @inbounds x[i] += c[k] * x[$puxind]
-            end
-            return x
+function lift_perboundary!(
+    x::AbstractVector{T}, half::Int, c::Vector{T},
+    irange::AbstractRange, rhsis::Int, steptype::WT.PredOrUp
+) where T<:Number
+    for i in irange, k in eachindex(c)
+        if steptype isa WT.PredictStep
+            x[i] += c[k] * x[mod1(i + k - 1 + rhsis - half, half)+half]
+        else
+            x[i] += c[k] * x[mod1(i + k - 1 + rhsis, half)]
         end
-    end # eval begin
-end # for
-
+    end
+    return x
+end
 
 # main lift loop
 function lift_inbounds!(x::AbstractVector{T}, c::Vector{T}, irange::AbstractRange, rhsis::Int) where T<:Number
