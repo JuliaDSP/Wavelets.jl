@@ -109,22 +109,22 @@ for (Xwt, Xwt!, _Xwt!, fw) in ((:dwt, :dwt!, :_dwt!, true),
     function ($Xwt)(x::DWTArray{T}, filter::OrthoFilter,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
         y = similar(x)
-        return ($_Xwt!)(y, x, filter, L, $fw)
+        return ($_Xwt!)(y, x, filter, Int(L), $fw)
     end
     function ($Xwt!)(y::DWTArray{<:ValueType}, x::DWTArray{<:ValueType}, filter::OrthoFilter,
                     L::Integer=maxtransformlevels(x))
-        return ($_Xwt!)(y, x, filter, L, $fw)
+        return ($_Xwt!)(y, x, filter, Int(L), $fw)
     end
     # lifting
     function ($Xwt)(x::DWTArray{T}, scheme::GLS,
                     L::Integer=maxtransformlevels(x)) where T<:ValueType
         y = similar(x)
         copyto!(y, x)
-        return ($Xwt!)(y, scheme, L)
+        return ($Xwt!)(y, scheme, Int(L))
     end
     function ($Xwt!)(y::DWTArray{T}, scheme::GLS,
                     L::Integer=maxtransformlevels(y)) where T<:ValueType
-        return ($_Xwt!)(y, scheme, L, $fw)
+        return ($_Xwt!)(y, scheme, Int(L), $fw)
     end
 end # begin
 end # for

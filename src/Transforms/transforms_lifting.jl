@@ -30,7 +30,7 @@ end
 # inplace transform of y, no vector allocation
 function _dwt!(
     y::AbstractVector{T}, scheme::GLS,
-    L::Integer, fw::Bool,
+    L::Int, fw::Bool,
     tmp::Vector{T}=Vector{T}(undef, reqtmplength(y))
 ) where T<:Number
     @inline
@@ -132,7 +132,7 @@ end
 # tmpvec: size at least n
 function _dwt!(
     y::Matrix{T}, scheme::GLS,
-    L::Integer, fw::Bool,
+    L::Int, fw::Bool,
     tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)),
     tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))
 ) where T<:Number
@@ -200,7 +200,7 @@ end
 # tmp: size at least n>>2
 # tmpvec: size at least n
 function _dwt!(
-    y::Array{T,3}, scheme::GLS, L::Integer, fw::Bool,
+    y::Array{T,3}, scheme::GLS, L::Int, fw::Bool,
     tmp::Vector{T}=Vector{T}(undef, reqtmplength(y)),
     tmpvec::Vector{T}=Vector{T}(undef, size(y, 1))
 ) where T<:Number

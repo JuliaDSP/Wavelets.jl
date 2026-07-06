@@ -268,7 +268,8 @@ If `s` is
 - :dwt, nodes corresponding to a dwt for the first `L` levels equal 1, others 0
 """
 maketree(x::AbstractVector, s::Symbol=:full) = maketree(length(x), maxtransformlevels(x), s)
-function maketree(n::Int, L::Int, s::Symbol=:full)
+maketree(n::Integer, L::Integer, s::Symbol=:full) = maketree(Int(n), Int(L), s)
+function maketree(n::Int, L::Int, s::Symbol)
     ns = maxtransformlevels(n)
     @assert 0 <= L <= ns
     nb = 1 << ns - 1    # 2^ns - 1

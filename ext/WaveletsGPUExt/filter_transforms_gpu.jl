@@ -170,7 +170,7 @@ end
 
 function _dwt!(
     y::AbstractGPUVector{Ty}, x::AbstractGPUVector{Tx},
-    filter::OrthoFilter, L::Integer,
+    filter::OrthoFilter, L::Int,
     fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     T = promote_type(Tx, Ty)
@@ -223,7 +223,7 @@ end
 
 function _dwt!(
     y::AbstractGPUMatrix{Ty}, x::AbstractGPUMatrix{Tx},
-    filter::OrthoFilter, L::Integer,
+    filter::OrthoFilter, L::Int,
     fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     m, n = size(x)
@@ -274,7 +274,7 @@ end
 
 function _dwt!(
     y::AbstractGPUArray{Ty,3}, x::AbstractGPUArray{Tx,3},
-    filter::OrthoFilter, L::Integer,
+    filter::OrthoFilter, L::Int,
     fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     m, n, d = size(x)

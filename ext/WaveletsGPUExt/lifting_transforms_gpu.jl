@@ -181,7 +181,7 @@ function lifting_inverse_lines!(out, x, work, bases, stride::Int, ns::Int, steps
     return
 end
 
-function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
+function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Int, fw::Bool) where {T <: Number}
     n = length(y)
     L >= 0 || throw(ArgumentError("L must be non-negative"))
     sufficientpoweroftwo(y, L) || throw(ArgumentError("size must have a sufficient power of 2 factor"))
@@ -212,7 +212,7 @@ function _dwt!(y::AbstractGPUVector{T}, scheme::GLS, L::Integer, fw::Bool) where
     return y
 end
 
-function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where {T <: Number}
+function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Int, fw::Bool) where {T <: Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
     L >= 0 || throw(ArgumentError("L must be non-negative"))
@@ -244,7 +244,7 @@ function _dwt!(y::AbstractGPUMatrix{T}, scheme::GLS, L::Integer, fw::Bool) where
     return y
 end
 
-function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Integer, fw::Bool) where {T<:Number}
+function _dwt!(y::AbstractGPUArray{T,3}, scheme::GLS, L::Int, fw::Bool) where {T<:Number}
     n = size(y, 1)
     iscube(y) || throw(ArgumentError("array must be square/cube"))
     L >= 0 || throw(ArgumentError("L must be non-negative"))

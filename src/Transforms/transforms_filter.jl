@@ -12,7 +12,7 @@
 # writes to y
 function _dwt!(
     y::AbstractVector{Ty}, x::AbstractVector{Tx},
-    filter::OrthoFilter, L::Integer,
+    filter::OrthoFilter, L::Int,
     fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     T = promote_type(Tx, Ty)
@@ -22,7 +22,7 @@ function _dwt!(
 end
 function _dwt!(
     y::AbstractVector{<:Number}, x::AbstractVector{<:Number},
-    filter::OrthoFilter, L::Integer,
+    filter::OrthoFilter, L::Int,
     fw::Bool,
     dcfilter::Vector{T}, scfilter::Vector{T},
     si::Vector{T},
@@ -109,7 +109,7 @@ function dwt_transform_strided!(
     si::Vector{T}
 ) where T<:Number
     for i = 1:msub
-        xi = idx_func(i)
+        xi = idx_func(i)::Int
         stridedcopy!(tmpvec, x, xi, stride, nsub)
         unsafe_dwt1level!(tmpvec, 1+nsub, tmpvec, 1, nsub, filter, fw, dcfilter, scfilter, si)
         stridedcopy!(y, xi, stride, tmpvec, 1+nsub, nsub)
@@ -125,7 +125,7 @@ function dwt_transform_cols!(
     si::Vector{T}
 ) where T<:Number
     for i = 1:nsub
-        xi = idx_func(i)
+        xi = idx_func(i)::Int
         copyto!(tmpvec, 1, x, xi, msub)
         unsafe_dwt1level!(vy, xi, tmpvec, 1, msub, filter, fw, dcfilter, scfilter, si)
     end
@@ -134,7 +134,7 @@ end
 # 2-D
 # writes to y
 function _dwt!(y::AbstractMatrix{Ty}, x::AbstractMatrix{Tx},
-    filter::OrthoFilter, L::Integer, fw::Bool) where {Tx<:Number,Ty<:Number}
+    filter::OrthoFilter, L::Int, fw::Bool) where {Tx<:Number,Ty<:Number}
     m, n = size(x)
     T = promote_type(Tx, Ty)
     si = Vector{T}(undef, length(filter) - 1)   # tmp filter vector
@@ -146,7 +146,7 @@ end
 function _dwt!(
     y::AbstractMatrix{<:Number}, x::AbstractMatrix{<:Number},
     filter::OrthoFilter,
-    L::Integer, fw::Bool,
+    L::Int, fw::Bool,
     dcfilter::Vector{T}, scfilter::Vector{T},
     si::Vector{T}, tmpbuffer::Vector{T}
 ) where T<:Number
@@ -188,7 +188,7 @@ function _dwt!(
     for l in lrange
         if fw
             # rows
-            dwt_transform_strided!(vy, inputArray, msub, nsub, row_stride, row_idx_func,
+            dwt_transform_strided!(vy, inputArray::AbstractMatrix, msub, nsub, row_stride, row_idx_func,
                 tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
@@ -197,7 +197,7 @@ function _dwt!(
                 tmpbuffer, filter, fw, dcfilter, scfilter, si)
         else
             # columns
-            dwt_transform_cols!(vy, inputArray, msub, nsub, col_idx_func,
+            dwt_transform_cols!(vy, inputArray::AbstractMatrix, msub, nsub, col_idx_func,
                 tmpbuffer, filter, fw, dcfilter, scfilter, si)
             l == lrange[1] && (inputArray = y)
 
@@ -216,7 +216,7 @@ end
 function _dwt!(
     y::AbstractArray{Ty,3}, x::AbstractArray{Tx,3},
     filter::OrthoFilter,
-    L::Integer, fw::Bool
+    L::Int, fw::Bool
 ) where {Tx<:Number,Ty<:Number}
     m, n, d = size(x)
     T = promote_type(Tx, Ty)
@@ -229,7 +229,7 @@ end
 function _dwt!(
     y::AbstractArray{<:Number,3}, x::AbstractArray{<:Number,3},
     filter::OrthoFilter,
-    L::Integer, fw::Bool,
+    L::Int, fw::Bool,
     dcfilter::Vector{T}, scfilter::Vector{T},
     si::Vector{T}, tmpbuffer::Vector{T}
 ) where T<:Number
