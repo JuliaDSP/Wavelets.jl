@@ -13,9 +13,9 @@ wt = wl
 TI = false
 
 println("denoise (N=",N,"), ", L, " levels")
-f(x0, L, wt,TI) = for i = 1:tn; denoise(x0, wt=wt, TI=TI); end
+f(x0, L, wt,TI) = for i = 1:tn; denoise(x0; wt, TI); end
 f(x0, L, wt,TI);
-@time f(x0, L, wt,TI);
+@time f(x0, L, wt, TI);
 
 #@profile f(x0,L,wt,TI);
 #Profile.print()

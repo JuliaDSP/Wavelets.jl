@@ -34,13 +34,14 @@ Adapt.adapt_structure(to, lb::LineBases) = lb
 
 @inline function get_base(b::LineBases, line::Int)
     t = line - 1
-    return b.offset + (t % b.inner_count) * b.inner_stride + (t ÷ b.inner_count) * b.outer_stride
+    q, r = divrem(t, b.inner_count)
+    return b.offset + r * b.inner_stride + q * b.outer_stride
 end
 @inline get_base(b::AbstractArray, line::Int) = @inbounds b[line]
 
 @kernel function _copy_lines_kernel!(
-        out, out_bases, out_stride::Int,
-        @Const(x), x_bases, x_stride::Int,
+        out, out_bases::LineBases, out_stride::Int,
+    @Const(x), x_bases::LineBases,   x_stride::Int,
         line_len::Int
     )
     idx = @index(Global)
@@ -51,17 +52,17 @@ end
 end
 
 function copy_lines!(
-        out::AbstractGPUArray{<:Number}, out_bases, out_stride::Int,
-        x::AbstractGPUArray{<:Number}, x_bases, x_stride::Int,
-        line_len::Int
-    )
-    line_len == 0 && return out
+    out::AbstractGPUArray{<:Number}, out_bases::LineBases, out_stride::Int,
+    x::AbstractGPUArray{<:Number},     x_bases::LineBases,   x_stride::Int,
+    line_len::Int
+)
+    line_len == 0 && return
     nlines = length(out_bases)
-    nlines == 0 && return out
-    kernel = _copy_lines_kernel!(KernelAbstractions.get_backend(out), 256)
-    kernel(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(line_len); ndrange = nlines * line_len)
-    return out
+    nlines == 0 && return
+    kernel! = _copy_lines_kernel!(KernelAbstractions.get_backend(out))
+    kernel!(out, out_bases, Int(out_stride), x, x_bases, Int(x_stride), Int(line_len); ndrange = nlines * line_len)
+    return
 end
 
 # segment_bases is kept for WPT where irregular subsets of lines are needed
-segment_bases(n::Int, seglen::Int) = [1 + (k - 1) * seglen for k in 1:(n ÷ seglen)]
+segment_bases(n::Int, seglen::Int) = Int[1 + (k - 1) * seglen for k in 1:(n ÷ seglen)]

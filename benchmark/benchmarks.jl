@@ -23,16 +23,16 @@ let g = SUITE["1d"]
     for (wname, wt) in (("filter_db4", WTF), ("lifting_haar", WTL), ("lifting_db2", WTL2))
         g[wname] = BenchmarkGroup()
         for p in (10, 15, 20)
-            n  = 2^p
-            x  = randn(Float32, n)
-            L  = min(6, maxtransformlevels(n))
-            y  = dwt(x, wt, L)
+            n = 2^p
+            x = randn(Float32, n)
+            L = min(6, maxtransformlevels(n))
+            y = dwt(x, wt, L)
 
-            g[wname]["dwt/2^$p"]   = @benchmarkable dwt($x,       $wt, $L) evals=1
-            g[wname]["idwt/2^$p"]  = @benchmarkable idwt($y,      $wt, $L) evals=1
-            g[wname]["wpt/2^$p"]   = @benchmarkable wpt($x,       $wt)     evals=1
+            g[wname]["dwt/2^$p"]  = @benchmarkable  dwt($x, $wt, $L) evals=1
+            g[wname]["idwt/2^$p"] = @benchmarkable idwt($y, $wt, $L) evals=1
+            g[wname]["wpt/2^$p"]  = @benchmarkable  wpt($x, $wt)     evals=1
             yw = wpt(x, wt)
-            g[wname]["iwpt/2^$p"]  = @benchmarkable iwpt($yw,     $wt)     evals=1
+            g[wname]["iwpt/2^$p"] = @benchmarkable iwpt($yw, $wt)    evals=1
         end
     end
 
