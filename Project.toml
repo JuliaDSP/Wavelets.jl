@@ -1,6 +1,6 @@
 name = "Wavelets"
 uuid = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
-version = "0.10.1"
+version = "0.10.2"
 author = ["Gudmundur Adalsteinsson and contributors"]
 
 [workspace]
