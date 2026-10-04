@@ -9,6 +9,6 @@ Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
 [compat]
 BenchmarkTools = "1"
 GPUEnv = "0.2.0"
-Statistics = "1.11.1"
+Statistics = "1.10, 1.11.1"
 Wavelets = "0.10.1"
 julia = "1"
