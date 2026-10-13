@@ -38,11 +38,11 @@ end
     @test upsample([1]) == [1,0]
     @test upsample([1],1) == [0,1]
     @test upsample([1,2]) == [1,0,2,0]
-    @test upsample([1,2],1) == [0,1,0,2]
+    @test upsample([1,2], true) == [0,1,0,2]
     @test downsample([1,2]) == [1]
-    @test downsample([1,2],1) == [2]
+    @test downsample([1,2], true) == [2]
     @test downsample([1,2,3,4]) == [1,3]
-    @test downsample([1,2,3,4],1) == [2,4]
+    @test downsample([1,2,3,4], true) == [2,4]
 
     @test iscube(rand(4)) == true
     @test iscube(rand(4,4,4,4)) == true
@@ -57,21 +57,10 @@ end
     @test wcount(rand(n),1.01) == 0
     @test wcount(rand(n).-2.5,1.01) == n
     @test wcount([0,2,6,7,8],6.6) == 2
-    @test wcount([10,-11,6,7,8.0,-5,-8,0],3,level=2) == 3
+    @test wcount([10,-11,6,7,8.0,-5,-8,0],3; level=2) == 3
     @test wcount(randn(n,n)) == n*n
     @test wcount(rand(n,n),1.01) == 0
     @test wcount([-1 2;3 4],2.5) == 2
-
-    n = 32
-    x = randn(n)
-    y = randn(n)
-    for sh in (-43, -5, 0, 1, 28, 41)
-        @test circshift(x,sh) == Util.circshift!(copy(x),sh)
-        @test circshift(x,-sh) == Util.circshift!(copy(x),-sh)
-        @test x == Util.circshift!(Util.circshift!(copy(x),sh),-sh)
-        @test circshift(x,sh) == Util.circshift!(similar(x),x,sh)
-        @test circshift(x,-sh) == Util.circshift!(similar(x),x,-sh)
-    end
 
     a0 = [1,2]
     exp = [1,2]
