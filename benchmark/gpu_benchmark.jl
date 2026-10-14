@@ -7,7 +7,7 @@ using Random
 using Statistics
 using Wavelets
 
-GPUEnv.activate(persist = true, include_jlarrays = false, only_first = true)
+GPUEnv.activate(persist = true, include_cpu_backends = false, only_first = true)
 
 const BACKENDS = gpu_backends()
 

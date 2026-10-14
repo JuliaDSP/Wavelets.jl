@@ -7,6 +7,6 @@ Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
 
 [compat]
 DelimitedFiles = "1.9.1"
-GPUEnv = "0.2.0"
+GPUEnv = "0.3"
 Wavelets = "0.10.1"
 julia = "1"
